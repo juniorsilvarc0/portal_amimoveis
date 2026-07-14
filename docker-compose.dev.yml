@@ -1,0 +1,108 @@
+# Portal AM Imóveis — ambiente de DESENVOLVIMENTO (Mac, tudo em Docker, localhost).
+#
+#   docker compose -f docker-compose.dev.yml up -d --build     # sobe (build na 1ª vez)
+#   docker compose -f docker-compose.dev.yml logs -f portal    # logs da app
+#   docker compose -f docker-compose.dev.yml exec portal pytest -q
+#   docker compose -f docker-compose.dev.yml down              # para (mantém o banco)
+#   docker compose -f docker-compose.dev.yml down -v           # para e APAGA o banco local
+#
+# App:   http://localhost:8000        (Swagger em /docs)
+# Banco: localhost:5432               (psql -h localhost -U habitacao habitacao)
+#
+# NÃO é usado em produção — lá vale o `docker-compose.yml` (stack Swarm + Traefik),
+# e a imagem é SEMPRE buildada no servidor (amd64). Este arquivo builda arm64 no Mac,
+# o que é correto aqui e SÓ aqui.
+name: portal-dev
+
+services:
+  # O serviço se chama habitacao_db (e não `db`) de propósito: assim o hostname DNS
+  # dentro da rede do compose é idêntico ao de produção, e a DATABASE_URL do .env
+  # tem exatamente a mesma forma nos dois ambientes.
+  habitacao_db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: habitacao
+      POSTGRES_USER: habitacao
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}
+    ports:
+      - "5432:5432"          # exposto p/ psql/DBeaver direto do Mac
+    volumes:
+      - pgdata-dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U habitacao -d habitacao"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  portal:
+    build:
+      context: .
+      dockerfile: Dockerfile.portal
+    image: habitacao-portal:dev
+    env_file:
+      - .env
+    environment:
+      # O host do banco é FIXADO aqui, não no .env: `environment:` tem precedência sobre
+      # `env_file:`. Assim o container sempre fala com o serviço habitacao_db, mesmo que o
+      # .env traga `localhost` (que é o que o README manda usar p/ rodar uvicorn nativo).
+      DATABASE_URL: postgresql://habitacao:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}@habitacao_db:5432/habitacao
+      # Destrava os testes marcados `db` (conftest.py os skipa se isto não existir),
+      # apontando-os para o banco de dev. ATENÇÃO: os testes `db` ESCREVEM no banco
+      # (test_repos.py faz upsert de cliente) — se este banco tiver uma cópia de produção,
+      # rodar a suíte suja a cópia. `down -v` + restore reseta.
+      TEST_DATABASE_URL: postgresql://habitacao:${POSTGRES_PASSWORD}@habitacao_db:5432/habitacao
+      # Sem JWT_SECRET fixo, config.py gera um segredo ALEATÓRIO por processo — e como aqui
+      # roda com --reload, cada save invalidaria seu token (401 do nada). Falha alto se faltar.
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no .env}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?defina ADMIN_PASSWORD no .env}
+      # Sem estes, o fixture `admin_token` (tests/conftest.py) faz pytest.skip() e TODOS os
+      # testes autenticados somem da suíte — verde enganoso. Com eles, a suíte de verdade roda.
+      TEST_ADMIN_EMAIL: admin@roper.com
+      TEST_ADMIN_SENHA: ${ADMIN_PASSWORD}
+      # /app pertence ao root e o container roda como `portal` (uid 10001): sem isto o
+      # pytest morre tentando escrever /app/.pytest_cache.
+      PYTEST_ADDOPTS: -p no:cacheprovider
+    ports:
+      - "8000:8000"
+    # O HEALTHCHECK herdado do Dockerfile bate em /healthz, que responde 200 mesmo com o
+    # banco inacessível (o lifespan engole a exceção do init_v2.sql). Em dev queremos a
+    # verdade: /readyz só passa se o Postgres responder.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/readyz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      habitacao_db:
+        condition: service_healthy
+    # Em dev trocamos o gunicorn (2 workers, sem reload) por uvicorn --reload.
+    # --reload-dir limita o watcher ao pacote da app: sem isso o reloader acordaria
+    # a cada .html temporário que o gerador de PDF cria dentro de static/.
+    command:
+      - uvicorn
+      - app.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --reload
+      - --reload-dir
+      - /app/app
+    volumes:
+      # Código e templates: só leitura — o container nunca escreve neles.
+      # Editar no Mac reflete na hora (Python via --reload; Jinja recarrega sozinho).
+      - ./app:/app/app:ro
+      - ./templates:/app/templates:ro
+      - ./init_v2.sql:/app/init_v2.sql:ro
+      # tests/ e pytest.ini NÃO entram na imagem (o Dockerfile só copia app/, templates/,
+      # static/ e init_v2.sql). Sem estes mounts, `pytest` no container coleta 0 testes.
+      - ./tests:/app/tests:ro
+      - ./pytest.ini:/app/pytest.ini:ro
+      # static/ PRECISA ser read-write: pdf_service.py faz tempfile.mkstemp(dir=STATIC_DIR)
+      # para o Chromium abrir o HTML via file:// — com :ro, todo PDF quebraria.
+      - ./static:/app/static
+
+volumes:
+  pgdata-dev:

@@ -28,33 +28,77 @@ comerciais, financiamento imobiliário, documentos em PDF (recibo, declaração 
   jornada Venda → Pós-Venda, atividades, campanhas, SLA/automação por etapa, webhooks, import CSV
 - **Perfis** — RBAC customizável (21 recursos × ver/criar/editar/excluir)
 
-## Rodando localmente
+## Rodando localmente (recomendado: tudo em Docker)
 
-Requer **Python 3.12** (3.13+ quebra `psycopg2-binary` e `greenlet`) e um PostgreSQL 16.
+Não precisa de Python no host — a imagem já é `python:3.12-slim`. Isso evita a armadilha do
+Python 3.13+, que quebra `psycopg2-binary` e `greenlet`.
 
 ```bash
 git clone git@github.com:juniorsilvarc0/portal_amimoveis.git
 cd portal_amimoveis
 
-# Postgres local (ou use um nativo)
-docker run -d --name pg16 -p 5432:5432 \
-  -e POSTGRES_DB=habitacao -e POSTGRES_USER=habitacao -e POSTGRES_PASSWORD=devpass \
-  postgres:16-alpine
+cp .env.example .env && chmod 600 .env   # preencha os segredos (é gitignored)
 
-python3.12 -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-playwright install chromium          # sem --with-deps
-
-cp .env.example .env && chmod 600 .env   # ajuste DATABASE_URL p/ localhost
-set -a; . ./.env; set +a                 # necessário: connection.py lê os.environ
-
-uvicorn app.main:app --reload --port 8000
+docker compose -f docker-compose.dev.yml up -d --build
 ```
+
+Pronto: app em **http://localhost:8000** (Swagger em `/docs`), Postgres em **localhost:5432**.
 
 O schema é criado sozinho: o *lifespan* aplica o `init_v2.sql` (idempotente) e faz o seed do admin,
 dos perfis RBAC e do pipeline CRM padrão. **Um banco vazio basta** — nenhum seed manual.
 
-Valide com `curl localhost:8000/readyz` → `{"status":"ready"}`. Testes: `pytest`.
+| Tarefa | Comando |
+|---|---|
+| Logs da app | `docker compose -f docker-compose.dev.yml logs -f portal` |
+| Testes | `docker compose -f docker-compose.dev.yml exec portal pytest -q` |
+| Shell no banco | `docker compose -f docker-compose.dev.yml exec habitacao_db psql -U habitacao habitacao` |
+| Parar | `docker compose -f docker-compose.dev.yml down` |
+| Parar e **apagar o banco** | `docker compose -f docker-compose.dev.yml down -v` |
+
+`app/`, `templates/` e `static/` entram por *bind mount*: editar no host reflete na hora
+(o `uvicorn` roda com `--reload`). Só mexer em `requirements.txt` ou no `Dockerfile.portal`
+exige `--build` de novo.
+
+Valide com `curl localhost:8000/readyz` → `{"status":"ready"}`. Note que `/healthz` responde 200
+mesmo com o banco fora do ar — **quem prova que a app está viva é `/readyz`**.
+
+> **Testes `db` escrevem no banco.** `TEST_DATABASE_URL` aponta para o banco de dev, e
+> `tests/test_repos.py` faz upsert de cliente. Se você restaurou uma cópia de produção aqui,
+> rodar a suíte suja essa cópia — `down -v` + restore reseta.
+
+### Trabalhando com uma cópia dos dados de produção
+
+```bash
+# dump direto do servidor para o Mac (não escreve nada no servidor)
+mkdir -p backups
+ssh mordor 'docker exec $(docker ps -qf name=habitacao_db) \
+  pg_dump -U habitacao -Fc --no-owner --no-privileges habitacao' > backups/prod.dump
+
+docker compose -f docker-compose.dev.yml down -v
+docker compose -f docker-compose.dev.yml up -d habitacao_db
+docker compose -f docker-compose.dev.yml exec -T habitacao_db \
+  pg_restore -U habitacao -d habitacao --no-owner --no-privileges < backups/prod.dump
+docker compose -f docker-compose.dev.yml up -d portal
+```
+
+Depois do restore, **dois cuidados**:
+
+1. A tabela `usuarios` vem com os hashes de senha **reais** — o seed do admin não roda (já existe
+   admin), então o `ADMIN_PASSWORD` do seu `.env` não vale. Redefina a senha só no banco local:
+   ```bash
+   H=$(docker compose -f docker-compose.dev.yml exec -T portal \
+       python -c "from app.auth.jwt import hash_password; print(hash_password('devadmin123'))")
+   docker compose -f docker-compose.dev.yml exec -T habitacao_db psql -U habitacao -d habitacao \
+     -c "UPDATE usuarios SET senha_hash='$H' WHERE email='admin@roper.com';"
+   ```
+2. `crm_webhooks` vem com as **URLs reais**, e o dispatcher não tem kill-switch de ambiente:
+   mexer numa oportunidade aqui dispara POST de verdade lá fora. Desative-os no local:
+   ```bash
+   docker compose -f docker-compose.dev.yml exec -T habitacao_db psql -U habitacao -d habitacao \
+     -c "UPDATE crm_webhooks SET ativo=false;"
+   ```
+
+`backups/` é gitignored — a cópia contém PII real (CPF, endereços). Não versione, não compartilhe.
 
 ## Deploy
 
