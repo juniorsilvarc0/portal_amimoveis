@@ -12,6 +12,7 @@ from app.config import settings
 from app.auth.router import router as auth_router
 from app.routers import (
     agencias,
+    chat,
     cidades,
     clientes,
     correspondentes,
@@ -143,6 +144,7 @@ app.include_router(corretores.router)
 app.include_router(logos.router)
 app.include_router(recibos.router)
 app.include_router(crm.router)
+app.include_router(chat.router)
 app.include_router(settings_router.router)
 app.include_router(usuarios.router)
 app.include_router(rbac.router)

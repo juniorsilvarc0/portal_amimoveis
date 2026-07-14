@@ -182,3 +182,45 @@ def metricas():
               FROM crm_leads
         """)
         return dict(cur.fetchone())
+
+
+def upsert_por_telefone_whatsapp(telefone: str, nome: str | None) -> int | None:
+    """Lead automático a partir de uma mensagem recebida no WhatsApp.
+
+    O inbound do WhatsApp só traz NÚMERO — não traz CPF. Por isso a dedup aqui é por
+    `telefone_normalizado` (coluna gerada), e não pelo `cpf_cnpj` usado no resto do repo.
+
+    NÃO sobrescreve dado curado: se o lead já existe, só toca a recência. O nome que o
+    time editou à mão, a etapa do funil e o proprietário ficam intactos — senão cada
+    "oi" do cliente desfaria o trabalho de quem cuidou do lead.
+
+    Devolve o id do lead, ou None se o telefone for curto demais para ser real.
+    """
+    norm = re.sub(r"\D", "", telefone or "")
+    if len(norm) < 10:
+        return None
+
+    with cursor() as cur:
+        # O Gunicorn roda 2 workers: duas mensagens do MESMO número chegando juntas
+        # criariam dois leads (não há UNIQUE em telefone_normalizado — leads legados
+        # podem ter telefone repetido). O advisory lock serializa por número; sendo
+        # _xact_, ele é liberado sozinho no commit desta mesma transação.
+        cur.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (f"wa_lead:{norm}",))
+
+        cur.execute(
+            "SELECT id FROM crm_leads WHERE telefone_normalizado = %s "
+            "ORDER BY id DESC LIMIT 1",
+            (norm,),
+        )
+        row = cur.fetchone()
+        if row:
+            cur.execute("UPDATE crm_leads SET updated_at = NOW() WHERE id = %s", (row["id"],))
+            return row["id"]
+
+        # crm_leads.nome é NOT NULL: sem pushName, o próprio número vira o nome.
+        cur.execute(
+            "INSERT INTO crm_leads (nome, whatsapp, origem, status) "
+            "VALUES (%s, %s, 'whatsapp', 'novo') RETURNING id",
+            (nome or norm, norm),
+        )
+        return cur.fetchone()["id"]
