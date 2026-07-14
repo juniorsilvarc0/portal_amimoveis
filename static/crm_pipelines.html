@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pipelines — CRM</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/layout.css">
+    <style>
+        .pipeline-row { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:16px; margin-bottom:14px; box-shadow:0 1px 2px rgba(0,0,0,.03); }
+        .pipeline-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:6px; }
+        .pipeline-head h3 { margin:0; font-size:16px; display:flex; align-items:center; gap:8px; }
+        .pipeline-head .desc { margin:2px 0 0; font-size:12px; color:#8896a6; }
+        .pipeline-actions { display:flex; gap:6px; flex-shrink:0; }
+        .badge-default { background:#dcfce7; color:#166534; font-size:10px; padding:2px 7px; border-radius:8px; font-weight:700; letter-spacing:.3px; }
+
+        /* lista de etapas (sortable) */
+        .stage-list { display:flex; flex-direction:column; gap:6px; margin-top:12px; }
+        .stage-item { display:flex; align-items:center; gap:10px; background:#fff; border:1px solid #e5e7eb;
+                      border-left-width:4px; border-radius:7px; padding:8px 12px; transition:background .12s, box-shadow .12s; }
+        .stage-item.draggable-on { cursor:default; }
+        .stage-item.dragging { opacity:.35; }
+        .stage-item.drop-mark { box-shadow:0 -2px 0 0 #065676 inset; }
+        .drag-handle { cursor:grab; color:#cbd5e1; font-size:15px; line-height:1; user-select:none; padding:0 2px; }
+        .drag-handle:active { cursor:grabbing; }
+        .stage-item:not(.draggable-on) .drag-handle { visibility:hidden; }
+        .stage-ord { font-size:11px; color:#94a3b8; width:20px; text-align:center; font-weight:600; }
+        .stage-swatch { width:14px; height:14px; border-radius:4px; flex:0 0 auto; border:1px solid rgba(0,0,0,.08); }
+        .stage-name { font-weight:600; font-size:13px; color:#1f2d3d; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .stage-type { font-size:10px; padding:2px 8px; border-radius:10px; font-weight:700; text-transform:uppercase; letter-spacing:.3px; flex:0 0 auto; }
+        .type-aberto { background:#e0f2fe; color:#075985; }
+        .type-ganho { background:#dcfce7; color:#166534; }
+        .type-perdido { background:#fee2e2; color:#991b1b; }
+        .stage-prob { font-size:11px; color:#475569; background:#f1f5f9; padding:2px 8px; border-radius:10px; flex:0 0 auto; }
+        .stage-actions { display:flex; gap:2px; flex:0 0 auto; }
+        .stage-actions button { background:transparent; border:none; cursor:pointer; color:#94a3b8; padding:4px 6px; border-radius:5px; line-height:1; }
+        .stage-actions button:hover { background:#f1f5f9; color:#1f2d3d; }
+        .stage-actions button.del:hover { background:#fee2e2; color:#ef4444; }
+        .stage-empty { font-size:12px; color:#8896a6; padding:8px 4px; }
+        .stage-hint { font-size:11px; color:#aab4c0; margin-top:8px; display:flex; align-items:center; gap:5px; }
+
+        .modal-grid { display:grid; gap:10px; }
+        .modal-grid label { display:flex; flex-direction:column; gap:4px; font-size:12px; font-weight:600; color:#475569; }
+        .modal-grid input, .modal-grid select, .modal-grid textarea { padding:7px 10px; border:1px solid #d1d5db; border-radius:5px; font-family:inherit; font-size:13px; }
+        .modal-grid input[type=color] { padding:2px; height:38px; }
+        .field-2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+        .chk-row { flex-direction:row !important; align-items:center; gap:7px; }
+        .chk-row input { width:auto; }
+    </style>
+</head>
+<body>
+    <div class="app-layout">
+        <aside class="sidebar" id="sidebar"></aside>
+        <div class="main-content">
+            <header class="topbar">
+                <button class="topbar-hamburger"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+                <span class="topbar-title">Pipelines</span>
+            </header>
+            <main class="page-area">
+                <div class="page-header">
+                    <div><h1 class="page-title">Pipelines & Etapas</h1><p class="page-subtitle">Configure os funis de vendas. Arraste as etapas para reordenar.</p></div>
+                    <div class="page-actions"><button class="btn btn-primary" id="btnNovo">Novo Pipeline</button></div>
+                </div>
+                <div id="container"></div>
+            </main>
+        </div>
+    </div>
+    <div class="toast" id="toast"></div>
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/sidebar.js"></script>
+    <script src="/static/js/modal.js"></script>
+    <script>
+    (async function () {
+        let usuario;
+        try { usuario = await api.requireAuth(); } catch (e) { return; }
+        if (!api.can('crm_pipelines', 'ver')) { window.location.href = '/'; return; }
+        const canWrite  = api.can('crm_pipelines', 'criar') || api.can('crm_pipelines', 'editar');
+        const canEdit   = api.can('crm_pipelines', 'editar');
+        const canCreate = api.can('crm_pipelines', 'criar');
+        const canDelete = api.can('crm_pipelines', 'excluir');
+        renderSidebar(document.getElementById('sidebar'), '/crm/pipelines', usuario);
+
+        const cont = document.getElementById('container');
+        const TIPOS = { aberto: 'Aberto', ganho: 'Ganho', perdido: 'Perdido' };
+        const stagesById = {};   // cache p/ edição
+        let allPipelines = [];   // cache p/ vínculo Venda→Pós-venda
+
+        if (canCreate) document.getElementById('btnNovo').addEventListener('click', criarPipeline);
+        else { const bn = document.getElementById('btnNovo'); if (bn) bn.style.display = 'none'; }
+
+        // listeners delegados — anexados UMA vez (evita acúmulo a cada render)
+        cont.addEventListener('click', handleAction);
+        if (canEdit) setupDragAndDrop();
+
+        await render();
+
+        async function render() {
+            cont.innerHTML = '<p style="color:#8896a6;padding:20px;">Carregando…</p>';
+            try {
+                const pipelines = await api.get('/crm/pipelines');
+                allPipelines = pipelines;
+                if (!pipelines.length) { cont.innerHTML = '<p style="padding:20px;">Nenhum pipeline. Clique em "Novo Pipeline".</p>'; return; }
+                cont.innerHTML = '';
+                for (const p of pipelines) {
+                    const stages = await api.get('/crm/stages?pipeline_id=' + p.id);
+                    cont.appendChild(renderPipeline(p, stages));
+                }
+            } catch (e) { cont.innerHTML = '<p style="color:#ef4444;padding:20px;">' + _esc(e.message) + '</p>'; }
+        }
+
+        function renderPipeline(p, stages) {
+            const row = document.createElement('div');
+            row.className = 'pipeline-row';
+            row.innerHTML =
+                '<div class="pipeline-head">' +
+                    '<div style="min-width:0;">' +
+                        '<h3>' + _esc(p.nome) + (p.is_default ? '<span class="badge-default">PADRÃO</span>' : '') + tipoBadge(p) + '</h3>' +
+                        (p.descricao ? '<p class="desc">' + _esc(p.descricao) + '</p>' : '') +
+                        (p.tipo === 'venda' && p.pipeline_pos_venda_id ? '<p class="desc" style="color:#7c3aed;">→ Pós-venda: ' + _esc(nomePipeline(p.pipeline_pos_venda_id)) + '</p>' : '') +
+                    '</div>' +
+                    '<div class="pipeline-actions">' +
+                        (canCreate ? '<button class="btn btn-ghost btn-sm" data-act="add-stage" data-pid="'+p.id+'">+ Etapa</button>' : '') +
+                        (canEdit ? '<button class="btn btn-ghost btn-sm" data-act="edit" data-pid="'+p.id+'">Editar</button>' : '') +
+                        (canDelete && !p.is_default ? '<button class="btn btn-danger btn-sm" data-act="del" data-pid="'+p.id+'">Excluir</button>' : '') +
+                    '</div>' +
+                '</div>';
+
+            const list = document.createElement('div');
+            list.className = 'stage-list';
+            list.dataset.pid = p.id;
+            if (!stages.length) {
+                list.innerHTML = '<div class="stage-empty">Nenhuma etapa cadastrada.' + (canCreate ? ' Clique em "+ Etapa".' : '') + '</div>';
+            } else {
+                stages.forEach((s, i) => { stagesById[s.id] = s; list.appendChild(renderStage(s, i)); });
+            }
+            row.appendChild(list);
+            if (stages.length > 1 && canEdit) {
+                row.insertAdjacentHTML('beforeend', '<div class="stage-hint">⠿ Arraste pelo ícone à esquerda para reordenar as etapas.</div>');
+            }
+            return row;
+        }
+
+        function renderStage(s, idx) {
+            const cor = s.cor || '#065676';
+            const tipo = (s.tipo || 'aberto').toLowerCase();
+            const el = document.createElement('div');
+            el.className = 'stage-item' + (canEdit ? ' draggable-on' : '');
+            el.style.borderLeftColor = cor;
+            el.dataset.sid = s.id;
+            el.dataset.pid = s.pipeline_id;
+            if (canEdit) el.setAttribute('draggable', 'true');
+            el.innerHTML =
+                '<span class="drag-handle" title="Arrastar">⠿</span>' +
+                '<span class="stage-ord">' + (idx + 1) + '</span>' +
+                '<span class="stage-swatch" style="background:' + _attr(cor) + ';"></span>' +
+                '<span class="stage-name">' + _esc(s.nome) + '</span>' +
+                '<span class="stage-type type-' + _attr(tipo) + '">' + _esc(TIPOS[tipo] || tipo) + '</span>' +
+                '<span class="stage-prob">' + (s.probabilidade != null ? s.probabilidade : 0) + '%</span>' +
+                '<span class="stage-actions">' +
+                    (canEdit ? '<button data-act="edit-stage" data-sid="'+s.id+'" title="Editar etapa"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' : '') +
+                    (canDelete ? '<button class="del" data-act="del-stage" data-sid="'+s.id+'" title="Excluir etapa"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>' : '') +
+                '</span>';
+            return el;
+        }
+
+        // ----- ações de clique -----
+        async function handleAction(e) {
+            const btn = e.target.closest('button[data-act]');
+            if (!btn) return;
+            const act = btn.dataset.act;
+            if (act === 'del') {
+                if (!await Modal.confirm('Excluir este pipeline e todas as suas etapas?')) return;
+                try { await api.del('/crm/pipelines/' + btn.dataset.pid); showToast('Pipeline excluído'); await render(); }
+                catch (e) { showToast(e.message, 'error'); }
+            } else if (act === 'del-stage') {
+                if (!await Modal.confirm('Excluir esta etapa?')) return;
+                try { await api.del('/crm/stages/' + btn.dataset.sid); showToast('Etapa excluída'); await render(); }
+                catch (e) { showToast(e.message, 'error'); }
+            } else if (act === 'add-stage') {
+                criarStage(parseInt(btn.dataset.pid, 10));
+            } else if (act === 'edit') {
+                editarPipeline(parseInt(btn.dataset.pid, 10));
+            } else if (act === 'edit-stage') {
+                editarStage(parseInt(btn.dataset.sid, 10));
+            }
+        }
+
+        // ----- drag & drop (reordenar etapas) -----
+        function setupDragAndDrop() {
+            let dragged = null;
+
+            cont.addEventListener('dragstart', (e) => {
+                const item = e.target.closest('.stage-item');
+                if (!item || !item.getAttribute('draggable')) return;
+                dragged = item;
+                e.dataTransfer.effectAllowed = 'move';
+                try { e.dataTransfer.setData('text/plain', item.dataset.sid); } catch (_) {}
+                setTimeout(() => item.classList.add('dragging'), 0);
+            });
+
+            cont.addEventListener('dragover', (e) => {
+                if (!dragged) return;
+                const list = e.target.closest('.stage-list');
+                if (!list || list !== dragged.parentNode) return;   // sem mover entre pipelines
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                const after = getDragAfter(list, e.clientY);
+                if (after == null) list.appendChild(dragged);
+                else list.insertBefore(dragged, after);
+            });
+
+            cont.addEventListener('dragend', async () => {
+                if (!dragged) return;
+                const item = dragged; dragged = null;
+                item.classList.remove('dragging');
+                const list = item.parentNode;
+                if (!list || !list.classList.contains('stage-list')) { await render(); return; }
+                renumber(list);
+                const pid = parseInt(list.dataset.pid, 10);
+                const ids = [...list.querySelectorAll('.stage-item')].map(el => parseInt(el.dataset.sid, 10));
+                try {
+                    await api.post('/crm/stages/reorder', { pipeline_id: pid, stage_ids: ids });
+                    showToast('Ordem salva');
+                } catch (e) { showToast(e.message || 'Erro ao salvar ordem', 'error'); await render(); }
+            });
+        }
+
+        function getDragAfter(list, y) {
+            const items = [...list.querySelectorAll('.stage-item:not(.dragging)')];
+            let closest = { offset: -Infinity, el: null };
+            for (const child of items) {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) closest = { offset, el: child };
+            }
+            return closest.el;
+        }
+
+        function renumber(list) {
+            [...list.querySelectorAll('.stage-item')].forEach((el, i) => {
+                const o = el.querySelector('.stage-ord'); if (o) o.textContent = i + 1;
+            });
+        }
+
+        // ----- modais de Pipeline -----
+        function pipelineForm(p) {
+            p = p || {};
+            const tipo = p.tipo || 'generico';
+            const topt = (v, l) => '<option value="'+v+'"'+(tipo===v?' selected':'')+'>'+l+'</option>';
+            // Vínculo: pipelines de pós-venda disponíveis (exceto a própria)
+            const posOpts = allPipelines.filter(x => x.tipo === 'pos_venda' && x.id !== p.id)
+                .map(x => '<option value="'+x.id+'"'+(p.pipeline_pos_venda_id===x.id?' selected':'')+'>'+_esc(x.nome)+'</option>').join('');
+            return '<div class="modal-grid">' +
+                '<label>Nome <input id="m_nome" value="'+_attr(p.nome)+'"></label>' +
+                '<label>Descrição <textarea id="m_desc" rows="2">'+_esc(p.descricao||'')+'</textarea></label>' +
+                '<label>Tipo <select id="m_tipo" onchange="document.getElementById(\'m_link_wrap\').style.display=this.value===\'venda\'?\'block\':\'none\'">' +
+                    topt('generico','Genérico') + topt('venda','Venda') + topt('pos_venda','Pós-venda') +
+                '</select></label>' +
+                '<div id="m_link_wrap" style="display:'+(tipo==='venda'?'block':'none')+';">' +
+                    '<label>Pipeline de Pós-venda vinculada <select id="m_link"><option value="">— nenhuma —</option>' + posOpts + '</select></label>' +
+                    '<p style="font-size:11px;color:#8896a6;margin:4px 0 0;">Ao ganhar uma oportunidade nesta pipeline, ela entra automaticamente na pós-venda escolhida (mesma oportunidade, sem duplicar).</p>' +
+                '</div>' +
+                '<label class="chk-row"><input type="checkbox" id="m_default"'+(p.is_default?' checked':'')+'> Definir como pipeline padrão</label>' +
+                '</div>';
+        }
+        function readPipelineForm() {
+            const tipo = document.getElementById('m_tipo').value;
+            const linkEl = document.getElementById('m_link');
+            return {
+                nome: document.getElementById('m_nome').value.trim(),
+                descricao: document.getElementById('m_desc').value.trim() || null,
+                is_default: document.getElementById('m_default').checked,
+                tipo: tipo,
+                pipeline_pos_venda_id: (tipo === 'venda' && linkEl && linkEl.value) ? parseInt(linkEl.value, 10) : null,
+            };
+        }
+
+        function criarPipeline() {
+            Modal.prompt('Novo Pipeline', pipelineForm(), async () => {
+                const data = readPipelineForm();
+                if (!data.nome) { showToast('Informe o nome do pipeline', 'error'); return false; }
+                try { await api.post('/crm/pipelines', data); showToast('Pipeline criado'); await render(); }
+                catch (e) { showToast(e.message, 'error'); return false; }
+            });
+        }
+
+        async function editarPipeline(id) {
+            let p; try { p = await api.get('/crm/pipelines/' + id); } catch (e) { showToast(e.message, 'error'); return; }
+            Modal.prompt('Editar Pipeline', pipelineForm(p), async () => {
+                const data = readPipelineForm();
+                if (!data.nome) { showToast('Informe o nome do pipeline', 'error'); return false; }
+                try { await api.put('/crm/pipelines/' + id, data); showToast('Pipeline atualizado'); await render(); }
+                catch (e) { showToast(e.message, 'error'); return false; }
+            });
+        }
+
+        // ----- modais de Etapa -----
+        function stageForm(s) {
+            s = s || {};
+            const tipo = (s.tipo || 'aberto').toLowerCase();
+            const opt = (v, l) => '<option value="'+v+'"'+(tipo===v?' selected':'')+'>'+l+'</option>';
+            const atipo = (s.auto_tarefa_tipo || 'tarefa');
+            const atopt = (v, l) => '<option value="'+v+'"'+(atipo===v?' selected':'')+'>'+l+'</option>';
+            return '<div class="modal-grid">' +
+                '<label>Nome <input id="s_nome" value="'+_attr(s.nome)+'"></label>' +
+                '<div class="field-2">' +
+                    '<label>Probabilidade % <input id="s_prob" type="number" min="0" max="100" value="'+(s.probabilidade!=null?s.probabilidade:50)+'"></label>' +
+                    '<label>Cor <input id="s_cor" type="color" value="'+_attr(s.cor||'#065676')+'"></label>' +
+                '</div>' +
+                '<label>Tipo <select id="s_tipo">' + opt('aberto','Aberto (em andamento)') + opt('ganho','Ganho (fecha como ganha)') + opt('perdido','Perdido (fecha como perdida)') + '</select></label>' +
+                '<hr style="border:none;border-top:1px solid #eef2f6;margin:4px 0;">' +
+                '<div style="font-size:11px;font-weight:700;color:#065676;text-transform:uppercase;letter-spacing:.4px;">Automação da etapa</div>' +
+                '<div class="field-2">' +
+                    '<label>SLA (dias) <input id="s_sla" type="number" min="0" value="'+(s.sla_dias!=null?s.sla_dias:'')+'" placeholder="ex: 7"></label>' +
+                    '<label>Tipo da tarefa <select id="s_atipo">' + atopt('tarefa','Tarefa') + atopt('ligacao','Ligação') + atopt('reuniao','Reunião') + atopt('email','E-mail') + atopt('whatsapp','WhatsApp') + '</select></label>' +
+                '</div>' +
+                '<label>Próxima ação automática (assunto) <input id="s_aassunto" value="'+_attr(s.auto_tarefa_assunto||'')+'" placeholder="ex: Agendar pré-entrevista Caixa"></label>' +
+                '<label>Descrição da tarefa <textarea id="s_adesc" rows="2" placeholder="opcional">'+_esc(s.auto_tarefa_descricao||'')+'</textarea></label>' +
+                '<div class="field-2">' +
+                    '<label>Prazo da tarefa (dias) <input id="s_aprazo" type="number" min="0" value="'+(s.auto_tarefa_prazo_dias!=null?s.auto_tarefa_prazo_dias:'')+'" placeholder="vazio = usa SLA"></label>' +
+                    '<label class="chk-row" style="align-self:end;"><input type="checkbox" id="s_anotif"'+(s.auto_notificar!==false?' checked':'')+'> Notificar na entrada</label>' +
+                '</div>' +
+                '<p style="font-size:11px;color:#8896a6;margin:0;">Ao entrar nesta etapa, o sistema cria automaticamente essa tarefa (card "Próxima Ação"). SLA = prazo da etapa (alerta se estourar). Ordem das etapas: arraste na lista.</p>' +
+                '</div>';
+        }
+
+        function readStageForm() {
+            const nome = document.getElementById('s_nome').value.trim();
+            if (!nome) { showToast('Informe o nome da etapa', 'error'); return null; }
+            const num = id => { const v = document.getElementById(id).value; return v === '' ? null : parseInt(v, 10); };
+            return {
+                nome,
+                probabilidade: Math.max(0, Math.min(100, parseInt(document.getElementById('s_prob').value, 10) || 0)),
+                cor: document.getElementById('s_cor').value,
+                tipo: document.getElementById('s_tipo').value,
+                sla_dias: num('s_sla'),
+                auto_tarefa_assunto: document.getElementById('s_aassunto').value.trim() || null,
+                auto_tarefa_descricao: document.getElementById('s_adesc').value.trim() || null,
+                auto_tarefa_tipo: document.getElementById('s_atipo').value,
+                auto_tarefa_prazo_dias: num('s_aprazo'),
+                auto_notificar: document.getElementById('s_anotif').checked,
+            };
+        }
+
+        function criarStage(pipeline_id) {
+            Modal.prompt('Nova Etapa', stageForm(), async () => {
+                const data = readStageForm(); if (!data) return false;
+                try { await api.post('/crm/stages', Object.assign({ pipeline_id }, data)); showToast('Etapa criada'); await render(); }
+                catch (e) { showToast(e.message, 'error'); return false; }
+            });
+        }
+
+        function editarStage(id) {
+            const s = stagesById[id];
+            if (!s) { showToast('Etapa não encontrada', 'error'); return; }
+            Modal.prompt('Editar Etapa', stageForm(s), async () => {
+                const data = readStageForm(); if (!data) return false;
+                try { await api.put('/crm/stages/' + id, data); showToast('Etapa atualizada'); await render(); }
+                catch (e) { showToast(e.message, 'error'); return false; }
+            });
+        }
+
+        // ----- utils -----
+        function tipoBadge(p){ if(p.tipo==='venda') return '<span class="badge-default" style="background:#dbeafe;color:#1e40af;">VENDA</span>'; if(p.tipo==='pos_venda') return '<span class="badge-default" style="background:#ede9fe;color:#5b21b6;">PÓS-VENDA</span>'; return ''; }
+        function nomePipeline(id){ const x=allPipelines.find(p=>p.id===id); return x?x.nome:('#'+id); }
+        function _esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+        function _attr(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;');}
+        function showToast(msg, type){const t=document.getElementById('toast');if(!t)return;t.textContent=msg;t.className='toast '+(type||'success');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+    })();
+    </script>
+</body>
+</html>

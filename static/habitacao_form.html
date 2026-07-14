@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ficha Habitacional — AM Imoveis</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/layout.css">
+</head>
+<body>
+    <div class="app-layout">
+
+        <aside class="sidebar" id="sidebar" aria-label="Menu lateral"></aside>
+
+        <div class="main-content" id="mainContent">
+
+            <header class="topbar">
+                <button class="topbar-hamburger" aria-label="Abrir menu">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="6" x2="21" y2="6"/>
+                        <line x1="3" y1="12" x2="21" y2="12"/>
+                        <line x1="3" y1="18" x2="21" y2="18"/>
+                    </svg>
+                </button>
+                <span class="topbar-title" id="pageTitle">Nova Ficha Habitacional</span>
+            </header>
+
+            <main class="page-area">
+
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title" id="pageTitleMain">Nova Ficha Habitacional</h1>
+                        <p class="page-subtitle">Preencha os dados do proponente e do imóvel</p>
+                    </div>
+                    <div class="page-actions">
+                        <a href="/habitacao" class="btn btn-ghost">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="15 18 9 12 15 6"/>
+                            </svg>
+                            Voltar
+                        </a>
+                    </div>
+                </div>
+
+                <div class="alert-error" id="alertError"></div>
+
+                <form id="form" autocomplete="off" novalidate>
+
+                    <!-- 01. Identificação do Cliente -->
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible>
+                            <span class="section-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="12" cy="7" r="4"/>
+                                </svg>
+                            </span>
+                            <h3>01. Identificação do Cliente</h3>
+                            <span class="chevron-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2.5"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </span>
+                        </div>
+                        <div class="form-card-body">
+                            <div id="editClienteLinkHost" style="display:none;padding:0 0 12px;"></div>
+                            <div class="form-grid-auto">
+                                <div data-field="cpf" data-required></div>
+                                <div data-field="nome" data-required data-full-width></div>
+                                <div data-field="idade" data-name="idade_snapshot"></div>
+                                <div data-field="whatsapp" data-name="whatsapp1" data-label="WhatsApp"></div>
+                                <div data-field="email"></div>
+                                <div class="form-group full-width">
+                                    <label for="dependentes">Dependentes</label>
+                                    <input type="text" id="dependentes" name="dependentes"
+                                           placeholder="Ex: 2 filhos — Maria 8a, João 5a">
+                                    <small class="field-error"></small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 02. Empreendimento -->
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible>
+                            <span class="section-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                                    <polyline points="9 22 9 12 15 12 15 22"/>
+                                </svg>
+                            </span>
+                            <h3>02. Empreendimento</h3>
+                            <span class="chevron-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2.5"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </span>
+                        </div>
+                        <div class="form-card-body">
+                            <div class="form-grid-auto">
+                                <div class="form-group">
+                                    <label for="empreendimento">Empreendimento</label>
+                                    <select id="empreendimento" name="empreendimento">
+                                        <option value=""></option>
+                                        <option>DIRCEU 8 LOTES</option>
+                                        <option>PLANALTO</option>
+                                        <option>REVOADA DOS GUARAS FASE 1</option>
+                                        <option>REVOADA DOS GUARAS FASE 2</option>
+                                        <option>LUAR DO SERTAO</option>
+                                    </select>
+                                    <small class="field-error"></small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="endereco_imovel">Endereço do Imóvel</label>
+                                    <input type="text" id="endereco_imovel" name="endereco_imovel">
+                                    <small class="field-error"></small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="proprietarios">Proprietários</label>
+                                    <input type="text" id="proprietarios" name="proprietarios">
+                                    <small class="field-error"></small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="proprietarios_construtora">Proprietários / Construtora</label>
+                                    <input type="text" id="proprietarios_construtora" name="proprietarios_construtora">
+                                    <small class="field-error"></small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 03. Renda — Titular -->
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible>
+                            <span class="section-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="12" y1="1" x2="12" y2="23"/>
+                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                                </svg>
+                            </span>
+                            <h3>03. Renda — Titular</h3>
+                            <span class="chevron-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2.5"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </span>
+                        </div>
+                        <div class="form-card-body">
+                            <div class="form-grid-auto">
+                                <div class="form-group">
+                                    <label for="titular_funcao">Função / Cargo</label>
+                                    <input type="text" id="titular_funcao" name="titular_funcao">
+                                    <small class="field-error"></small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="titular_empresa">Empresa</label>
+                                    <input type="text" id="titular_empresa" name="titular_empresa">
+                                    <small class="field-error"></small>
+                                </div>
+                                <div data-field="data" data-name="titular_admissao" data-label="Admissão"></div>
+                                <div data-field="money" data-name="titular_renda_bruta" data-label="Renda bruta"></div>
+                                <div data-field="money" data-name="titular_renda_liquida" data-label="Renda líquida"></div>
+                                <div data-field="money" data-name="titular_extras" data-label="Rendas extras"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 04. Cônjuge / 2º Proponente (Coobrigado) — opcional -->
+                    <div class="form-card" id="cardConjuge">
+                        <div class="form-card-header" data-collapsible>
+                            <span class="section-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="9" cy="7" r="4"/>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                </svg>
+                            </span>
+                            <h3>04. Cônjuge / 2º Proponente <small style="font-weight:400;color:#8896a6;">(opcional)</small></h3>
+                            <span class="chevron-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2.5"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </span>
+                        </div>
+                        <div class="form-card-body">
+                            <!-- Estado vazio: botão Adicionar -->
+                            <div id="conjugeEmpty" style="text-align:center;padding:24px;">
+                                <p style="color:#8896a6;margin-bottom:12px;font-size:14px;">Esta ficha não possui 2º Proponente / Cônjuge.</p>
+                                <button type="button" class="btn btn-primary btn-sm" id="btnAddConjuge">
+                                    + Adicionar 2º Proponente
+                                </button>
+                            </div>
+                            <!-- Campos do cônjuge (escondidos por padrão) -->
+                            <div id="conjugeFields" style="display:none;">
+                                <div style="text-align:right;margin-bottom:8px;">
+                                    <button type="button" class="btn btn-ghost btn-sm" id="btnRemoveConjuge" style="color:#E5094B;">
+                                        × Remover 2º Proponente
+                                    </button>
+                                </div>
+                                <div class="form-grid-auto">
+                                    <div class="form-group">
+                                        <label for="conjuge_nome">Nome completo</label>
+                                        <input type="text" id="conjuge_nome" name="conjuge_nome">
+                                        <small class="field-error"></small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="conjuge_cpf">CPF</label>
+                                        <input type="text" id="conjuge_cpf" name="conjuge_cpf" data-mask="cpf" placeholder="000.000.000-00">
+                                        <small class="field-error"></small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="conjuge_funcao">Função / Cargo</label>
+                                        <input type="text" id="conjuge_funcao" name="conjuge_funcao">
+                                        <small class="field-error"></small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="conjuge_empresa">Empresa</label>
+                                        <input type="text" id="conjuge_empresa" name="conjuge_empresa">
+                                        <small class="field-error"></small>
+                                    </div>
+                                    <div data-field="data" data-name="conjuge_admissao" data-label="Admissão"></div>
+                                    <div data-field="money" data-name="conjuge_renda_bruta" data-label="Renda bruta"></div>
+                                    <div data-field="money" data-name="conjuge_renda_liquida" data-label="Renda líquida"></div>
+                                    <div data-field="money" data-name="conjuge_extras" data-label="Rendas extras"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 05. Relacionamento Caixa -->
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible>
+                            <span class="section-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="2" y="5" width="20" height="14" rx="2"/>
+                                    <line x1="2" y1="10" x2="22" y2="10"/>
+                                </svg>
+                            </span>
+                            <h3>05. Relacionamento Caixa</h3>
+                            <span class="chevron-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2.5"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </span>
+                        </div>
+                        <div class="form-card-body">
+                            <div class="form-grid-auto">
+                                <div class="form-group">
+                                    <label for="conta">Conta Caixa</label>
+                                    <input type="text" id="conta" name="conta">
+                                    <small class="field-error"></small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="conta_salario">Conta salário</label>
+                                    <input type="text" id="conta_salario" name="conta_salario">
+                                    <small class="field-error"></small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="open_finance">Open Finance</label>
+                                    <input type="text" id="open_finance" name="open_finance">
+                                    <small class="field-error"></small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="opt_in">Opt-in</label>
+                                    <input type="text" id="opt_in" name="opt_in">
+                                    <small class="field-error"></small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="biometria">Biometria</label>
+                                    <input type="text" id="biometria" name="biometria">
+                                    <small class="field-error"></small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="cartao_credito">Cartão de crédito</label>
+                                    <input type="text" id="cartao_credito" name="cartao_credito">
+                                    <small class="field-error"></small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="crot">CROT</label>
+                                    <input type="text" id="crot" name="crot">
+                                    <small class="field-error"></small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="emprestimos">Empréstimos</label>
+                                    <input type="text" id="emprestimos" name="emprestimos">
+                                    <small class="field-error"></small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="moradia_tipo">Moradia atual</label>
+                                    <input type="text" id="moradia_tipo" name="moradia_tipo" placeholder="Ex: Alugada, Própria">
+                                    <small class="field-error"></small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="transportes">Transportes</label>
+                                    <input type="text" id="transportes" name="transportes">
+                                    <small class="field-error"></small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 06. Financiamento -->
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible>
+                            <span class="section-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                                    <path d="M2 17l10 5 10-5"/>
+                                    <path d="M2 12l10 5 10-5"/>
+                                </svg>
+                            </span>
+                            <h3>06. Financiamento</h3>
+                            <span class="chevron-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2.5"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </span>
+                        </div>
+                        <div class="form-card-body">
+                            <div class="form-grid-auto">
+                                <div data-field="money" data-name="valor_total" data-label="Valor total do imóvel"></div>
+                                <div data-field="money" data-name="subsidio" data-label="Subsídio"></div>
+                                <div data-field="money" data-name="entrada" data-label="Entrada"></div>
+                                <div data-field="money" data-name="negociacao" data-label="Negociação"></div>
+                                <div data-field="money" data-name="financiado" data-label="Valor financiado"></div>
+                                <div data-field="money" data-name="parcela" data-label="Parcela"></div>
+                                <div class="form-group">
+                                    <label for="prazo">Prazo (meses)</label>
+                                    <input type="text" id="prazo" name="prazo" placeholder="Ex: 420">
+                                    <small class="field-error"></small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="amortizacao">Amortização</label>
+                                    <select id="amortizacao" name="amortizacao">
+                                        <option value=""></option>
+                                        <option>SAC</option>
+                                        <option>PRICE</option>
+                                    </select>
+                                    <small class="field-error"></small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="utilizar_fgts">Utilizar FGTS</label>
+                                    <select id="utilizar_fgts" name="utilizar_fgts">
+                                        <option value=""></option>
+                                        <option value="SIM">SIM</option>
+                                        <option value="NÃO">NÃO</option>
+                                    </select>
+                                    <small class="field-error"></small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 07. Taxas & Seguridade -->
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible>
+                            <span class="section-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                </svg>
+                            </span>
+                            <h3>07. Taxas &amp; Seguridade</h3>
+                            <span class="chevron-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2.5"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </span>
+                        </div>
+                        <div class="form-card-body">
+                            <div class="form-grid-auto">
+                                <div data-field="money" data-name="taxa_vista_contrato" data-label="Taxa / Vistoria / Contrato"></div>
+                                <div data-field="money" data-name="seguridade" data-label="Seguridade"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <a href="/habitacao" class="btn btn-ghost">Cancelar</a>
+                        <button type="submit" class="btn btn-primary" id="btnSalvar">
+                            <span id="btnSalvarLabel">Salvar Ficha</span>
+                            <span id="btnSalvarSpinner" class="spinner" style="display:none;"></span>
+                        </button>
+                    </div>
+
+                </form>
+
+            </main>
+        </div>
+    </div>
+
+    <div class="toast" id="toast" role="alert" aria-live="polite"></div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/sidebar.js"></script>
+    <script src="/static/js/masks.js"></script>
+    <script src="/static/js/forms.js"></script>
+    <script src="/static/js/modal.js"></script>
+    <script src="/static/js/cpf_lookup.js"></script>
+
+    <script>
+        (async function () {
+            'use strict';
+
+            let usuario;
+            try {
+                usuario = await api.requireAuth();
+            } catch (e) {
+                return;
+            }
+
+            renderSidebar(document.getElementById('sidebar'), '/habitacao', usuario);
+
+            /* ---- Modo edição ---- */
+            function getId() {
+                var m = window.location.pathname.match(/\/habitacao\/(\d+)\/editar/);
+                return m ? parseInt(m[1], 10) : null;
+            }
+
+            var editId = getId();
+
+            // Redireciona quem não pode escrever
+            var podeEscrever = editId ? api.can('habitacao', 'editar') : api.can('habitacao', 'criar');
+            if (!podeEscrever) {
+                window.location.href = '/habitacao';
+                return;
+            }
+            var clienteId = null;
+
+            /* IMPORTANTE: forms.init() expande os <div data-field="..."> em inputs reais.
+               DEVE rodar ANTES de resolver refs tipo document.getElementById('cpf'),
+               senão os placeholders ainda não foram substituídos e os refs viram null. */
+            var form = document.getElementById('form');
+            forms.init(form);
+
+            /* ---- Toggle 2º Proponente (opcional) ---- */
+            var conjugeCampos = ['conjuge_nome', 'conjuge_cpf', 'conjuge_funcao',
+                                  'conjuge_empresa', 'conjuge_admissao',
+                                  'conjuge_renda_bruta', 'conjuge_renda_liquida', 'conjuge_extras'];
+            function mostrarConjuge(visible) {
+                var empty = document.getElementById('conjugeEmpty');
+                var fields = document.getElementById('conjugeFields');
+                if (visible) {
+                    empty.style.display = 'none';
+                    fields.style.display = '';
+                } else {
+                    empty.style.display = '';
+                    fields.style.display = 'none';
+                    // Limpar todos os campos do cônjuge
+                    conjugeCampos.forEach(function (f) {
+                        var el = document.getElementById(f);
+                        if (el) el.value = '';
+                    });
+                }
+            }
+            document.getElementById('btnAddConjuge').addEventListener('click', function () { mostrarConjuge(true); });
+            document.getElementById('btnRemoveConjuge').addEventListener('click', async function () {
+                var ok = await Modal.confirm('Remover o 2º Proponente desta ficha? Todos os campos preenchidos serão perdidos.');
+                if (ok) mostrarConjuge(false);
+            });
+
+            var cpfInput = document.getElementById('cpf');
+            // Campos pessoais do cliente que a ficha usa (nome, contato).
+            var camposCliente = ['nome', 'whatsapp1', 'email'];
+
+            /* Carrega dropdown de Imóveis/Empreendimentos */
+            var empreendSelect = document.getElementById('empreendimento');
+            // Transformamos o antigo select textual em select de imovel_id dinamicamente.
+            if (empreendSelect && empreendSelect.tagName === 'SELECT') {
+                try {
+                    var imoveis = await api.get('/lookup/imoveis');
+                    if (imoveis && imoveis.length) {
+                        empreendSelect.innerHTML = '<option value="">— Selecione —</option>' +
+                            imoveis.map(function (i) {
+                                return '<option value="' + _escHtml(i.nome) + '" data-imovel-id="' + i.id + '">' + _escHtml(i.nome) + '</option>';
+                            }).join('');
+                    }
+                } catch (e) { /* mantém options antigas como fallback */ }
+            }
+
+            function _escHtml(s) {
+                return String(s == null ? '' : s)
+                    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            }
+
+            if (editId) {
+                document.getElementById('pageTitleMain').textContent = 'Editar Ficha Habitacional';
+                document.getElementById('pageTitle').textContent = 'Editar Ficha Habitacional';
+                document.getElementById('btnSalvarLabel').textContent = 'Atualizar Ficha';
+                await carregarFicha(editId);
+            }
+
+            /* ---- CPF Lookup ----
+               Preenche SOMENTE os campos pertinentes à ficha de habitação:
+               nome, whatsapp1 e email. Os demais dados pessoais do cliente
+               (nascimento, endereço, RG, etc.) pertencem ao cadastro de
+               Clientes e não fazem parte da ficha habitacional. */
+            function _setVal(id, v) {
+                var el = document.getElementById(id);
+                if (el && v != null) el.value = v;
+            }
+
+            function _lockClienteFields() {
+                camposCliente.forEach(function (f) {
+                    var el = document.getElementById(f);
+                    if (el) el.setAttribute('readonly', true);
+                });
+                if (clienteId) {
+                    var host = document.getElementById('editClienteLinkHost');
+                    if (host) {
+                        host.innerHTML = '<a href="/cliente/' + clienteId + '/editar" class="btn btn-ghost btn-sm" target="_blank">Editar cadastro do cliente ↗</a>';
+                        host.style.display = '';
+                    }
+                }
+            }
+            function _unlockClienteFields() {
+                camposCliente.forEach(function (f) {
+                    var el = document.getElementById(f);
+                    if (el) el.removeAttribute('readonly');
+                });
+                var host = document.getElementById('editClienteLinkHost');
+                if (host) { host.innerHTML = ''; host.style.display = 'none'; }
+            }
+
+            if (!editId) {
+                attachCpfLookup(cpfInput, function onFound(cliente) {
+                    clienteId = cliente.id;
+                    _setVal('nome',      cliente.nome);
+                    _setVal('whatsapp1', cliente.whatsapp1 ? maskPhone(cliente.whatsapp1) : '');
+                    _setVal('email',     cliente.email);
+                    _lockClienteFields();
+
+                    if (cliente.conjuge && cliente.conjuge.nome) {
+                        mostrarConjuge(true);
+                        _setVal('conjuge_nome', cliente.conjuge.nome);
+                        if (cliente.conjuge.cpf) _setVal('conjuge_cpf', cliente.conjuge.cpf);
+                    }
+                }, function onNotFound() {
+                    clienteId = null;
+                    _unlockClienteFields();
+                });
+            }
+
+            /* ---- Carregar ficha no modo edição ---- */
+            async function carregarFicha(id) {
+                try {
+                    var ficha = await api.get('/habitacao/' + id);
+                    clienteId = ficha.cliente_id;
+
+                    // Dados pessoais vêm do cliente via JOIN (cliente_*)
+                    if (ficha.cliente_cpf) {
+                        cpfInput.value = typeof maskCPF === 'function' ? maskCPF(ficha.cliente_cpf) : ficha.cliente_cpf;
+                        cpfInput.setAttribute('readonly', true);
+                    }
+                    _setVal('nome', ficha.cliente_nome);
+                    _setVal('whatsapp1', ficha.cliente_whatsapp1
+                        ? (typeof maskPhone === 'function' ? maskPhone(ficha.cliente_whatsapp1) : ficha.cliente_whatsapp1)
+                        : '');
+                    _setVal('email', ficha.cliente_email);
+                    _lockClienteFields();
+
+                    var campos = [
+                        'idade_snapshot', 'dependentes',
+                        'empreendimento', 'endereco_imovel', 'proprietarios', 'proprietarios_construtora',
+                        'titular_funcao', 'titular_empresa', 'titular_admissao',
+                        'titular_renda_bruta', 'titular_renda_liquida', 'titular_extras',
+                        'conjuge_nome', 'conjuge_cpf', 'conjuge_funcao', 'conjuge_empresa', 'conjuge_admissao',
+                        'conjuge_renda_bruta', 'conjuge_renda_liquida', 'conjuge_extras',
+                        'conta', 'conta_salario', 'open_finance', 'opt_in', 'biometria',
+                        'cartao_credito', 'crot', 'emprestimos', 'moradia_tipo', 'transportes',
+                        'valor_total', 'subsidio', 'entrada', 'negociacao', 'financiado',
+                        'parcela', 'prazo', 'amortizacao', 'utilizar_fgts',
+                        'taxa_vista_contrato', 'seguridade',
+                    ];
+
+                    campos.forEach(function (f) {
+                        var el = document.getElementById(f);
+                        if (el && ficha[f] != null) {
+                            el.value = ficha[f];
+                        }
+                    });
+
+                    // Mostrar bloco do cônjuge se houver QUALQUER dado preenchido
+                    var temConjuge = conjugeCampos.some(function (f) {
+                        return ficha[f] != null && ficha[f] !== '';
+                    });
+                    mostrarConjuge(temConjuge);
+                } catch (e) {
+                    showToast('Erro ao carregar ficha: ' + e.message, 'error');
+                }
+            }
+
+            /* ---- Submit ---- */
+            form.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                forms.alertClear();
+
+                var btn = document.getElementById('btnSalvar');
+                var label = document.getElementById('btnSalvarLabel');
+                var spinner = document.getElementById('btnSalvarSpinner');
+                btn.disabled = true;
+                label.style.display = 'none';
+                spinner.style.display = 'inline-block';
+
+                try {
+                    var payload = montarPayload();
+                    if (editId) {
+                        await api.put('/habitacao/' + editId, payload);
+                    } else {
+                        await api.post('/habitacao', payload);
+                    }
+                    showToast('Ficha salva com sucesso!', 'success');
+                    setTimeout(function () {
+                        window.location.href = '/habitacao';
+                    }, 1000);
+                } catch (err) {
+                    forms.alertError(err.message || 'Erro ao salvar ficha.');
+                    btn.disabled = false;
+                    label.style.display = 'inline';
+                    spinner.style.display = 'none';
+                }
+            });
+
+            function montarPayload() {
+                var cpfRaw = cpfInput.value.replace(/\D/g, '');
+                var payload = {};
+
+                if (clienteId) {
+                    payload.cliente_id = clienteId;
+                } else {
+                    payload.cliente = {
+                        cpf: cpfRaw,
+                        nome: val('nome'),
+                        whatsapp1: val('whatsapp1'),
+                        email: val('email'),
+                    };
+                }
+
+                // Campos da ficha (incluindo conjuge_nome direto, não via payload.conjuge)
+                [
+                    'idade_snapshot', 'dependentes', 'empreendimento',
+                    'endereco_imovel', 'proprietarios', 'proprietarios_construtora',
+                    'titular_funcao', 'titular_empresa', 'titular_admissao',
+                    'titular_renda_bruta', 'titular_renda_liquida', 'titular_extras',
+                    'conjuge_nome', 'conjuge_cpf',
+                    'conjuge_funcao', 'conjuge_empresa', 'conjuge_admissao',
+                    'conjuge_renda_bruta', 'conjuge_renda_liquida', 'conjuge_extras',
+                    'conta', 'conta_salario', 'open_finance', 'opt_in', 'biometria',
+                    'cartao_credito', 'crot', 'emprestimos', 'moradia_tipo', 'transportes',
+                    'valor_total', 'subsidio', 'entrada', 'negociacao', 'financiado',
+                    'parcela', 'prazo', 'amortizacao', 'utilizar_fgts',
+                    'taxa_vista_contrato', 'seguridade',
+                ].forEach(function (f) {
+                    payload[f] = val(f) || null;
+                });
+
+                return payload;
+            }
+
+            function val(id) {
+                var el = document.getElementById(id);
+                return el ? (el.value || '').trim() : '';
+            }
+
+            function showToast(msg, type, duration) {
+                type = type || 'success';
+                duration = duration || 3500;
+                var t = document.getElementById('toast');
+                if (!t) return;
+                t.textContent = msg;
+                t.className = 'toast ' + type;
+                t.classList.add('show');
+                setTimeout(function () { t.classList.remove('show'); }, duration);
+            }
+        })();
+    </script>
+</body>
+</html>

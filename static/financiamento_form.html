@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financiamento — AM Imoveis</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/layout.css">
+</head>
+<body>
+    <div class="app-layout">
+
+        <aside class="sidebar" id="sidebar" aria-label="Menu lateral"></aside>
+
+        <div class="main-content" id="mainContent">
+
+            <header class="topbar">
+                <button class="topbar-hamburger" aria-label="Abrir menu">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="6" x2="21" y2="6"/>
+                        <line x1="3" y1="12" x2="21" y2="12"/>
+                        <line x1="3" y1="18" x2="21" y2="18"/>
+                    </svg>
+                </button>
+                <span class="topbar-title" id="pageTitle">Novo Financiamento</span>
+            </header>
+
+            <main class="page-area">
+
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title" id="pageTitleMain">Novo Financiamento</h1>
+                        <p class="page-subtitle">Preencha os dados do financiamento</p>
+                    </div>
+                    <div class="page-actions">
+                        <a href="/financiamento" class="btn btn-ghost">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="15 18 9 12 15 6"/>
+                            </svg>
+                            Voltar
+                        </a>
+                    </div>
+                </div>
+
+                <div class="alert-error" id="alertError"></div>
+
+                <form id="form" autocomplete="off" novalidate>
+
+                    <!-- 01. Identificação do Cliente -->
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible>
+                            <span class="section-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="12" cy="7" r="4"/>
+                                </svg>
+                            </span>
+                            <h3>01. Identificação do Cliente</h3>
+                            <span class="chevron-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2.5"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </span>
+                        </div>
+                        <div class="form-card-body">
+                            <div class="form-grid-auto">
+                                <div data-field="cpf"></div>
+                                <div data-field="nome"></div>
+                                <div data-field="whatsapp" data-name="whatsapp1"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 02. Imóvel & Financiamento -->
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible>
+                            <span class="section-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                                    <polyline points="9 22 9 12 15 12 15 22"/>
+                                </svg>
+                            </span>
+                            <h3>02. Imóvel &amp; Financiamento</h3>
+                            <span class="chevron-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2.5"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </span>
+                        </div>
+                        <div class="form-card-body">
+                            <div class="form-grid-auto">
+                                <div class="form-group">
+                                    <label for="modalidade">Modalidade</label>
+                                    <select id="modalidade" name="modalidade">
+                                        <option value=""></option>
+                                        <option value="CASA">Casa</option>
+                                        <option value="APARTAMENTO">Apartamento</option>
+                                        <option value="TERRENO">Terreno</option>
+                                        <option value="COMERCIAL">Comercial</option>
+                                    </select>
+                                    <small class="field-error"></small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="imovel_id">Imóvel</label>
+                                    <select id="imovel_id" name="imovel_id">
+                                        <option value="">— Selecione —</option>
+                                    </select>
+                                    <small class="field-error"></small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="renda">Renda familiar (R$)</label>
+                                    <input type="number" id="renda" name="renda"
+                                           step="0.01" min="0" placeholder="0.00">
+                                    <small class="field-error"></small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="valor_financiamento">Valor do financiamento (R$)</label>
+                                    <input type="number" id="valor_financiamento" name="valor_financiamento"
+                                           step="0.01" min="0" placeholder="0.00">
+                                    <small class="field-error"></small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 03. Responsáveis -->
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible>
+                            <span class="section-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="9" cy="7" r="4"/>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                </svg>
+                            </span>
+                            <h3>03. Responsáveis</h3>
+                            <span class="chevron-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2.5"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </span>
+                        </div>
+                        <div class="form-card-body">
+                            <div class="form-grid-auto">
+                                <div class="form-group">
+                                    <label for="gerente_id">Gerente</label>
+                                    <select id="gerente_id" name="gerente_id">
+                                        <option value="">— Selecione —</option>
+                                    </select>
+                                    <small class="field-error"></small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="parceiro_id">Parceiro</label>
+                                    <select id="parceiro_id" name="parceiro_id">
+                                        <option value="">— Selecione —</option>
+                                    </select>
+                                    <small class="field-error"></small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="correspondente_id">Correspondente</label>
+                                    <select id="correspondente_id" name="correspondente_id">
+                                        <option value="">— Selecione —</option>
+                                    </select>
+                                    <small class="field-error"></small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 04. Status da Análise -->
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible>
+                            <span class="section-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="9 11 12 14 22 4"/>
+                                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                                </svg>
+                            </span>
+                            <h3>04. Status da Análise</h3>
+                            <span class="chevron-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2.5"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </span>
+                        </div>
+                        <div class="form-card-body">
+                            <div class="form-grid-auto">
+                                <div class="form-group">
+                                    <label for="analise">Status</label>
+                                    <select id="analise" name="analise">
+                                        <option value="PENDENTE">Pendente</option>
+                                        <option value="EM_ANALISE">Em Análise</option>
+                                        <option value="APROVADO">Aprovado</option>
+                                        <option value="REPROVADO">Reprovado</option>
+                                        <option value="CANCELADO">Cancelado</option>
+                                    </select>
+                                    <small class="field-error"></small>
+                                </div>
+                                <div class="form-group full-width">
+                                    <label for="observacoes">Observações</label>
+                                    <textarea id="observacoes" name="observacoes"></textarea>
+                                    <small class="field-error"></small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <a href="/financiamento" class="btn btn-ghost">Cancelar</a>
+                        <button type="submit" class="btn btn-primary" id="btnSalvar">
+                            <span id="btnSalvarLabel">Salvar Financiamento</span>
+                            <span id="btnSalvarSpinner" class="spinner" style="display:none;"></span>
+                        </button>
+                    </div>
+
+                </form>
+
+            </main>
+        </div>
+    </div>
+
+    <div class="toast" id="toast" role="alert" aria-live="polite"></div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/sidebar.js"></script>
+    <script src="/static/js/masks.js"></script>
+    <script src="/static/js/forms.js"></script>
+    <script src="/static/js/modal.js"></script>
+    <script src="/static/js/cpf_lookup.js"></script>
+
+    <script>
+        (async function () {
+            'use strict';
+
+            let usuario;
+            try {
+                usuario = await api.requireAuth();
+            } catch (e) {
+                return;
+            }
+
+            renderSidebar(document.getElementById('sidebar'), '/financiamento', usuario);
+
+            var podeEscrever = getId() ? api.can('financiamento', 'editar') : api.can('financiamento', 'criar');
+            if (!podeEscrever) {
+                window.location.href = '/financiamento';
+                return;
+            }
+
+            /* ---- Popula dropdowns ---- */
+            async function carregarDropdowns() {
+                try {
+                    const [imoveis, gerentes, parceiros, correspondentes] = await Promise.all([
+                        api.get('/lookup/imoveis'),
+                        api.get('/lookup/gerentes'),
+                        api.get('/lookup/parceiros'),
+                        api.get('/lookup/correspondentes'),
+                    ]);
+                    preencheSelect('imovel_id', imoveis, 'nome');
+                    preencheSelect('gerente_id', gerentes, 'nome');
+                    preencheSelect('parceiro_id', parceiros, function (r) { return r.nome + (r.tipo ? ' (' + r.tipo + ')' : ''); });
+                    preencheSelect('correspondente_id', correspondentes, 'nome');
+                } catch (e) {
+                    console.warn('Erro ao carregar dropdowns:', e.message);
+                }
+            }
+
+            function preencheSelect(id, items, labelFn) {
+                var sel = document.getElementById(id);
+                if (!sel) return;
+                items.forEach(function (item) {
+                    var opt = document.createElement('option');
+                    opt.value = item.id;
+                    opt.textContent = typeof labelFn === 'function' ? labelFn(item) : item[labelFn];
+                    sel.appendChild(opt);
+                });
+            }
+
+            await carregarDropdowns();
+
+            /* ---- Modo edição ---- */
+            function getId() {
+                var m = window.location.pathname.match(/\/financiamento\/(\d+)\/editar/);
+                return m ? parseInt(m[1], 10) : null;
+            }
+
+            var editId = getId();
+            var clienteId = null;
+
+            /* forms.init() expande data-field placeholders — deve rodar ANTES
+               de qualquer getElementById('cpf') etc. */
+            var form = document.getElementById('form');
+            forms.init(form);
+
+            var cpfInput = document.getElementById('cpf');
+            var camposCliente = ['nome', 'whatsapp1'];
+
+            if (editId) {
+                document.getElementById('pageTitleMain').textContent = 'Editar Financiamento';
+                document.getElementById('pageTitle').textContent = 'Editar Financiamento';
+                document.getElementById('btnSalvarLabel').textContent = 'Atualizar Financiamento';
+                await carregarFinanciamento(editId);
+            }
+
+            if (!editId) {
+                attachCpfLookup(cpfInput, function onFound(cliente) {
+                    clienteId = cliente.id;
+                    document.getElementById('nome').value = cliente.nome || '';
+                    document.getElementById('whatsapp1').value = cliente.whatsapp1
+                        ? (typeof maskPhone === 'function' ? maskPhone(cliente.whatsapp1) : cliente.whatsapp1)
+                        : '';
+                    camposCliente.forEach(function (f) {
+                        var el = document.getElementById(f);
+                        if (el) el.setAttribute('readonly', true);
+                    });
+                }, function onNotFound() {
+                    clienteId = null;
+                    camposCliente.forEach(function (f) {
+                        var el = document.getElementById(f);
+                        if (el) el.removeAttribute('readonly');
+                    });
+                });
+            }
+
+            /* ---- Carregar no modo edição ---- */
+            async function carregarFinanciamento(id) {
+                try {
+                    var fin = await api.get('/financiamentos/' + id);
+                    clienteId = fin.cliente_id;
+
+                    if (fin.cliente_cpf) {
+                        cpfInput.value = typeof maskCPF === 'function' ? maskCPF(fin.cliente_cpf) : fin.cliente_cpf;
+                        cpfInput.setAttribute('readonly', true);
+                    }
+                    document.getElementById('nome').value = fin.cliente_nome || '';
+                    document.getElementById('nome').setAttribute('readonly', true);
+
+                    var campos = ['modalidade', 'renda', 'valor_financiamento', 'analise', 'observacoes'];
+                    campos.forEach(function (f) {
+                        var el = document.getElementById(f);
+                        if (el && fin[f] != null) el.value = fin[f];
+                    });
+
+                    var fks = ['imovel_id', 'gerente_id', 'parceiro_id', 'correspondente_id'];
+                    fks.forEach(function (f) {
+                        var el = document.getElementById(f);
+                        if (el && fin[f] != null) el.value = fin[f];
+                    });
+                } catch (e) {
+                    showToast('Erro ao carregar financiamento: ' + e.message, 'error');
+                }
+            }
+
+            /* ---- Submit ---- */
+            form.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                forms.alertClear();
+
+                var btn = document.getElementById('btnSalvar');
+                var label = document.getElementById('btnSalvarLabel');
+                var spinner = document.getElementById('btnSalvarSpinner');
+                btn.disabled = true;
+                label.style.display = 'none';
+                spinner.style.display = 'inline-block';
+
+                try {
+                    var payload = montarPayload();
+                    if (editId) {
+                        await api.put('/financiamentos/' + editId, payload);
+                    } else {
+                        await api.post('/financiamentos', payload);
+                    }
+                    showToast('Financiamento salvo com sucesso!', 'success');
+                    setTimeout(function () {
+                        window.location.href = '/financiamento';
+                    }, 1000);
+                } catch (err) {
+                    forms.alertError(err.message || 'Erro ao salvar financiamento.');
+                    btn.disabled = false;
+                    label.style.display = 'inline';
+                    spinner.style.display = 'none';
+                }
+            });
+
+            function montarPayload() {
+                var cpfRaw = cpfInput.value.replace(/\D/g, '');
+                var payload = {};
+
+                if (clienteId) {
+                    payload.cliente_id = clienteId;
+                } else {
+                    payload.cliente = {
+                        cpf: cpfRaw,
+                        nome: val('nome'),
+                        whatsapp1: val('whatsapp1'),
+                    };
+                }
+
+                payload.modalidade = val('modalidade') || null;
+                payload.analise = val('analise') || 'PENDENTE';
+                payload.observacoes = val('observacoes') || null;
+
+                var imovelId = val('imovel_id');
+                payload.imovel_id = imovelId ? parseInt(imovelId) : null;
+
+                var gerenteId = val('gerente_id');
+                payload.gerente_id = gerenteId ? parseInt(gerenteId) : null;
+
+                var parceiroId = val('parceiro_id');
+                payload.parceiro_id = parceiroId ? parseInt(parceiroId) : null;
+
+                var correspondId = val('correspondente_id');
+                payload.correspondente_id = correspondId ? parseInt(correspondId) : null;
+
+                var renda = val('renda');
+                payload.renda = renda ? parseFloat(renda) : null;
+
+                var valorFin = val('valor_financiamento');
+                payload.valor_financiamento = valorFin ? parseFloat(valorFin) : null;
+
+                return payload;
+            }
+
+            function val(id) {
+                var el = document.getElementById(id);
+                return el ? (el.value || '').trim() : '';
+            }
+
+            function showToast(msg, type, duration) {
+                type = type || 'success';
+                duration = duration || 3500;
+                var t = document.getElementById('toast');
+                if (!t) return;
+                t.textContent = msg;
+                t.className = 'toast ' + type;
+                t.classList.add('show');
+                setTimeout(function () { t.classList.remove('show'); }, duration);
+            }
+        })();
+    </script>
+</body>
+</html>

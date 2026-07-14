@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: Calibri, Arial, sans-serif;
+    font-size: 11pt; color: #000; line-height: 1.5;
+    width: 180mm;
+  }
+  #wrap {
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+  }
+
+  /* Header: logo à esquerda, contrato à direita */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 6px;
+    padding-bottom: 4px;
+    border-bottom: 3px solid #D4A843;
+  }
+  .header-logo img {
+    max-height: 70px;
+    max-width: 200px;
+  }
+  .header-contrato {
+    text-align: right;
+    font-size: 9pt;
+    font-weight: bold;
+    white-space: nowrap;
+    padding-top: 4px;
+  }
+
+  /* Título RECIBO */
+  .titulo {
+    text-align: center;
+    font-size: 22pt;
+    font-weight: bold;
+    font-style: italic;
+    margin: 20px 0 18px;
+  }
+
+  /* Data e Valor */
+  .data-linha {
+    font-size: 10pt;
+    margin-bottom: 14px;
+  }
+  .valor-linha {
+    text-align: right;
+    font-size: 10pt;
+    font-weight: bold;
+    margin-bottom: 18px;
+  }
+
+  /* Detalhamento das formas de pagamento */
+  .formas-table {
+    width: 60%;
+    margin: 0 0 18px auto;
+    border-collapse: collapse;
+    font-size: 9pt;
+  }
+  .formas-table th,
+  .formas-table td {
+    border: 1px solid #D4A843;
+    padding: 3px 8px;
+    text-align: left;
+  }
+  .formas-table th {
+    background: #faf3e0;
+    font-weight: bold;
+  }
+  .formas-table .valor {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  /* Corpo do recibo */
+  .corpo {
+    font-size: 10pt;
+    text-align: justify;
+    line-height: 1.7;
+    margin-bottom: 16px;
+  }
+  .corpo p {
+    margin-bottom: 12px;
+    text-indent: 2em;
+  }
+
+  /* Local e data */
+  .local-data {
+    text-align: center;
+    font-weight: bold;
+    font-style: italic;
+    font-size: 10pt;
+    margin: 24px 0 60px;
+  }
+
+  /* Linha de assinatura */
+  .assinatura-box {
+    text-align: center;
+    margin-top: 20px;
+  }
+  .assinatura-linha {
+    border-top: 1px solid #000;
+    width: 70%;
+    margin: 0 auto 14px;
+  }
+  .assinatura-titulo {
+    font-weight: bold;
+    font-style: italic;
+    font-size: 10pt;
+    margin-bottom: 2px;
+  }
+  .assinatura-nome {
+    font-weight: bold;
+    font-size: 10pt;
+  }
+  .assinatura-cpf {
+    font-size: 10pt;
+    font-weight: bold;
+  }
+
+  /* Rodapé */
+  .rodape {
+    margin-top: auto;
+    text-align: center;
+    font-size: 7pt;
+    color: #333;
+    border-top: 2px solid #D4A843;
+    padding-top: 6px;
+    line-height: 1.4;
+  }
+  .rodape-titulo {
+    font-weight: bold;
+    font-size: 8pt;
+  }
+</style></head>
+<body>
+<div id="wrap">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-logo">
+      {% if logo_data_uri %}
+      <img src="{{ logo_data_uri }}" alt="Logo">
+      {% endif %}
+    </div>
+    {% if numero_contrato %}
+    <div class="header-contrato">CONTRATO DE N&ordm;: {{ numero_contrato }}</div>
+    {% endif %}
+  </div>
+
+  <!-- TÍTULO -->
+  <div class="titulo">RECIBO</div>
+
+  <!-- DATA -->
+  {% if data_recibo %}
+  <div class="data-linha"><em>Data: {{ data_recibo }}</em></div>
+  {% endif %}
+
+  <!-- VALOR DESTAQUE -->
+  {% if valor_cabecalho_fmt %}
+  <div class="valor-linha">
+    <em>Valor:</em> R$ {{ valor_cabecalho_fmt }} ({{ valor_cabecalho_extenso }})
+  </div>
+  {% endif %}
+
+  <!-- DETALHAMENTO DAS FORMAS DE PAGAMENTO -->
+  {% if formas_lista|length > 1 %}
+  <table class="formas-table">
+    <thead>
+      <tr><th>Forma de pagamento</th><th class="valor">Valor</th></tr>
+    </thead>
+    <tbody>
+      {% for f in formas_lista %}
+      <tr><td>{{ f.forma }}</td><td class="valor">R$ {{ f.valor_fmt }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <!-- CORPO -->
+  <div class="corpo">
+    <p>
+      Pelo presente recibo, eu, {{ nome_recebedor }}{% if doc_recebedor_fmt %}, inscrita no {{ doc_recebedor_label }} {{ doc_recebedor_fmt }}{% endif %}, declaro ter
+      recebido de {{ nome_pagador }}{% if doc_pagador_fmt %}, inscrita no {{ doc_pagador_label }} n&ordm; {{ doc_pagador_fmt }}{% endif %}, a quantia total de
+      R$ {{ valor_recebido_fmt }} ({{ valor_recebido_extenso }}){{ pagamento_frase }}.
+    </p>
+    {% if descricao_referencia %}
+    <p>
+      Declaro que o valor acima corresponde {{ descricao_referencia }}, estando as partes de pleno acordo quanto
+      aos valores, forma de pagamento e finalidade.
+    </p>
+    {% else %}
+    <p>
+      Declaro que o valor acima corresponde &agrave; entrada acordada no contrato de compra e
+      venda/financiamento, estando as partes de pleno acordo quanto
+      aos valores, forma de pagamento e finalidade.
+    </p>
+    {% endif %}
+    <p>
+      Dou, assim, plena, geral e irrevog&aacute;vel quita&ccedil;&atilde;o pelo valor recebido, nada mais havendo a
+      reclamar a esse t&iacute;tulo.
+    </p>
+  </div>
+
+  <!-- LOCAL E DATA -->
+  {% if cidade or data_local %}
+  <div class="local-data">
+    Local e Data: {{ cidade }}{% if uf %} &ndash; {{ uf }}{% endif %}{% if data_local %}, {{ data_local }}{% endif %}
+  </div>
+  {% endif %}
+
+  <!-- ASSINATURA -->
+  <div class="assinatura-box">
+    <div class="assinatura-linha"></div>
+    <div class="assinatura-titulo">Assinatura da Contratada:</div>
+    {% if assinatura_nome %}
+    <div class="assinatura-nome">{{ assinatura_nome }}</div>
+    {% endif %}
+    {% if doc_assinatura_fmt %}
+    <div class="assinatura-cpf">{{ doc_assinatura_label }}: {{ doc_assinatura_fmt }}</div>
+    {% endif %}
+  </div>
+
+  <!-- RODAPÉ -->
+  {% if rodape_texto %}
+  <div class="rodape">
+    {{ rodape_texto }}
+  </div>
+  {% endif %}
+
+</div>
+</body></html>

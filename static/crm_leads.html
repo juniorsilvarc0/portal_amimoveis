@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leads — CRM</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/layout.css">
+    <style>
+        .badge-status {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+        }
+        .badge-novo { background: #fef3f2; color: #E5094B; }
+        .badge-contatado { background: #fef3c7; color: #92400e; }
+        .badge-qualificado { background: #dbeafe; color: #1e40af; }
+        .badge-convertido { background: #dcfce7; color: #166534; }
+        .badge-descartado { background: #f3f4f6; color: #6b7280; }
+    </style>
+</head>
+<body>
+    <div class="app-layout">
+        <aside class="sidebar" id="sidebar"></aside>
+        <div class="main-content" id="mainContent">
+            <header class="topbar">
+                <button class="topbar-hamburger" aria-label="Abrir menu"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+                <span class="topbar-title">Leads</span>
+            </header>
+            <main class="page-area">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Leads</h1>
+                        <p class="page-subtitle">Prospects e contatos não qualificados</p>
+                    </div>
+                    <div class="page-actions">
+                        <a href="/crm/import" class="btn btn-ghost" id="btnImport">Importar CSV</a>
+                        <a href="/crm/leads/novo" class="btn btn-primary" id="btnNovo">Novo Lead</a>
+                    </div>
+                </div>
+                <div class="card" style="padding:0;overflow:hidden;">
+                    <div id="grid" style="padding:0;"></div>
+                </div>
+            </main>
+        </div>
+    </div>
+    <div class="toast" id="toast"></div>
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/sidebar.js"></script>
+    <script src="/static/js/masks.js"></script>
+    <script src="/static/js/modal.js"></script>
+    <script src="/static/js/datagrid.js"></script>
+    <script>
+    (async function () {
+        'use strict';
+        let usuario;
+        try { usuario = await api.requireAuth(); } catch (e) { return; }
+        if (!api.can('crm_leads', 'ver')) { window.location.href = '/'; return; }
+        var canWrite = api.can('crm_leads', 'criar') || api.can('crm_leads', 'editar');
+        var canDelete = api.can('crm_leads', 'excluir');
+        renderSidebar(document.getElementById('sidebar'), '/crm/leads', usuario);
+        if (!canWrite) {
+            var _bn = document.getElementById('btnNovo'); if (_bn) _bn.style.display = 'none';
+            var _bi = document.getElementById('btnImport'); if (_bi) _bi.style.display = 'none';
+        }
+
+        const grid = new DataGrid(document.getElementById('grid'), {
+            endpoint: '/crm/leads',
+            searchable: true,
+            perPage: 25,
+            emptyMessage: 'Nenhum lead cadastrado.',
+            columns: [
+                { key: 'id', label: '#', width: '60px', align: 'center', sortable: true },
+                { key: 'nome', label: 'Nome', sortable: true,
+                  format: v => v || '—' },
+                { key: 'whatsapp', label: 'WhatsApp', width: '140px',
+                  format: v => v ? maskPhone(v) : '—' },
+                { key: 'email', label: 'E-mail',
+                  format: v => v || '—' },
+                { key: 'origem', label: 'Origem', width: '120px',
+                  format: v => v || '—' },
+                { key: 'status', label: 'Status', width: '120px', align: 'center', html: true,
+                  format: v => '<span class="badge-status badge-' + (v || 'novo') + '">' + (v || 'novo') + '</span>' },
+                { key: 'created_at', label: 'Criado', width: '110px', align: 'center',
+                  format: v => v ? new Date(v).toLocaleDateString('pt-BR') : '—' },
+            ],
+            rowActions: function (row) {
+                const actions = [
+                    { label: 'Abrir', className: 'btn-ghost',
+                      onClick: r => { window.location.href = '/crm/leads/' + r.id + '/editar'; } },
+                ];
+                if (canWrite && row.status !== 'convertido') {
+                    actions.push({
+                        label: 'Converter', className: 'btn-primary',
+                        onClick: async r => {
+                            const ok = await Modal.confirm('Converter <strong>' + _esc(r.nome) + '</strong> em cliente e criar uma oportunidade?');
+                            if (!ok) return;
+                            try {
+                                const res = await api.post('/crm/leads/' + r.id + '/convert', {});
+                                showToast('Lead convertido! Cliente #' + res.cliente_id + (res.opportunity_id ? ' / Oportunidade #' + res.opportunity_id : ''), 'success');
+                                grid.refresh();
+                            } catch (e) { showToast(e.message, 'error'); }
+                        },
+                    });
+                }
+                if (canDelete) {
+                    actions.push({
+                        label: 'Excluir', className: 'btn-danger',
+                        onClick: async r => {
+                            const ok = await Modal.confirm('Excluir lead <strong>' + _esc(r.nome) + '</strong>?');
+                            if (!ok) return;
+                            try {
+                                await api.del('/crm/leads/' + r.id);
+                                showToast('Lead excluído.', 'success');
+                                grid.refresh();
+                            } catch (e) { showToast(e.message, 'error'); }
+                        },
+                    });
+                }
+                return actions;
+            },
+        });
+
+        function _esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+        function showToast(msg, type){const t=document.getElementById('toast');if(!t)return;t.textContent=msg;t.className='toast '+(type||'success');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+    })();
+    </script>
+</body>
+</html>

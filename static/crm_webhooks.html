@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webhooks — CRM</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/layout.css">
+    <style>
+        .wh-card { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:14px; margin-bottom:10px; }
+        .wh-head { display:flex; justify-content:space-between; align-items:flex-start; }
+        .wh-meta { font-size:12px; color:#8896a6; margin-top:6px; }
+        .wh-meta code { background:#f1f5f9; padding:2px 6px; border-radius:4px; font-size:11px; }
+        .wh-events { margin-top:8px; }
+        .wh-events span { display:inline-block; background:#dbeafe; color:#1e40af; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; margin:2px 4px 2px 0; }
+        .badge-on { background:#dcfce7; color:#166534; font-size:11px; padding:2px 8px; border-radius:8px; font-weight:600; }
+        .badge-off { background:#fef3f2; color:#E5094B; font-size:11px; padding:2px 8px; border-radius:8px; font-weight:600; }
+        .ev-pick { display:grid; grid-template-columns:repeat(2,1fr); gap:6px; font-size:13px; }
+        .ev-pick label { display:flex; gap:6px; align-items:center; }
+    </style>
+</head>
+<body>
+    <div class="app-layout">
+        <aside class="sidebar" id="sidebar"></aside>
+        <div class="main-content">
+            <header class="topbar">
+                <button class="topbar-hamburger"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+                <span class="topbar-title">Webhooks</span>
+            </header>
+            <main class="page-area">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Webhooks de saída</h1>
+                        <p class="page-subtitle">Notificações automáticas para sistemas externos (Make / n8n / Zapier / WhatsApp)</p>
+                    </div>
+                    <div class="page-actions"><button class="btn btn-primary" id="btnNovo">Novo Webhook</button></div>
+                </div>
+                <div id="container"></div>
+            </main>
+        </div>
+    </div>
+    <div class="toast" id="toast"></div>
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/sidebar.js"></script>
+    <script src="/static/js/modal.js"></script>
+    <script>
+    (async function () {
+        let usuario;
+        try { usuario = await api.requireAuth(); } catch (e) { return; }
+        if (!api.can('crm_webhooks', 'ver')) { window.location.href = '/'; return; }
+        var canWrite = api.can('crm_webhooks', 'criar') || api.can('crm_webhooks', 'editar');
+        var canDelete = api.can('crm_webhooks', 'excluir');
+        renderSidebar(document.getElementById('sidebar'), '/crm/webhooks', usuario);
+
+        const EVENTOS = [
+            'lead.created','lead.updated','lead.converted','lead.deleted',
+            'opportunity.created','opportunity.updated','opportunity.stage_changed',
+            'opportunity.won','opportunity.lost','opportunity.deleted',
+            'activity.created','activity.completed',
+        ];
+
+        if (canWrite) document.getElementById('btnNovo').addEventListener('click', () => openForm(null));
+        else { var _bn = document.getElementById('btnNovo'); if (_bn) _bn.style.display = 'none'; }
+        await render();
+
+        async function render() {
+            const c = document.getElementById('container');
+            c.innerHTML = '<p style="color:#8896a6;padding:20px;">Carregando…</p>';
+            try {
+                const list = await api.get('/crm/webhooks');
+                if (!list.length) { c.innerHTML = '<p style="padding:20px;color:#8896a6;">Nenhum webhook. Clique em "Novo Webhook".</p>'; return; }
+                c.innerHTML = list.map(wh => {
+                    const evs = (wh.eventos || '').split(',').map(e => e.trim()).filter(Boolean);
+                    return '<div class="wh-card">' +
+                        '<div class="wh-head">' +
+                            '<div>' +
+                                '<h3 style="margin:0 0 4px;">' + _esc(wh.nome) + ' <span class="' + (wh.ativo ? 'badge-on' : 'badge-off') + '">' + (wh.ativo ? 'ATIVO' : 'INATIVO') + '</span></h3>' +
+                                '<div class="wh-meta">URL: <code>' + _esc(wh.url) + '</code></div>' +
+                                '<div class="wh-events">' + evs.map(e => '<span>'+_esc(e)+'</span>').join('') + '</div>' +
+                            '</div>' +
+                            '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
+                                '<button class="btn btn-ghost btn-sm" data-act="test" data-id="'+wh.id+'">Testar</button>' +
+                                '<button class="btn btn-ghost btn-sm" data-act="logs" data-id="'+wh.id+'">Logs</button>' +
+                                (canWrite ? '<button class="btn btn-ghost btn-sm" data-act="edit" data-id="'+wh.id+'">Editar</button>' : '') +
+                                (canDelete ? '<button class="btn btn-danger btn-sm" data-act="del" data-id="'+wh.id+'">Excluir</button>' : '') +
+                            '</div>' +
+                        '</div>' +
+                    '</div>';
+                }).join('');
+                c.addEventListener('click', handle);
+            } catch (e) { c.innerHTML = '<p style="color:#ef4444;padding:20px;">' + e.message + '</p>'; }
+        }
+
+        async function handle(e) {
+            const b = e.target.closest('button[data-act]');
+            if (!b) return;
+            const id = b.dataset.id;
+            const act = b.dataset.act;
+            if (act === 'test') {
+                try { await api.post('/crm/webhooks/' + id + '/test', {}); showToast('Teste enviado'); }
+                catch (e) { showToast(e.message, 'error'); }
+            } else if (act === 'logs') {
+                const logs = await api.get('/crm/webhooks/' + id + '/logs?limit=20');
+                const html = logs.length
+                    ? '<div style="max-height:400px;overflow:auto;font-size:12px;">' +
+                      logs.map(l => '<div style="border-bottom:1px solid #f1f5f9;padding:8px 0;"><strong>'+_esc(l.evento)+'</strong> · '+new Date(l.created_at).toLocaleString('pt-BR') +
+                                    '<br><span style="color:'+(l.status_code>=200&&l.status_code<300?'#22c55e':'#ef4444')+';">HTTP '+(l.status_code||'erro')+'</span>' +
+                                    (l.erro ? '<br><span style="color:#ef4444;">'+_esc(l.erro)+'</span>' : '') +
+                                    '</div>').join('') +
+                      '</div>'
+                    : '<p>Sem logs ainda.</p>';
+                Modal.alert('Logs do Webhook', html);
+            } else if (act === 'edit') {
+                const wh = await api.get('/crm/webhooks/' + id);
+                openForm(wh);
+            } else if (act === 'del') {
+                const ok = await Modal.confirm('Excluir webhook?');
+                if (!ok) return;
+                try { await api.del('/crm/webhooks/' + id); showToast('Excluído'); await render(); }
+                catch (e) { showToast(e.message, 'error'); }
+            }
+        }
+
+        function openForm(wh) {
+            const evs = new Set(((wh && wh.eventos) || '').split(',').map(s => s.trim()));
+            const html =
+                '<div style="display:grid;gap:8px;">' +
+                '<label>Nome <input id="m_nome" value="'+_attr(wh?.nome)+'" style="width:100%;padding:6px 10px;border:1px solid #d1d5db;border-radius:4px;"></label>' +
+                '<label>URL <input id="m_url" placeholder="https://..." value="'+_attr(wh?.url)+'" style="width:100%;padding:6px 10px;border:1px solid #d1d5db;border-radius:4px;"></label>' +
+                '<label>Secret HMAC (opcional) <input id="m_secret" value="'+_attr(wh?.secret)+'" style="width:100%;padding:6px 10px;border:1px solid #d1d5db;border-radius:4px;"></label>' +
+                '<div><strong style="font-size:13px;">Eventos</strong><div class="ev-pick">' +
+                EVENTOS.map(e => '<label><input type="checkbox" value="'+e+'"'+(evs.has(e)?' checked':'')+'>'+e+'</label>').join('') +
+                '</div></div>' +
+                '<label style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="m_ativo"'+(!wh||wh.ativo?' checked':'')+'>Ativo</label>' +
+                '</div>';
+            Modal.prompt(wh ? 'Editar Webhook' : 'Novo Webhook', html, async () => {
+                const checked = Array.from(document.querySelectorAll('.ev-pick input:checked')).map(i => i.value).join(',');
+                const data = {
+                    nome: document.getElementById('m_nome').value.trim(),
+                    url: document.getElementById('m_url').value.trim(),
+                    eventos: checked,
+                    secret: document.getElementById('m_secret').value.trim() || null,
+                    ativo: document.getElementById('m_ativo').checked,
+                };
+                try {
+                    if (wh) await api.put('/crm/webhooks/' + wh.id, data);
+                    else await api.post('/crm/webhooks', data);
+                    showToast('Salvo!'); await render();
+                } catch (e) { showToast(e.message, 'error'); }
+            });
+        }
+
+        function _esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+        function _attr(s){return String(s==null?'':s).replace(/"/g,'&quot;');}
+        function showToast(msg, type){const t=document.getElementById('toast');if(!t)return;t.textContent=msg;t.className='toast '+(type||'success');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+    })();
+    </script>
+</body>
+</html>

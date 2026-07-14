@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        font-family: Calibri, Arial, sans-serif;
+        font-size: 9pt;
+        color: #000;
+        line-height: 1.2;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    td, th { border: 1px solid #000; padding: 2px 4px; vertical-align: middle; text-align: left; }
+    .no-border td, .no-border th { border: none; }
+    .sh { background: #a5a5a5; text-align: center; font-weight: bold; font-size: 9pt; }
+    .sh td { padding: 3px 4px; }
+    .lb { font-weight: bold; white-space: nowrap; }
+    .lt { font-weight: bold; vertical-align: top; }
+    .ct { text-align: center; }
+    .b { font-weight: bold; }
+    .u { text-decoration: underline; }
+    .sub { text-align: center; font-weight: bold; font-size: 9pt; }
+    .et td, .et th { text-align: center; font-weight: bold; font-size: 9pt; vertical-align: middle; }
+    .ed td { text-align: center; font-weight: normal; vertical-align: top; }
+    .en { text-align: left; font-weight: bold; font-size: 10pt; vertical-align: middle; }
+    .ir td { vertical-align: top; }
+        body { width: 180mm; }
+    }
+</style>
+</head>
+<body>
+
+<div id="wrap">
+
+<table class="no-border" style="margin-bottom:6px;">
+<tr>
+    <td style="font-size:14pt;font-weight:bold;width:42%;">ENTREVISTA: _____/____/________</td>
+    <td style="font-size:12pt;font-weight:bold;">ENTREVISTADOR: _______________________________________</td>
+</tr>
+</table>
+
+<table>
+<tr class="sh"><td colspan="9">DADOS PARTICIPANTES</td></tr>
+<tr>
+    <td class="lb" style="width:17%;">1.PROPONENTE/IDADE</td>
+    <td colspan="3" style="font-weight:bold;font-size:10pt;">{{ proponente1_nome }}</td>
+    <td class="ct" colspan="2">{{ proponente1_idade }}{% if proponente1_idade %} ANOS{% endif %}</td>
+    <td class="lb">CPF:</td>
+    <td colspan="2" class="b">{{ proponente1_cpf }}</td>
+</tr>
+<tr>
+    <td class="lb">2.COOBRIGADO/IDADE</td>
+    <td colspan="3" style="font-weight:bold;font-size:10pt;">{{ coobrigado_nome }}</td>
+    <td colspan="2"></td>
+    <td class="lb">CPF:</td>
+    <td colspan="2" class="b">{{ coobrigado_cpf }}</td>
+</tr>
+<tr><td class="lb">DEPENDENTES:</td><td colspan="8" class="b">{{ dependentes }}</td></tr>
+<tr><td class="lb" colspan="2">CONTATOS/E-MAIL:</td><td colspan="7">{{ contato_telefone }}</td></tr>
+<tr><td class="lb">CONTATOS/E-MAIL:</td><td colspan="8">{{ contato_email }}</td></tr>
+</table>
+
+<table>
+<tr class="sh"><td colspan="7">RENDIMENTO E VINCULO EMPREGATICIOS:</td></tr>
+<tr class="et">
+    <td rowspan="2" class="en" style="width:20%;">{{ prop1_nome }}</td>
+    <td style="width:13%;">FUNCAO</td><td style="width:15%;">EMPRESA</td><td style="width:12%;">ADMISSAO</td>
+    <td style="width:12%;">RENDA BRUTA</td><td style="width:14%;">RENDA LIQUIDA</td><td style="width:10%;">EXTRAS</td>
+</tr>
+<tr class="ed">
+    <td>{{ prop1_funcao }}</td><td>{{ prop1_empresa }}</td><td>{{ prop1_admissao }}</td>
+    <td>{{ prop1_renda_bruta }}</td><td>{{ prop1_renda_liquida }}</td><td>{{ prop1_extras }}</td>
+</tr>
+<tr class="et"><td colspan="7" style="height:4px;"></td></tr>
+<tr class="et">
+    <td rowspan="2" class="en">{{ prop2_nome }}</td>
+    <td>FUNCAO</td><td>EMPRESA</td><td>ADMISSAO</td>
+    <td>RENDA BRUTA</td><td>RENDA LIQUIDA</td><td>EXTRAS</td>
+</tr>
+<tr class="ed">
+    <td>{{ prop2_funcao }}</td><td>{{ prop2_empresa }}</td><td>{{ prop2_admissao }}</td>
+    <td>{{ prop2_renda_bruta }}</td><td>{{ prop2_renda_liquida }}</td><td>{{ prop2_extras }}</td>
+</tr>
+</table>
+
+<table><tr><td class="sub" style="height:28px;">INFORMACOES RELEVANTES:</td></tr></table>
+
+<table>
+<tr class="sh"><td colspan="2">COMPROMISSOS FINANCEIROS E DESPESAS</td></tr>
+<tr><td class="lb" style="width:42%;">EMPRESTIMOS, FINANCIAMENTOS, CONSORCIOS, OUTROS:</td><td>{{ emprestimos }}</td></tr>
+<tr><td class="lb">MORADIA:</td><td>{{ moradia_tipo }}</td></tr>
+<tr><td class="lb">TRANSPORTES:</td><td>{{ transportes }}</td></tr>
+</table>
+
+<table>
+<tr class="sh"><td colspan="5">RELACIONAMENTO CAIXA</td></tr>
+<tr class="ir">
+    <td style="width:16%;" class="lb"><span class="u">CONTA:</span> {{ conta }}</td>
+    <td style="width:20%;"><span class="b u">CONTA SALARIO:</span> {{ conta_salario }}</td>
+    <td style="width:22%;"><span class="b">OPEN FINANCE:</span> {{ open_finance }}<br><span class="b">OPT IN:</span> {{ opt_in }}<br><span class="b">BIOMETRIA:</span> {{ biometria }}</td>
+    <td style="width:22%;"><span class="b u">CARTAO CREDITO:</span> {{ cartao_credito }}</td>
+    <td style="width:18%;"><span class="b u">CROT:</span> {{ crot }}</td>
+</tr>
+</table>
+
+<table><tr><td class="lb">OBS: CLIENTES INFORMADOS SOBRE O RELACIONAMENTO NO ATO DO CONTRATO</td></tr></table>
+
+<table>
+<tr class="sh"><td colspan="4">DADOS DO FINANCIAMENTO IMOVEL CONSTRUCAO</td></tr>
+<tr><td colspan="4" class="sub">PMCMV - IMOVEL CONSTRUCAO</td></tr>
+<tr><td class="lt" style="width:20%;">VALOR TOTAL:</td><td colspan="3">{{ valor_total }}</td></tr>
+<tr><td class="lt">SUBSIDIO:</td><td colspan="3">{{ subsidio }}</td></tr>
+<tr><td class="lb">ENTRADA:</td><td style="width:28%;">{{ entrada }}</td><td class="lb" style="width:16%;">NEGOCIACAO:</td><td>{{ negociacao }}</td></tr>
+<tr><td class="lt">FINACIADO</td><td colspan="3">{{ financiado }}</td></tr>
+<tr><td class="lt">PARCELA:</td><td colspan="3">{{ parcela }}</td></tr>
+<tr><td class="lt">PRAZO:</td><td colspan="3">{{ prazo }}</td></tr>
+<tr><td class="lt">AMORTIZACAO:</td><td colspan="3">{{ amortizacao }}</td></tr>
+<tr><td class="lt">UTILIZAR FGTS:</td><td colspan="3">{{ utilizar_fgts }}</td></tr>
+</table>
+
+<table>
+<tr class="sh"><td colspan="2">MORADIA:</td></tr>
+<tr><td class="lt" style="width:20%;">ENDERECO DO IMOVEL:</td><td>{{ endereco_imovel }}</td></tr>
+<tr><td class="lt">PROPRIETARIOS:</td><td>{{ proprietarios }}</td></tr>
+<tr><td class="lt">CONSTRUTORA:</td><td>{{ construtora }}</td></tr>
+<tr><td class="lt">PROPRIETARIOS:</td><td>{{ proprietarios_construtora }}</td></tr>
+</table>
+
+<table>
+<tr class="sh"><td colspan="2">INFORMACOES SOBRE TAXAS E SEGUROS</td></tr>
+<tr><td class="lt" style="width:26%;">TAXA A VISTA DO CONTRATO:</td><td>{{ taxa_vista_contrato }}</td></tr>
+<tr><td class="lt">SEGURIDADE:</td><td>{{ seguridade }}</td></tr>
+<tr><td class="lt">MEMBROS DO COMITE:</td><td></td></tr>
+</table>
+
+<div style="margin-top:10px;font-size:9pt;line-height:1.3;">
+Declaro, para devidos fins, sob as penas da lei, que as minhas respostas prestadas sao veridicas, e que ainda, tomei ciencia das informacoes do financiamento citados acima.
+</div>
+
+<div id="signatures" style="margin-top:40px;">
+<table class="no-border">
+<tr>
+    <td style="width:50%;text-align:center;padding:0;">__________________________________________________</td>
+    <td style="width:50%;text-align:center;padding:0;">__________________________________________________</td>
+</tr>
+<tr>
+    <td style="text-align:center;padding-top:2px;">PROPONENTE 1</td>
+    <td style="text-align:center;padding-top:2px;">PROPONENTE 2</td>
+</tr>
+</table>
+</div>
+
+</div>
+
+</body>
+</html>

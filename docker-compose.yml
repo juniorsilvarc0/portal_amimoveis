@@ -1,0 +1,100 @@
+services:
+  portal:
+    image: habitacao-portal:latest
+    # Segredos (JWT_SECRET, ADMIN_PASSWORD, POSTGRES_PASSWORD, DATABASE_URL) vêm do .env
+    # — que é gitignored. Veja .env.example. NUNCA hardcode senha aqui.
+    env_file:
+      - .env
+    networks:
+      - earthnet
+      - habitacao-internal
+    deploy:
+      mode: replicated
+      replicas: 1
+      update_config:
+        order: start-first
+        failure_action: rollback
+        delay: 5s
+        parallelism: 1
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 0
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=earthnet"
+        - "traefik.http.services.portal.loadbalancer.server.port=8000"
+
+        # --- Portal (domínio canônico) ---
+        - "traefik.http.routers.portal-secure.rule=Host(`portal.amimoveis.tec.br`)"
+        - "traefik.http.routers.portal-secure.entrypoints=websecure"
+        - "traefik.http.routers.portal-secure.tls.certresolver=letsencryptresolver"
+        - "traefik.http.routers.portal-http.rule=Host(`portal.amimoveis.tec.br`)"
+        - "traefik.http.routers.portal-http.entrypoints=web"
+        - "traefik.http.routers.portal-http.middlewares=redirect-to-https"
+
+        # --- Middlewares reutilizáveis ---
+        - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+        - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
+        - "traefik.http.middlewares.redir-habitacao.redirectregex.regex=^https?://habitacao\\.amimoveis\\.tec\\.br/?.*"
+        - "traefik.http.middlewares.redir-habitacao.redirectregex.replacement=https://portal.amimoveis.tec.br/habitacao"
+        - "traefik.http.middlewares.redir-habitacao.redirectregex.permanent=true"
+        - "traefik.http.middlewares.redir-proposta.redirectregex.regex=^https?://proposta\\.amimoveis\\.tec\\.br/?.*"
+        - "traefik.http.middlewares.redir-proposta.redirectregex.replacement=https://portal.amimoveis.tec.br/proposta"
+        - "traefik.http.middlewares.redir-proposta.redirectregex.permanent=true"
+
+        # --- Legado habitacao.* → 301 portal/habitacao ---
+        - "traefik.http.routers.habitacao-legacy-secure.rule=Host(`habitacao.amimoveis.tec.br`)"
+        - "traefik.http.routers.habitacao-legacy-secure.entrypoints=websecure"
+        - "traefik.http.routers.habitacao-legacy-secure.tls.certresolver=letsencryptresolver"
+        - "traefik.http.routers.habitacao-legacy-secure.middlewares=redir-habitacao"
+        - "traefik.http.routers.habitacao-legacy-secure.service=portal"
+        - "traefik.http.routers.habitacao-legacy-http.rule=Host(`habitacao.amimoveis.tec.br`)"
+        - "traefik.http.routers.habitacao-legacy-http.entrypoints=web"
+        - "traefik.http.routers.habitacao-legacy-http.middlewares=redir-habitacao"
+        - "traefik.http.routers.habitacao-legacy-http.service=portal"
+
+        # --- Legado proposta.* → 301 portal/proposta ---
+        - "traefik.http.routers.proposta-legacy-secure.rule=Host(`proposta.amimoveis.tec.br`)"
+        - "traefik.http.routers.proposta-legacy-secure.entrypoints=websecure"
+        - "traefik.http.routers.proposta-legacy-secure.tls.certresolver=letsencryptresolver"
+        - "traefik.http.routers.proposta-legacy-secure.middlewares=redir-proposta"
+        - "traefik.http.routers.proposta-legacy-secure.service=portal"
+        - "traefik.http.routers.proposta-legacy-http.rule=Host(`proposta.amimoveis.tec.br`)"
+        - "traefik.http.routers.proposta-legacy-http.entrypoints=web"
+        - "traefik.http.routers.proposta-legacy-http.middlewares=redir-proposta"
+        - "traefik.http.routers.proposta-legacy-http.service=portal"
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_DB=habitacao
+      - POSTGRES_USER=habitacao
+      # Interpolado do ambiente no deploy: `set -a; . ./.env; set +a` antes do stack deploy.
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}
+    volumes:
+      - habitacao-pgdata:/var/lib/postgresql/data
+    networks:
+      - habitacao-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U habitacao -d habitacao"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+    deploy:
+      mode: replicated
+      replicas: 1
+      endpoint_mode: dnsrr
+      restart_policy:
+        condition: any
+        delay: 5s
+
+volumes:
+  habitacao-pgdata:
+
+networks:
+  earthnet:
+    external: true
+  habitacao-internal:
+    driver: overlay

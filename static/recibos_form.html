@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recibo — AM Imoveis</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/layout.css">
+</head>
+<body>
+    <div class="app-layout">
+
+        <aside class="sidebar" id="sidebar" aria-label="Menu lateral"></aside>
+
+        <div class="main-content" id="mainContent">
+
+            <header class="topbar">
+                <button class="topbar-hamburger" aria-label="Abrir menu">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="6" x2="21" y2="6"/>
+                        <line x1="3" y1="12" x2="21" y2="12"/>
+                        <line x1="3" y1="18" x2="21" y2="18"/>
+                    </svg>
+                </button>
+                <span class="topbar-title" id="pageTitle">Novo Recibo</span>
+            </header>
+
+            <main class="page-area">
+
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title" id="pageTitleMain">Novo Recibo</h1>
+                        <p class="page-subtitle">Preencha os dados do recibo de pagamento</p>
+                    </div>
+                    <div class="page-actions">
+                        <a href="/recibos" class="btn btn-ghost">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="15 18 9 12 15 6"/>
+                            </svg>
+                            Voltar
+                        </a>
+                    </div>
+                </div>
+
+                <div class="alert-error" id="alertError"></div>
+
+                <form id="form" autocomplete="off" novalidate>
+
+                    <!-- 01. Cliente (opcional) -->
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible>
+                            <h3>01. Cliente (opcional)</h3>
+                        </div>
+                        <div class="form-card-body">
+                            <p style="font-size:13px;color:#8896a6;margin-bottom:12px;">Selecione um cliente cadastrado. Ao selecionar, o pagador será preenchido automaticamente. Deixe vazio para clientes não cadastrados.</p>
+                            <div class="form-grid-auto">
+                                <div class="form-group full-width">
+                                    <label for="cliente_id">Cliente</label>
+                                    <select id="cliente_id" name="cliente_id" style="width:100%">
+                                        <option value="">— Nenhum cliente (preencher pagador manualmente) —</option>
+                                    </select>
+                                    <small class="field-error"></small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 02. Logo e Contrato -->
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible>
+                            <h3>02. Logo e Contrato</h3>
+                        </div>
+                        <div class="form-card-body">
+                            <div class="form-grid-auto">
+                                <div class="form-group">
+                                    <label for="logo_id">Logo</label>
+                                    <select id="logo_id" name="logo_id">
+                                        <option value="">— Sem logo —</option>
+                                    </select>
+                                    <small class="field-error"></small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="numero_contrato">Número do Contrato</label>
+                                    <input type="text" id="numero_contrato" name="numero_contrato" placeholder="Ex: 20250400PI06">
+                                    <small class="field-error"></small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 03. Valores -->
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible>
+                            <h3>03. Valores</h3>
+                        </div>
+                        <div class="form-card-body">
+                            <div class="form-grid-auto">
+                                <div data-field="data" data-name="data_recibo" data-label="Data do Recibo"></div>
+                                <div data-field="money" data-name="valor_recebido" data-label="Valor Total (R$)"></div>
+                            </div>
+
+                            <div class="form-group full-width" style="margin-top:16px;">
+                                <label>Formas de Pagamento</label>
+                                <p style="font-size:13px;color:#8896a6;margin:0 0 10px;">
+                                    Informe como o valor foi pago. Pode adicionar mais de uma forma (ex.: parte no Pix, parte no cartão).
+                                    Com pelo menos uma forma, o valor total é somado automaticamente.
+                                </p>
+                                <div id="formasList"></div>
+                                <button type="button" class="btn btn-ghost btn-sm" id="btnAddForma" style="margin-top:8px;">
+                                    + Adicionar forma de pagamento
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 04. Pagador -->
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible>
+                            <h3>04. Pagador</h3>
+                        </div>
+                        <div class="form-card-body">
+                            <div class="form-grid-auto">
+                                <div class="form-group">
+                                    <label for="nome_pagador">Nome do Pagador</label>
+                                    <input type="text" id="nome_pagador" name="nome_pagador" placeholder="Ex: CONSTRUTORA ROPER">
+                                    <small class="field-error"></small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="tipo_doc_pagador">Tipo de Documento</label>
+                                    <select id="tipo_doc_pagador" name="tipo_doc_pagador">
+                                        <option value="cpf">CPF</option>
+                                        <option value="cnpj">CNPJ</option>
+                                    </select>
+                                    <small class="field-error"></small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="doc_pagador" id="label_doc_pagador">CPF do Pagador</label>
+                                    <input type="text" id="doc_pagador" name="doc_pagador" placeholder="000.000.000-00" inputmode="numeric">
+                                    <small class="field-error"></small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 05. Descrição e Local -->
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible>
+                            <h3>05. Descrição e Local</h3>
+                        </div>
+                        <div class="form-card-body">
+                            <div class="form-grid-auto">
+                                <div class="form-group full-width">
+                                    <label for="descricao_referencia">Descrição / Referência</label>
+                                    <textarea id="descricao_referencia" name="descricao_referencia" rows="2">à entrada acordada no contrato de compra e venda/financiamento referente ao aterro do terreno</textarea>
+                                    <small class="field-error"></small>
+                                </div>
+                                <div data-field="cidade_select" data-name="cidade_id" data-label="Cidade"></div>
+                                <div data-field="data" data-name="data_local" data-label="Data (local e assinatura)"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 06. Recebedor / Assinatura -->
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible>
+                            <h3>06. Recebedor / Assinatura</h3>
+                        </div>
+                        <div class="form-card-body">
+                            <p style="font-size:13px;color:#8896a6;margin-bottom:12px;">O recebedor é quem assina o recibo.</p>
+                            <div class="form-grid-auto">
+                                <div class="form-group">
+                                    <label for="assinatura_nome">Nome</label>
+                                    <input type="text" id="assinatura_nome" name="assinatura_nome" placeholder="Nome completo">
+                                    <small class="field-error"></small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="tipo_doc_recebedor">Tipo de Documento</label>
+                                    <select id="tipo_doc_recebedor" name="tipo_doc_recebedor">
+                                        <option value="cpf">CPF</option>
+                                        <option value="cnpj">CNPJ</option>
+                                    </select>
+                                    <small class="field-error"></small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="doc_recebedor" id="label_doc_recebedor">CPF do Recebedor</label>
+                                    <input type="text" id="doc_recebedor" name="doc_recebedor" placeholder="000.000.000-00" inputmode="numeric">
+                                    <small class="field-error"></small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 07. Rodapé -->
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible>
+                            <h3>07. Rodapé do PDF</h3>
+                        </div>
+                        <div class="form-card-body">
+                            <div class="form-grid-auto">
+                                <div class="form-group full-width">
+                                    <label for="rodape_texto">Texto do rodapé</label>
+                                    <textarea id="rodape_texto" name="rodape_texto" rows="3">Grupo Roper - Construtora | Engenharia em Avaliações de Imóveis | Energy | Loja Física: Pré-moldados, Granitos e Gesso. Sede: Av. M. Olímpio, 1983, Centro, Campo Largo do Piauí -PI. Filial: Av. Dr. João S. Filho, 4820, Alberto Silva, Parnaíba – PI. Contato: roper.eng@gmail.com – (86) 9.9963-0043.</textarea>
+                                    <small class="field-error"></small>
+                                </div>
+                                <div class="form-group full-width">
+                                    <label for="observacoes">Observações internas (não aparece no PDF)</label>
+                                    <textarea id="observacoes" name="observacoes" rows="2"></textarea>
+                                    <small class="field-error"></small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <a href="/recibos" class="btn btn-ghost">Cancelar</a>
+                        <button type="submit" class="btn btn-primary" id="btnSalvar">
+                            <span id="btnSalvarLabel">Salvar Recibo</span>
+                            <span id="btnSalvarSpinner" class="spinner" style="display:none;"></span>
+                        </button>
+                    </div>
+
+                </form>
+
+            </main>
+        </div>
+    </div>
+
+    <div class="toast" id="toast" role="alert" aria-live="polite"></div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/sidebar.js"></script>
+    <script src="/static/js/masks.js"></script>
+    <script src="/static/js/forms.js"></script>
+    <script src="/static/js/modal.js"></script>
+
+    <script>
+        (async function () {
+            'use strict';
+
+            let usuario;
+            try { usuario = await api.requireAuth(); } catch (e) { return; }
+
+            renderSidebar(document.getElementById('sidebar'), '/recibos', usuario);
+
+            function getId() {
+                var m = window.location.pathname.match(/\/recibos\/(\d+)\/editar/);
+                return m ? parseInt(m[1], 10) : null;
+            }
+
+            var editId = getId();
+
+            var podeEscrever = editId ? api.can('recibo', 'editar') : api.can('recibo', 'criar');
+            if (!podeEscrever) {
+                window.location.href = '/recibos';
+                return;
+            }
+            var form = document.getElementById('form');
+            forms.init(form);
+
+            /* ---- Refs ---- */
+            var clienteSelect = document.getElementById('cliente_id');
+            var docPagadorInput = document.getElementById('doc_pagador');
+            var tipoDocPagador = document.getElementById('tipo_doc_pagador');
+            var labelDocPagador = document.getElementById('label_doc_pagador');
+            var docRecebedorInput = document.getElementById('doc_recebedor');
+            var tipoDocRecebedor = document.getElementById('tipo_doc_recebedor');
+            var labelDocRecebedor = document.getElementById('label_doc_recebedor');
+
+            /* ---- Formas de pagamento (lista dinâmica) ---- */
+            var FORMA_OPTIONS = [
+                ['', '— Selecione —'],
+                ['pix', 'Pix'],
+                ['transferência bancária', 'Transferência Bancária'],
+                ['dinheiro', 'Dinheiro'],
+                ['cheque', 'Cheque'],
+                ['boleto', 'Boleto'],
+                ['cartão de crédito', 'Cartão de Crédito'],
+                ['cartão de débito', 'Cartão de Débito'],
+            ];
+            var formasList = document.getElementById('formasList');
+            var totalInput = document.getElementById('valor_recebido');
+
+            function recalcTotal() {
+                var inputs = formasList.querySelectorAll('.forma-valor');
+                if (!inputs.length) {
+                    if (totalInput) totalInput.readOnly = false;
+                    return;
+                }
+                var sum = 0;
+                inputs.forEach(function (i) { sum += unmaskedMoney(i.value); });
+                if (totalInput) {
+                    totalInput.value = maskMoney(sum);
+                    totalInput.readOnly = true;
+                }
+            }
+
+            function addFormaRow(forma, valor) {
+                var row = document.createElement('div');
+                row.className = 'forma-row';
+                row.style.cssText = 'display:flex;gap:10px;align-items:flex-end;margin-bottom:10px;';
+
+                var opts = FORMA_OPTIONS.map(function (o) {
+                    var sel = (o[0] === (forma || '')) ? ' selected' : '';
+                    return '<option value="' + o[0] + '"' + sel + '>' + o[1] + '</option>';
+                }).join('');
+
+                row.innerHTML =
+                    '<div class="form-group" style="flex:2;margin:0;">' +
+                        '<label>Forma</label>' +
+                        '<select class="forma-select">' + opts + '</select>' +
+                    '</div>' +
+                    '<div class="form-group" style="flex:1;margin:0;">' +
+                        '<label>Valor (R$)</label>' +
+                        '<input type="text" class="forma-valor" inputmode="numeric" placeholder="R$ 0,00">' +
+                    '</div>' +
+                    '<button type="button" class="btn btn-ghost forma-remove" title="Remover" ' +
+                        'style="margin-bottom:0;padding:8px 12px;">✕</button>';
+
+                formasList.appendChild(row);
+
+                var valorInput = row.querySelector('.forma-valor');
+                if (valor != null && valor !== '') {
+                    valorInput.value = maskMoney(typeof valor === 'number' ? valor : parseFloat(valor) || 0);
+                }
+                attachMask(valorInput, maskMoney);
+                valorInput.addEventListener('input', recalcTotal);
+
+                row.querySelector('.forma-remove').addEventListener('click', function () {
+                    row.remove();
+                    recalcTotal();
+                });
+
+                recalcTotal();
+            }
+
+            document.getElementById('btnAddForma').addEventListener('click', function () {
+                addFormaRow('', '');
+            });
+
+            /* ---- Carregar clientes no select (com busca) ---- */
+            var clientesCache = [];
+            try {
+                var resp = await api.get('/clientes?per_page=500');
+                clientesCache = resp.data || resp || [];
+                clientesCache.forEach(function (c) {
+                    var opt = document.createElement('option');
+                    opt.value = c.id;
+                    var cpfFmt = c.cpf ? ' (' + maskCPF(c.cpf) + ')' : '';
+                    opt.textContent = c.nome + cpfFmt;
+                    opt.dataset.nome = c.nome || '';
+                    opt.dataset.cpf = c.cpf || '';
+                    clienteSelect.appendChild(opt);
+                });
+            } catch (e) { /* sem clientes */ }
+
+            /* Filtro por digitação no select */
+            var searchInput = document.createElement('input');
+            searchInput.type = 'text';
+            searchInput.placeholder = 'Pesquisar cliente...';
+            searchInput.style.cssText = 'width:100%;padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;font-family:inherit;margin-bottom:8px;';
+            clienteSelect.parentNode.insertBefore(searchInput, clienteSelect);
+
+            searchInput.addEventListener('input', function () {
+                var term = this.value.toLowerCase();
+                var opts = clienteSelect.options;
+                for (var i = 1; i < opts.length; i++) {
+                    var txt = opts[i].textContent.toLowerCase();
+                    opts[i].style.display = (!term || txt.indexOf(term) !== -1) ? '' : 'none';
+                }
+            });
+
+            /* Ao selecionar cliente → preenche pagador */
+            clienteSelect.addEventListener('change', function () {
+                var cid = this.value;
+                if (!cid) return;
+                var sel = this.options[this.selectedIndex];
+                var nome = sel.dataset.nome || '';
+                var cpf = sel.dataset.cpf || '';
+                _setVal('nome_pagador', nome);
+                if (cpf) {
+                    var raw = cpf.replace(/\D/g, '');
+                    if (raw.length > 11) {
+                        tipoDocPagador.value = 'cnpj';
+                        _updateDocField('pagador');
+                        docPagadorInput.value = maskCNPJ(raw);
+                    } else {
+                        tipoDocPagador.value = 'cpf';
+                        _updateDocField('pagador');
+                        docPagadorInput.value = maskCPF(raw);
+                    }
+                }
+            });
+
+            /* ---- Toggle CPF/CNPJ para pagador e recebedor ---- */
+            function _getDocTipo(tipo) {
+                return (tipo === 'pagador' ? tipoDocPagador : tipoDocRecebedor).value;
+            }
+
+            function _updateDocField(tipo) {
+                var sel = tipo === 'pagador' ? tipoDocPagador : tipoDocRecebedor;
+                var input = tipo === 'pagador' ? docPagadorInput : docRecebedorInput;
+                var label = tipo === 'pagador' ? labelDocPagador : labelDocRecebedor;
+                var isCnpj = sel.value === 'cnpj';
+                var role = tipo === 'pagador' ? 'Pagador' : 'Recebedor';
+                label.textContent = (isCnpj ? 'CNPJ' : 'CPF') + ' do ' + role;
+                input.placeholder = isCnpj ? '00.000.000/0000-00' : '000.000.000-00';
+                input.maxLength = isCnpj ? 18 : 14;
+                input.value = '';
+            }
+
+            tipoDocPagador.addEventListener('change', function () { _updateDocField('pagador'); });
+            tipoDocRecebedor.addEventListener('change', function () { _updateDocField('recebedor'); });
+
+            /* Máscara CPF/CNPJ respeitando o toggle selecionado */
+            function _attachDocMask(input, tipoSelect) {
+                input.addEventListener('input', function () {
+                    var raw = unmask(this.value);
+                    if (tipoSelect.value === 'cnpj') {
+                        raw = raw.slice(0, 14);
+                        this.value = maskCNPJ(raw);
+                    } else {
+                        raw = raw.slice(0, 11);
+                        this.value = maskCPF(raw);
+                    }
+                });
+            }
+            _attachDocMask(docPagadorInput, tipoDocPagador);
+            _attachDocMask(docRecebedorInput, tipoDocRecebedor);
+
+            /* ---- Carregar logos no dropdown ---- */
+            var logoSelect = document.getElementById('logo_id');
+            try {
+                var logos = await api.get('/logos');
+                if (logos && logos.length) {
+                    logos.forEach(function (l) {
+                        var opt = document.createElement('option');
+                        opt.value = l.id;
+                        opt.textContent = l.nome;
+                        logoSelect.appendChild(opt);
+                    });
+                }
+            } catch (e) {}
+
+            /* ---- Carregar cidades ---- */
+            var cidadeSelect = document.getElementById('cidade_id');
+            if (cidadeSelect) {
+                try {
+                    var cidades = await api.get('/lookup/cidades');
+                    cidadeSelect.innerHTML = '<option value="">— Selecione —</option>';
+                    (cidades || []).forEach(function (c) {
+                        var opt = document.createElement('option');
+                        opt.value = c.id;
+                        opt.textContent = c.nome + (c.uf ? ' (' + c.uf + ')' : '');
+                        cidadeSelect.appendChild(opt);
+                    });
+                } catch (e) {
+                    cidadeSelect.innerHTML = '<option value="">Erro ao carregar cidades</option>';
+                }
+            }
+
+            /* ---- Modo edição ---- */
+            if (editId) {
+                document.getElementById('pageTitleMain').textContent = 'Editar Recibo';
+                document.getElementById('pageTitle').textContent = 'Editar Recibo';
+                document.getElementById('btnSalvarLabel').textContent = 'Atualizar Recibo';
+                await carregarRecibo(editId);
+            }
+
+            async function carregarRecibo(id) {
+                try {
+                    var rec = await api.get('/recibos/' + id);
+
+                    // Selecionar cliente se existir
+                    if (rec.cliente_id) {
+                        clienteSelect.value = rec.cliente_id;
+                    }
+
+                    var campos = [
+                        'logo_id', 'numero_contrato', 'data_recibo',
+                        'nome_pagador',
+                        'descricao_referencia',
+                        'cidade_id', 'data_local',
+                        'assinatura_nome',
+                        'rodape_texto', 'observacoes',
+                    ];
+                    campos.forEach(function (f) {
+                        var el = document.getElementById(f);
+                        if (el && rec[f] != null) el.value = rec[f];
+                    });
+
+                    // Formas de pagamento: usa o breakdown se existir;
+                    // senão semeia uma linha a partir do legado (forma_pagamento + total)
+                    var formas = rec.formas_pagamento;
+                    if (formas && formas.length) {
+                        formas.forEach(function (f) { addFormaRow(f.forma || '', f.valor); });
+                    } else if (rec.forma_pagamento) {
+                        addFormaRow(rec.forma_pagamento, rec.valor_recebido);
+                    } else if (rec.valor_recebido != null && totalInput) {
+                        totalInput.value = maskMoney(parseFloat(rec.valor_recebido) || 0);
+                    }
+
+                    // doc_pagador: detectar tipo e formatar
+                    if (rec.doc_pagador) {
+                        var rawPag = rec.doc_pagador.replace(/\D/g, '');
+                        if (rawPag.length > 11) {
+                            tipoDocPagador.value = 'cnpj';
+                            _updateDocField('pagador');
+                            docPagadorInput.value = maskCNPJ(rawPag);
+                        } else {
+                            tipoDocPagador.value = 'cpf';
+                            _updateDocField('pagador');
+                            docPagadorInput.value = maskCPF(rawPag);
+                        }
+                    }
+
+                    // doc_recebedor: detectar tipo e formatar
+                    if (rec.doc_recebedor) {
+                        var rawRec = rec.doc_recebedor.replace(/\D/g, '');
+                        if (rawRec.length > 11) {
+                            tipoDocRecebedor.value = 'cnpj';
+                            _updateDocField('recebedor');
+                            docRecebedorInput.value = maskCNPJ(rawRec);
+                        } else {
+                            tipoDocRecebedor.value = 'cpf';
+                            _updateDocField('recebedor');
+                            docRecebedorInput.value = maskCPF(rawRec);
+                        }
+                    }
+                } catch (e) {
+                    showToast('Erro ao carregar recibo: ' + e.message, 'error');
+                }
+            }
+
+            /* ---- Submit ---- */
+            form.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                forms.alertClear();
+
+                var btn = document.getElementById('btnSalvar');
+                var label = document.getElementById('btnSalvarLabel');
+                var spinner = document.getElementById('btnSalvarSpinner');
+                btn.disabled = true;
+                label.style.display = 'none';
+                spinner.style.display = 'inline-block';
+
+                try {
+                    var payload = montarPayload();
+                    if (editId) {
+                        await api.put('/recibos/' + editId, payload);
+                    } else {
+                        await api.post('/recibos', payload);
+                    }
+                    showToast('Recibo salvo com sucesso!', 'success');
+                    setTimeout(function () { window.location.href = '/recibos'; }, 1000);
+                } catch (err) {
+                    forms.alertError(err.message || 'Erro ao salvar recibo.');
+                    btn.disabled = false;
+                    label.style.display = 'inline';
+                    spinner.style.display = 'none';
+                }
+            });
+
+            function montarPayload() {
+                var payload = {};
+
+                var cid = val('cliente_id');
+                payload.cliente_id = cid ? parseInt(cid, 10) : null;
+
+                payload.logo_id = val('logo_id') ? parseInt(val('logo_id'), 10) : null;
+                payload.cidade_id = val('cidade_id') ? parseInt(val('cidade_id'), 10) : null;
+                payload.numero_contrato = val('numero_contrato') || null;
+                payload.data_recibo = val('data_recibo') || null;
+                payload.data_local = val('data_local') || null;
+
+                var vrec = val('valor_recebido');
+                if (vrec) {
+                    vrec = vrec.replace(/[R$\s.]/g, '').replace(',', '.');
+                    payload.valor_recebido = parseFloat(vrec) || null;
+                } else {
+                    payload.valor_recebido = null;
+                }
+                payload.nome_pagador = val('nome_pagador') || null;
+                payload.doc_pagador = (val('doc_pagador') || '').replace(/\D/g, '') || null;
+
+                // Formas de pagamento (breakdown)
+                var formas = [];
+                formasList.querySelectorAll('.forma-row').forEach(function (row) {
+                    var forma = row.querySelector('.forma-select').value;
+                    var valor = unmaskedMoney(row.querySelector('.forma-valor').value);
+                    if (forma || valor) formas.push({ forma: forma || null, valor: valor || null });
+                });
+                payload.formas_pagamento = formas.length ? formas : null;
+                // forma_pagamento (legado/compat): primeira forma preenchida
+                var formasNomes = formas.map(function (f) { return f.forma; }).filter(Boolean);
+                payload.forma_pagamento = formasNomes.length ? formasNomes.join(', ') : null;
+
+                payload.descricao_referencia = val('descricao_referencia') || null;
+                payload.assinatura_nome = val('assinatura_nome') || null;
+                payload.doc_recebedor = (val('doc_recebedor') || '').replace(/\D/g, '') || null;
+                payload.rodape_texto = val('rodape_texto') || null;
+                payload.observacoes = val('observacoes') || null;
+
+                return payload;
+            }
+
+            function _setVal(id, v) {
+                var el = document.getElementById(id);
+                if (el && v != null) el.value = v;
+            }
+
+            function val(id) {
+                var el = document.getElementById(id);
+                return el ? (el.value || '').trim() : '';
+            }
+
+            function showToast(msg, type, duration) {
+                type = type || 'success';
+                duration = duration || 3500;
+                var t = document.getElementById('toast');
+                if (!t) return;
+                t.textContent = msg;
+                t.className = 'toast ' + type;
+                t.classList.add('show');
+                setTimeout(function () { t.classList.remove('show'); }, duration);
+            }
+        })();
+    </script>
+</body>
+</html>

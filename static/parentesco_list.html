@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Termo de Parentesco — AM Imoveis</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/layout.css">
+</head>
+<body>
+    <div class="app-layout">
+
+        <aside class="sidebar" id="sidebar" aria-label="Menu lateral"></aside>
+
+        <div class="main-content" id="mainContent">
+
+            <header class="topbar">
+                <button class="topbar-hamburger" aria-label="Abrir menu">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="6" x2="21" y2="6"/>
+                        <line x1="3" y1="12" x2="21" y2="12"/>
+                        <line x1="3" y1="18" x2="21" y2="18"/>
+                    </svg>
+                </button>
+                <span class="topbar-title">Termo de Parentesco</span>
+            </header>
+
+            <main class="page-area">
+
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Termos de Parentesco</h1>
+                        <p class="page-subtitle">Declaração CAIXA (Lei 14.620/2023)</p>
+                    </div>
+                    <div class="page-actions">
+                        <a href="/parentesco/novo" class="btn btn-primary" id="btnNovo">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2.5"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="12" y1="5" x2="12" y2="19"/>
+                                <line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                            Novo Termo
+                        </a>
+                    </div>
+                </div>
+
+                <div class="card" style="padding: 0; overflow: hidden;">
+                    <div id="grid" style="padding: 0;"></div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <div class="toast" id="toast" role="alert" aria-live="polite"></div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/sidebar.js"></script>
+    <script src="/static/js/masks.js"></script>
+    <script src="/static/js/modal.js"></script>
+    <script src="/static/js/datagrid.js"></script>
+
+    <script>
+        (async function () {
+            'use strict';
+
+            let usuario;
+            try {
+                usuario = await api.requireAuth();
+            } catch (e) {
+                return;
+            }
+
+            if (!api.can('parentesco', 'ver')) { window.location.href = '/'; return; }
+            var canWrite = api.can('parentesco', 'criar') || api.can('parentesco', 'editar');
+            var canDelete = api.can('parentesco', 'excluir');
+
+            renderSidebar(document.getElementById('sidebar'), '/parentesco', usuario);
+
+            if (!canWrite) {
+                const btn = document.getElementById('btnNovo');
+                if (btn) btn.style.display = 'none';
+            }
+
+            const grid = new DataGrid(document.getElementById('grid'), {
+                endpoint: '/parentescos',
+                searchable: true,
+                exportable: false,
+                perPage: 25,
+                emptyMessage: 'Nenhum termo cadastrado.',
+                columns: [
+                    { key: 'id', label: '#', sortable: true, width: '60px', align: 'center' },
+                    {
+                        key: 'cliente_nome',
+                        label: 'Proponente',
+                        sortable: true,
+                        format: function (v) { return v || '—'; },
+                    },
+                    {
+                        key: 'parente_nome',
+                        label: 'Parente',
+                        format: function (v) { return v || '—'; },
+                    },
+                    {
+                        key: 'grau_parentesco',
+                        label: 'Parentesco',
+                        width: '140px',
+                        format: function (v) { return v || '—'; },
+                    },
+                    {
+                        key: 'parente_cpf',
+                        label: 'CPF Parente',
+                        width: '140px',
+                        format: function (v) { return v ? maskCPF(v) : '—'; },
+                    },
+                    {
+                        key: 'created_at',
+                        label: 'Criado em',
+                        width: '120px',
+                        align: 'center',
+                        format: function (v) {
+                            if (!v) return '—';
+                            return new Date(v).toLocaleDateString('pt-BR');
+                        },
+                    },
+                ],
+                rowActions: function (row) {
+                    var actions = [
+                        {
+                            label: 'PDF',
+                            className: 'btn-ghost',
+                            onClick: function (r) {
+                                api.downloadPdf('/parentescos/' + r.id + '/pdf');
+                            },
+                        },
+                        {
+                            label: 'Editar',
+                            className: 'btn-ghost',
+                            onClick: function (r) {
+                                window.location.href = '/parentesco/' + r.id + '/editar';
+                            },
+                        },
+                    ];
+
+                    if (canDelete) {
+                        actions.push({
+                            label: 'Excluir',
+                            className: 'btn-danger',
+                            onClick: async function (r) {
+                                const ok = await Modal.confirm(
+                                    'Excluir termo de <strong>' + _esc(r.parente_nome || '#' + r.id) + '</strong>?<br>' +
+                                    '<small style="color:#9aa4b0">Esta ação não pode ser desfeita.</small>'
+                                );
+                                if (!ok) return;
+                                try {
+                                    await api.del('/parentescos/' + r.id);
+                                    showToast('Termo excluído.', 'success');
+                                    grid.refresh();
+                                } catch (e) {
+                                    showToast(e.message || 'Erro ao excluir termo.', 'error');
+                                }
+                            },
+                        });
+                    }
+
+                    return actions;
+                },
+            });
+
+            function _esc(s) {
+                return String(s || '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
+            function showToast(msg, type, duration) {
+                type = type || 'success';
+                duration = duration || 3500;
+                const t = document.getElementById('toast');
+                if (!t) return;
+                t.textContent = msg;
+                t.className = 'toast ' + type;
+                t.classList.add('show');
+                setTimeout(function () { t.classList.remove('show'); }, duration);
+            }
+        })();
+    </script>
+</body>
+</html>

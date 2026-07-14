@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        font-family: Calibri, Arial, sans-serif;
+        font-size: 10pt;
+        color: #000;
+        line-height: 1.35;
+        width: 180mm;
+    }
+    .logo { margin-bottom: 18pt; }
+    .logo img { height: 42px; }
+    h1 {
+        font-size: 11pt;
+        font-weight: bold;
+        margin-bottom: 14pt;
+        text-transform: uppercase;
+    }
+    h2 {
+        font-size: 10.5pt;
+        font-weight: bold;
+        margin-top: 14pt;
+        margin-bottom: 8pt;
+        text-transform: uppercase;
+    }
+    p { margin-bottom: 9pt; text-align: justify; }
+    .fill { font-weight: bold; }
+    .hint { font-style: italic; color: #555; font-size: 9.5pt; margin-bottom: 6pt; }
+    .bold { font-weight: bold; }
+    .sign-block { margin-top: 22pt; }
+    .sign {
+        margin-top: 18pt;
+        border-top: 1px solid #000;
+        width: 220px;
+        padding-top: 2pt;
+        font-size: 9.5pt;
+    }
+    .data { margin-top: 14pt; }
+</style>
+</head>
+<body>
+
+<div id="wrap">
+
+    <div class="logo">
+        <img src="file://{{ logo_caixa_path }}" alt="CAIXA">
+    </div>
+
+    <h1>Declaração de Parentesco, Residência e Ausência de Rendimentos</h1>
+
+    <p>
+        Eu, <span class="fill">{{ parente_nome }}</span>,
+        CPF <span class="fill">{{ parente_cpf }}</span>,
+        estado civil <span class="fill">{{ parente_estado_civil }}</span>,
+        declaro que sou <span class="fill">{{ grau_parentesco }}</span>
+        da proponente <span class="fill">{{ proponente_nome }}</span>,
+        CPF <span class="fill">{{ proponente_cpf }}</span>,
+        com quem resido no mesmo endereço há pelo menos 6 (seis) meses.
+    </p>
+
+    <p>
+        Declaro ainda que não possuo nenhum tipo de rendimento, seja renda formal ou informal,
+        exceto os benefícios temporários de natureza indenizatória, assistencial ou previdenciária,
+        como auxílio-doença, auxílio-acidente, seguro-desemprego, benefício de prestação continuada (BPC)
+        e benefício do Programa Bolsa Família, ou outros que vierem a substituí-los de acordo com a
+        Lei 14.620 de 13/07/2023, e dependo financeiramente da
+        <span class="fill">{{ proponente_nome }}</span>, proponente acima qualificado.
+    </p>
+
+    <p>
+        Declaro ainda que não participo como dependente de nenhum outro contrato de financiamento
+        habitacional e não possuo financiamento ativo no SFH.
+    </p>
+
+    {% if conjuge_parente_nome %}
+    <p>
+        Eu, <span class="fill">{{ conjuge_parente_nome }}</span>, cônjuge/companheiro(a) do parente
+        acima qualificado, declaro que também não possuo nenhum tipo de rendimento, seja renda formal
+        ou informal, exceto os benefícios temporários de natureza indenizatória, assistencial ou
+        previdenciária, como auxílio-doença, auxílio-acidente, seguro-desemprego, benefício de
+        prestação continuada (BPC) e benefício do Programa Bolsa Família, ou outros que vierem a
+        substituí-los de acordo com a Lei 14.620 de 13/07/2023.
+    </p>
+    {% endif %}
+
+    <h2>Responsabilidade pelas Informações Declaradas</h2>
+
+    <p class="bold">
+        Responsabilizo-me pela exatidão e veracidade das informações declaradas e estou ciente de que,
+        se falsas as declarações, ficarei sujeito às penas da lei, ficando, ainda, obrigado(a) a
+        devolver os valores indevidamente sacados da conta vinculada do FGTS e/ou descontos concedidos
+        pelo FGTS nos termos da Resolução do Conselho Curador do FGTS 702/12, suas alterações e
+        aditamentos, acrescidos de correção monetária e juros, sem prejuízo do vencimento antecipado
+        da dívida decorrente do crédito concedido, com a consequente cobrança administrativa/judicial.
+    </p>
+
+    <p class="data">Data: <span class="fill">{{ data_declaracao }}</span></p>
+
+    <div class="sign-block">
+        <div class="sign">Assinatura do parente</div>
+    </div>
+
+    {% if conjuge_parente_nome %}
+    <div class="sign-block">
+        <div class="sign">Assinatura do cônjuge do parente</div>
+    </div>
+    {% endif %}
+
+    <div class="sign-block">
+        <div class="sign">Assinatura do proponente</div>
+    </div>
+
+</div>
+</body>
+</html>

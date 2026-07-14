@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oportunidade — CRM</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/layout.css">
+    <style>
+        /* ============================================================
+           Opportunity Detail — layout "Pós-Venda PHB" (13 cards)
+           ============================================================ */
+        .opp-page { display: grid; grid-template-columns: 1fr 320px; gap: 14px; align-items: start; }
+        @media (max-width: 1100px) { .opp-page { grid-template-columns: 1fr; } }
+
+        /* Header */
+        .opp-head { background: #fff; border-radius: 10px; padding: 14px 18px; border: 1px solid #e5e7eb; margin-bottom: 14px; }
+        .breadcrumb { font-size: 12px; color: #8896a6; margin-bottom: 8px; }
+        .breadcrumb a { color: #8896a6; text-decoration: none; }
+        .breadcrumb a:hover { color: #065676; }
+        .opp-head-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+        .opp-head-title { display: flex; gap: 12px; align-items: flex-start; }
+        .opp-icon { width: 40px; height: 40px; border-radius: 8px; background: #065676; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+        .opp-head h1 { font-size: 20px; font-weight: 700; margin: 0; color: #1a1a2e; line-height: 1.2; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .opp-head .subtitle { font-size: 13px; color: #64748b; margin-top: 3px; }
+        .st-badge { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 12px; letter-spacing: .3px; text-transform: uppercase; }
+        .st-aberta { background: #fef3c7; color: #92400e; }
+        .st-ganha  { background: #dcfce7; color: #166534; }
+        .st-perdida{ background: #fee2e2; color: #991b1b; }
+        .opp-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: flex-start; }
+        .opp-actions .btn { font-size: 12px; padding: 6px 12px; }
+        .opp-owner { text-align: right; font-size: 12px; color: #64748b; display: flex; gap: 10px; align-items: center; }
+        .opp-owner .who b { color: #1a1a2e; font-weight: 600; }
+        .opp-owner .avatar { width: 38px; height: 38px; border-radius: 50%; background: #065676; color:#fff; display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px; }
+
+        /* Caminho (setinhas verdes) — mantido como hoje */
+        .caminho { display: flex; gap: 0; margin-top: 14px; overflow-x: auto; padding: 4px 0; }
+        .caminho-step { flex: 1; min-width: 116px; background: #f1f5f9; color: #64748b; padding: 11px 8px 11px 22px; font-size: 12px; font-weight: 600;
+            position: relative; clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%, 12px 50%); text-align: center; line-height: 1.15; cursor: pointer; }
+        .caminho-step:first-child { clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%); padding-left: 12px; }
+        .caminho-step.done { background: #22c55e; color: #fff; }
+        .caminho-step.current { background: #16a34a; color: #fff; }
+        .caminho-step.future { background: #f1f5f9; color: #64748b; }
+        .caminho-step .prob { display:block; font-size: 10px; font-weight: 600; opacity: .85; margin-top: 2px; }
+
+        /* Faixa de SLA */
+        .sla-faixa { display: flex; flex-wrap: wrap; gap: 22px; align-items: center; margin-top: 10px; padding: 10px 14px; background: #f8fafc; border: 1px solid #eef2f6; border-radius: 8px; font-size: 12px; color: #64748b; }
+        .sla-faixa b { color: #1a1a2e; font-weight: 600; }
+        .sla-badge { margin-left: auto; font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 12px; }
+        .sla-ok { background: #dcfce7; color: #166534; }
+        .sla-late { background: #fee2e2; color: #991b1b; }
+        .sla-none { background: #f1f5f9; color: #64748b; }
+
+        /* Tabs */
+        .opp-tabs { display: flex; gap: 0; border-bottom: 2px solid #e5e7eb; margin-bottom: 14px; background: #fff; padding: 0 12px; border-radius: 8px 8px 0 0; overflow-x: auto; }
+        .opp-tab { padding: 12px 18px; cursor: pointer; font-size: 13px; font-weight: 600; color: #64748b; border-bottom: 3px solid transparent; margin-bottom: -2px; white-space: nowrap; }
+        .opp-tab.active { color: #065676; border-bottom-color: #065676; }
+        .opp-tab:hover { color: #065676; }
+        .opp-tab .count { color: #94a3b8; font-weight: 400; }
+
+        /* Cards (Visão Geral) */
+        .vg-grid { display: grid; gap: 12px; margin-bottom: 12px; }
+        .vg-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .vg-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .vg-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+        /* Corpo fiel ao mockup: abas (esq) + lateral 4,5 (dir, alinhada às abas) + main (esq) + full (largura cheia) */
+        .opp-body { display: grid; gap: 12px 14px; align-items: start; }
+        .opp-body.has-rail { grid-template-columns: minmax(0, 1fr) 300px; grid-template-areas: "tabs rail" "main rail" "full full"; }
+        .opp-body.no-rail  { grid-template-columns: 1fr; grid-template-areas: "tabs" "main" "full"; }
+        .opp-body .opp-tabs { grid-area: tabs; margin-bottom: 0; }
+        .opp-rail { grid-area: rail; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+        .opp-main { grid-area: main; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+        .opp-main > .vg-grid { margin-bottom: 0; }
+        .opp-full { grid-area: full; min-width: 0; }
+        @media (max-width: 1000px) { .vg-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @media (max-width: 900px)  { .opp-body.has-rail { grid-template-columns: 1fr; grid-template-areas: "tabs" "rail" "main" "full"; } }
+        @media (max-width: 760px)  { .vg-3, .vg-2, .vg-4 { grid-template-columns: 1fr; } }
+        .vgcard { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; }
+        .vgcard-head { display: flex; align-items: center; gap: 9px; padding: 11px 14px; border-bottom: 1px solid #f1f5f9; }
+        .vgcard-num { width: 22px; height: 22px; border-radius: 6px; background: #065676; color: #fff; font-weight: 700; font-size: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .vgcard-head h3 { margin: 0; font-size: 13px; font-weight: 700; color: #1a1a2e; flex: 1; }
+        .vgcard-head .hbadge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+        .vgcard-body { padding: 4px 14px 8px; flex: 1; }
+        .vgcard-body.two { display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; }
+        @media (max-width: 700px) { .vgcard-body.two { grid-template-columns: 1fr; } }
+
+        .field { display: flex; flex-direction: column; padding: 7px 0; border-bottom: 1px solid #f6f8fa; position: relative; }
+        .field:last-child { border-bottom: none; }
+        .field:hover .field-edit { opacity: 1; }
+        .field-label { font-size: 10.5px; font-weight: 600; color: #8896a6; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 2px; }
+        .field-value { font-size: 13px; color: #1a1a2e; min-height: 18px; word-break: break-word; font-weight: 500; }
+        .field-value .empty { color: #cbd5e1; font-style: italic; font-weight: 400; }
+        .field-value a { color: #065676; text-decoration: none; }
+        .field-value a:hover { text-decoration: underline; }
+        .field-edit { position: absolute; right: 0; top: 6px; opacity: 0; background: none; border: none; cursor: pointer; color: #94a3b8; transition: opacity .15s; }
+        .field-edit:hover { color: #065676; }
+        .field-edit svg { width: 13px; height: 13px; }
+        .field input.editing, .field select.editing, .field textarea.editing { font-family: inherit; font-size: 13px; padding: 4px 8px; border: 1px solid #065676; border-radius: 4px; width: 100%; box-sizing: border-box; background: #fff; }
+        .check-true { color: #16a34a; font-weight: 600; }
+        .check-false { color: #cbd5e1; }
+
+        /* Sidebar (4, 5) */
+        .opp-sidebar { display: flex; flex-direction: column; gap: 12px; position: sticky; top: 12px; }
+        .tl { padding: 6px 14px 12px; }
+        .tl-row { display: flex; gap: 10px; position: relative; padding: 8px 0; }
+        .tl-dot { width: 12px; height: 12px; border-radius: 50%; background: #065676; flex-shrink: 0; margin-top: 2px; position: relative; z-index: 1; }
+        .tl-dot.muted { background: #cbd5e1; }
+        .tl-row:not(:last-child)::before { content: ''; position: absolute; left: 5px; top: 14px; bottom: -8px; width: 2px; background: #e5e7eb; }
+        .tl-txt { font-size: 12px; }
+        .tl-txt .d { font-weight: 600; color: #1a1a2e; }
+        .tl-txt .s { color: #8896a6; }
+        .alert-row { display: flex; gap: 9px; padding: 9px 14px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #475569; align-items: flex-start; }
+        .alert-row:last-child { border-bottom: none; }
+        .alert-ico { font-size: 15px; line-height: 1.1; }
+
+        /* genéricos card */
+        .opp-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; }
+        .opp-card-head { padding: 11px 14px; border-bottom: 1px solid #f1f5f9; display: flex; gap: 8px; align-items: center; }
+        .opp-card-head .vgcard-num { background:#065676; }
+        .opp-card-head h3 { margin: 0; font-size: 13px; font-weight: 700; color: #1a1a2e; flex: 1; }
+        .opp-card-empty { color: #cbd5e1; font-size: 12px; padding: 14px; text-align: center; }
+
+        /* doc checklist */
+        .doc-row { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid #f6f8fa; font-size: 12.5px; }
+        .doc-row:last-child { border-bottom: none; }
+        .doc-row .dn { flex: 1; color: #1a1a2e; }
+        .doc-st { font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+        .doc-assinado { background: #dcfce7; color: #166534; }
+        .doc-concluido { background: #dbeafe; color: #1e40af; }
+        .doc-enviado { background: #fef3c7; color: #92400e; }
+        .doc-pendente { background: #f1f5f9; color: #94a3b8; }
+        .doc-ico { background: none; border: none; cursor: pointer; font-size: 14px; color: #065676; padding: 2px 4px; border-radius: 4px; }
+        .doc-ico:hover { background: #eef2f6; }
+        .doc-ico.del:hover { background: #fee2e2; }
+        /* aba Documentos */
+        .doc-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+        .doc-table th { text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px; color: #8896a6; font-weight: 700; padding: 6px 8px; border-bottom: 1px solid #eef2f6; }
+        .doc-table td { padding: 8px; border-bottom: 1px solid #f6f8fa; vertical-align: middle; }
+        .doc-sub { font-size: 10.5px; color: #94a3b8; margin-top: 2px; }
+        .doc-status-sel { font-size: 12px; padding: 3px 6px; border: 1px solid #d1d5db; border-radius: 5px; font-family: inherit; }
+        .doc-upbtn { font-size: 12px; color: #065676; cursor: pointer; font-weight: 600; }
+        .doc-upbtn:hover { text-decoration: underline; }
+        .doc-add { display: flex; gap: 8px; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid #eef2f6; flex-wrap: wrap; }
+        .doc-add input[type=text], .doc-add input:not([type]) { flex: 1; min-width: 200px; padding: 7px 10px; border: 1px solid #d1d5db; border-radius: 5px; font-size: 13px; font-family: inherit; }
+        .doc-add select { padding: 7px 10px; border: 1px solid #d1d5db; border-radius: 5px; font-size: 13px; font-family: inherit; }
+        .doc-add input[type=file] { font-size: 12px; }
+        /* Anexos Contábeis (card 13) */
+        .anexos-box { border-top: 1px solid #f1f5f9; }
+        .anexos-grid { display: grid; grid-template-columns: 1fr 240px; gap: 18px; }
+        @media (max-width: 760px) { .anexos-grid { grid-template-columns: 1fr; } }
+        .anexos-titulo { font-size: 11px; font-weight: 700; color: #5b21b6; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 8px; }
+        .anexo-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid #f6f8fa; font-size: 12.5px; }
+        .anexo-row:last-of-type { border-bottom: none; }
+        .an-nome { flex: 1; color: #1a1a2e; }
+        .an-date { font-size: 11px; color: #8896a6; white-space: nowrap; }
+        .anexo-add { display: inline-block; margin-top: 8px; font-size: 12px; color: #065676; cursor: pointer; font-weight: 600; }
+        .anexo-add:hover { text-decoration: underline; }
+        .relatorio-box { background: #faf5ff; border: 1px solid #ede9fe; border-radius: 8px; padding: 12px; }
+
+        /* próxima ação */
+        .next-action { padding: 6px 14px 12px; }
+        .next-action .na-title { font-size: 13px; font-weight: 600; color: #1a1a2e; display: flex; gap: 7px; align-items: center; }
+        .next-action .na-meta { font-size: 11.5px; color: #8896a6; margin: 6px 0 10px; }
+
+        /* automações + legenda */
+        .autom { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px 16px; margin-top: 4px; }
+        .autom h4 { margin: 0 0 12px; font-size: 11px; letter-spacing: .6px; text-transform: uppercase; color: #8896a6; }
+        .autom-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
+        @media (max-width: 980px) { .autom-grid { grid-template-columns: repeat(2, 1fr); } }
+        .autom-item h5 { margin: 0 0 6px; font-size: 12.5px; color: #1a1a2e; display: flex; gap: 6px; align-items: center; }
+        .autom-item ul { margin: 0; padding-left: 14px; }
+        .autom-item li { font-size: 11px; color: #64748b; line-height: 1.6; }
+        .legenda { display: flex; flex-wrap: wrap; gap: 16px; padding: 10px 16px; font-size: 11px; color: #64748b; }
+        .legenda span { display: flex; align-items: center; gap: 5px; }
+        .legenda .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+        /* timeline atividades / histórico */
+        .timeline { padding: 12px 16px; }
+        .tl-item { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
+        .tl-item:last-child { border: none; }
+        .tl-icon { width: 32px; height: 32px; border-radius: 50%; background: #eef2f6; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+        .tl-content h5 { margin: 0 0 2px; font-size: 13px; font-weight: 600; }
+        .tl-content p { margin: 0; font-size: 12px; color: #64748b; }
+        .tl-content .date { font-size: 11px; color: #cbd5e1; margin-top: 4px; }
+        .stage-hist-row { display: grid; grid-template-columns: 1fr 80px; padding: 10px 16px; gap: 6px; font-size: 12px; border-bottom: 1px solid #f1f5f9; }
+        .stage-hist-row .stage-name { font-weight: 600; color: #1a1a2e; }
+        .stage-hist-row .meta { color: #8896a6; font-size: 11px; }
+        .stage-hist-row .prob { text-align: right; color: #065676; font-weight: 600; }
+
+        /* nota form */
+        .nota-form { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; }
+        .nota-form textarea { width: 100%; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 12px; font-family: inherit; resize: vertical; box-sizing: border-box; }
+        .nota-form button { margin-top: 6px; padding: 4px 10px; font-size: 12px; background: #065676; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; }
+        .nota-item { padding: 10px 16px; border-bottom: 1px solid #f1f5f9; }
+        .nota-item .nota-corpo { font-size: 12px; color: #1a1a2e; white-space: pre-wrap; }
+        .nota-item .nota-meta { font-size: 11px; color: #8896a6; margin-top: 3px; }
+    </style>
+</head>
+<body>
+    <div class="app-layout">
+        <aside class="sidebar" id="sidebar"></aside>
+        <div class="main-content">
+            <header class="topbar">
+                <button class="topbar-hamburger"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+                <span class="topbar-title">Oportunidade</span>
+            </header>
+            <main class="page-area" id="page">
+                <div style="padding:40px;text-align:center;color:#8896a6;">Carregando…</div>
+            </main>
+        </div>
+    </div>
+    <div class="toast" id="toast"></div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/sidebar.js"></script>
+    <script src="/static/js/masks.js"></script>
+    <script src="/static/js/modal.js"></script>
+    <script>
+    (async function () {
+        'use strict';
+        let usuario;
+        try { usuario = await api.requireAuth(); } catch (e) { return; }
+        renderSidebar(document.getElementById('sidebar'), '/crm/opportunities', usuario);
+
+        const oppId = (() => { const m = location.pathname.match(/\/crm\/opportunities\/(\d+)/); return m ? parseInt(m[1], 10) : null; })();
+        if (!oppId) { document.getElementById('page').innerHTML = '<p>ID inválido.</p>'; return; }
+        const canEdit = api.can('crm_opportunities', 'editar');
+
+        let opp = null;
+        let activeTab = 'visao';
+
+        // Constantes de Documentos — declaradas ANTES de render() (evita TDZ:
+        // card10Documentos roda na render inicial e referencia estas consts)
+        const DOC_ST_CLS = { assinado: 'doc-assinado', concluido: 'doc-concluido', enviado: 'doc-enviado', pendente: 'doc-pendente' };
+        const DOC_ST_TXT = { assinado: 'Assinado', concluido: 'Concluído', enviado: 'Enviado', pendente: 'Pendente' };
+        const DOC_SUGESTOES = ['Contrato com a construtora', 'Proposta assinada', 'Ficha de entrevista',
+            'Documentos do cliente', 'Comprovante de entrada', 'RG / CPF', 'Comprovante de renda',
+            'Comprovante de residência', 'Certidão de casamento', 'Extrato FGTS'];
+        const DOC_CHECKLIST_PADRAO = ['Contrato com a construtora', 'Proposta assinada', 'Ficha de entrevista',
+            'Documentos do cliente', 'Comprovante de entrada'];
+
+        await render();
+
+        async function render() {
+            try {
+                opp = await api.get('/crm/opportunities/' + oppId + '/full');
+            } catch (e) {
+                document.getElementById('page').innerHTML = '<p style="color:#ef4444;padding:24px;">' + _esc(e.message) + '</p>';
+                return;
+            }
+            document.getElementById('page').innerHTML = renderHead() + renderBody();
+            attachHeadHandlers();
+            attachBodyHandlers();
+        }
+
+        // ============================================================ HEADER
+        function statusInfo(s) {
+            if (s === 'ganha')   return { cls: 'st-ganha',   txt: 'Ganha' };
+            if (s === 'perdida') return { cls: 'st-perdida', txt: 'Perdida' };
+            return { cls: 'st-aberta', txt: 'Em andamento' };
+        }
+        function renderHead() {
+            const st = statusInfo(opp.status);
+            const pnome = opp.active_pipeline_nome || opp.pipeline_nome;
+            const isPos = opp.fase_ativa === 'pos_venda';
+            const empre = opp.empreendimento_nome || opp.imovel_nome || '';
+            const sub = [empre, opp.unidade].filter(Boolean).join(' – ') + (pnome ? '  •  ' + pnome : '');
+            const posChip = isPos ? ' <span class="st-badge" style="background:#ede9fe;color:#5b21b6;">Pós-venda</span>' : '';
+            const posLine = isPos ? '<div class="subtitle" style="color:#7c3aed;">Venda ganha → em pós-venda' + (opp.pos_venda_iniciada_em ? ' desde ' + fmtDate(opp.pos_venda_iniciada_em) : '') + '</div>' : '';
+            const prop = opp.proprietario_email || '—';
+            const corr = opp.corretor_imobiliaria_email || opp.construtora_nome || '—';
+            const ini = (opp.proprietario_email || '?').slice(0, 1).toUpperCase();
+            return '<div class="opp-head">' +
+                '<div class="breadcrumb"><a href="/crm/opportunities">Oportunidades</a> › ' + _esc(pnome || 'Pipeline') + ' › ' + _esc(opp.nome) + '</div>' +
+                '<div class="opp-head-top">' +
+                    '<div class="opp-head-title">' +
+                        '<div class="opp-icon">📂</div>' +
+                        '<div>' +
+                            '<h1>' + _esc(opp.nome) + ' <span class="st-badge ' + st.cls + '">' + st.txt + '</span>' + posChip + '</h1>' +
+                            '<div class="subtitle">' + _esc(sub) + '</div>' + posLine +
+                        '</div>' +
+                    '</div>' +
+                    '<div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;">' +
+                        '<div class="opp-owner"><div class="who">' +
+                            'Proprietário: <b>' + _esc(prop) + '</b><br>Corretor: <b>' + _esc(corr) + '</b>' +
+                        '</div><div class="avatar">' + _esc(ini) + '</div></div>' +
+                        '<div class="opp-actions">' +
+                            (canEdit ? '<button class="btn btn-ghost" data-act="alterar-prop">Alterar Proprietário</button>' : '') +
+                            '<button class="btn btn-ghost" data-act="mais-acoes">Mais ações ▾</button>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+                renderCaminho() +
+                renderSlaFaixa() +
+            '</div>';
+        }
+
+        function activeStageId() { return opp.active_stage_id != null ? opp.active_stage_id : opp.stage_id; }
+        function renderCaminho() {
+            const allStages = opp.stages || [];
+            const activeId = activeStageId();
+            const active = allStages.find(s => s.id === activeId) || {};
+            const currentOrdem = active.ordem || 0;
+            let toShow;
+            if (active.tipo === 'perdido') toShow = allStages.filter(s => s.ordem <= currentOrdem);
+            else toShow = allStages.filter(s => s.tipo !== 'perdido');
+            return '<div class="caminho">' +
+                toShow.map(s => {
+                    let cls;
+                    if (s.ordem < currentOrdem) cls = 'done';
+                    else if (s.id === activeId) cls = 'current';
+                    else cls = 'future';
+                    return '<div class="caminho-step ' + cls + '" data-stage-id="' + s.id + '" title="' + _esc(s.nome) + '">' +
+                        (cls === 'done' ? '✓ ' : '') + _esc(s.nome) +
+                        '<span class="prob">' + (s.probabilidade != null ? s.probabilidade + '%' : '') + '</span>' +
+                    '</div>';
+                }).join('') +
+            '</div>';
+        }
+
+        function renderSlaFaixa() {
+            const cur = (opp.stages || []).find(s => s.id === activeStageId()) || {};
+            const entrou = opp.entrou_na_etapa_em;
+            const sla = cur.sla_dias;
+            const tempo = entrou ? daysBetween(entrou, new Date()) : null;
+            let badge;
+            if (sla == null) badge = '<span class="sla-badge sla-none">SLA não definido</span>';
+            else if (tempo != null && tempo > sla) badge = '<span class="sla-badge sla-late">ATRASADO</span>';
+            else badge = '<span class="sla-badge sla-ok">NO PRAZO</span>';
+            return '<div class="sla-faixa">' +
+                '<span>Entrou na etapa em: <b>' + (entrou ? fmtDate(entrou) : '—') + '</b></span>' +
+                '<span>Tempo na etapa: <b>' + (tempo != null ? tempo + ' dia' + (tempo === 1 ? '' : 's') : '—') + '</b></span>' +
+                '<span>SLA da etapa: <b>' + (sla != null ? sla + ' dias' : '—') + '</b></span>' +
+                badge +
+            '</div>';
+        }
+
+        // ============================================================ TABS
+        function renderTabs() {
+            const tabs = [
+                ['visao', 'Visão Geral', null],
+                ['atividades', 'Atividades', (opp.activities || []).length],
+                ['documentos', 'Documentos', (opp.documentos || []).length],
+                ['contabil', 'Contábil / Fechamento', null],
+                ['historico', 'Histórico', (opp.stage_history || []).length],
+                ['notas', 'Notas', (opp.notas || []).length],
+            ];
+            return '<div class="opp-tabs">' + tabs.map(([k, label, count]) =>
+                '<div class="opp-tab' + (activeTab === k ? ' active' : '') + '" data-tab="' + k + '">' +
+                    _esc(label) + (count != null ? ' <span class="count">(' + count + ')</span>' : '') +
+                '</div>').join('') + '</div>';
+        }
+
+        // Corpo: abas + lateral (só na Visão Geral) + main + full, via grid-template-areas
+        function renderBody() {
+            const hasRail = activeTab === 'visao';
+            return '<div class="opp-body ' + (hasRail ? 'has-rail' : 'no-rail') + '">' +
+                (hasRail ? '<aside class="opp-rail">' + card4Timeline() + card5Alertas() + '</aside>' : '') +
+                renderTabs() +
+                '<div class="opp-main">' + mainFor(activeTab) + '</div>' +
+                '<div class="opp-full">' + fullFor(activeTab) + '</div>' +
+            '</div>';
+        }
+        function mainFor(tab) {
+            if (tab === 'visao') return '<div class="vg-grid vg-3">' + card1Cliente() + card2Imovel() + card3Venda() + '</div>' +
+                '<div class="vg-grid">' + card6PAC() + '</div>' +
+                '<div class="vg-grid vg-2">' + card7EntradaFacilitada() + card8SimulacaoBanco() + '</div>';
+            if (tab === 'atividades') return renderAtividades();
+            if (tab === 'documentos') return renderDocumentos();
+            if (tab === 'contabil') return renderContabilTab();
+            if (tab === 'historico') return renderHistorico();
+            if (tab === 'notas') return renderChatter();
+            return '';
+        }
+        function fullFor(tab) {
+            if (tab === 'visao') return '<div class="vg-grid vg-4">' + card9Equipe() + card10Documentos() + card11ProximaAcao() + card12ResumoFinanceiro() + '</div>' +
+                '<div class="vg-grid">' + card13Contabil() + '</div>' +
+                renderAutomacoes() + renderLegenda();
+            return '';
+        }
+        function rebuildBody() {
+            const b = document.querySelector('.opp-body');
+            if (b) b.outerHTML = renderBody();
+            attachBodyHandlers();
+        }
+
+        // ---- Card 1: Dados do Cliente (read-only, do cadastro) ----
+        function card1Cliente() {
+            const tel = opp.cliente_whatsapp1 || opp.cliente_telefone_fixo;
+            const link = opp.cliente_id ? '<a href="/clientes/' + opp.cliente_id + '" style="font-size:11px;font-weight:600;">ver cadastro ↗</a>' : '';
+            return cardOpen(1, '👤', 'Dados do Cliente', link) +
+                ro('Nome completo', opp.cliente_nome) +
+                ro('CPF', opp.cliente_cpf) +
+                ro('Telefone', tel) +
+                ro('E-mail', opp.cliente_email) +
+                ro('Estado civil', opp.cliente_estado_civil) +
+                ro('Data de nascimento', fmtDate(opp.cliente_nascimento)) +
+                fldBool('possui_dependentes', 'Possui dependentes?', opp.possui_dependentes) +
+                cardClose();
+        }
+
+        // ---- Card 2: Dados do Imóvel ----
+        function card2Imovel() {
+            return cardOpen(2, '🏠', 'Dados do Imóvel') +
+                fld('empreendimento_nome', 'Empreendimento', opp.empreendimento_nome || opp.imovel_nome, 'text') +
+                fld('unidade', 'Unidade / Casa', opp.unidade, 'text') +
+                fld('imovel_endereco', 'Endereço do imóvel', opp.imovel_endereco, 'text') +
+                fld('imovel_bairro', 'Bairro', opp.imovel_bairro, 'text') +
+                fld('imovel_cidade_uf', 'Cidade / Estado', opp.imovel_cidade_uf, 'text') +
+                fld('imovel_cep', 'CEP', opp.imovel_cep, 'text') +
+                fld('imovel_tipo', 'Tipo de imóvel', opp.imovel_tipo, 'text') +
+                cardClose();
+        }
+
+        // ---- Card 3: Dados da Venda ----
+        function card3Venda() {
+            const formaEntrada = opp.venda_forma_entrada ||
+                (opp.venda_qtd_parcelas_entrada ? opp.venda_qtd_parcelas_entrada + 'x com a construtora' : null);
+            return cardOpen(3, '🤝', 'Dados da Venda') +
+                fld('valor_imovel', 'Valor do imóvel', fmtMoney(opp.valor_imovel), 'money') +
+                fld('valor_entrada', 'Valor da entrada', fmtMoney(opp.valor_entrada), 'money') +
+                fld('venda_forma_entrada', 'Forma de pagamento da entrada', formaEntrada, 'text') +
+                fld('venda_valor_parcela_entrada', 'Valor da parcela (entrada)', fmtMoney(opp.venda_valor_parcela_entrada), 'money') +
+                fld('venda_data_primeira_parcela', 'Data 1ª parcela (entrada)', fmtDate(opp.venda_data_primeira_parcela), 'date') +
+                fld('data_contrato', 'Data do contrato', fmtDate(opp.data_contrato), 'date') +
+                fld('numero_contrato', 'Número do contrato', opp.numero_contrato, 'text') +
+                cardClose();
+        }
+
+        // ---- Card 6: PAC ----
+        function card6PAC() {
+            const badge = opp.pac_status ? '<span class="hbadge ' + (/aprov/i.test(opp.pac_status) ? 'doc-assinado' : 'doc-enviado') + '">' + _esc(opp.pac_status) + '</span>' : '';
+            return cardHead(6, '💳', 'Proposta de Análise de Crédito (PAC)', badge) +
+                '<div class="vgcard-body two">' +
+                    fld('pac_status', 'Status da PAC', opp.pac_status, 'text') +
+                    fld('pac_tipo_amortizacao', 'Sistema de amortização', opp.pac_tipo_amortizacao, 'text') +
+                    fld('pac_valor_imovel', 'Valor do imóvel (VI)', fmtMoney(opp.pac_valor_imovel), 'money') +
+                    fld('pac_prazo_meses', 'Prazo (meses)', opp.pac_prazo_meses, 'number') +
+                    fld('pac_valor_avaliacao', 'Valor da avaliação (VA)', fmtMoney(opp.pac_valor_avaliacao), 'money') +
+                    fld('pac_valor_parcela', 'Valor da parcela (Caixa)', fmtMoney(opp.pac_valor_parcela), 'money') +
+                    fld('pac_probabilidade', 'Probabilidade (%)', opp.pac_probabilidade != null ? opp.pac_probabilidade + '%' : null, 'number') +
+                    fld('pac_tipo_analise', 'Tipo de análise', opp.pac_tipo_analise, 'text') +
+                '</div></div>';
+        }
+
+        // ---- Card 7: Entrada Facilitada ----
+        function card7EntradaFacilitada() {
+            const badge = opp.entrada_facilitada ? '<span class="hbadge doc-assinado">SIM</span>' : '<span class="hbadge doc-pendente">NÃO</span>';
+            return cardHead(7, '📋', 'Entrada Facilitada', badge) +
+                '<div class="vgcard-body two">' +
+                    fldBool('entrada_facilitada', 'Entrada facilitada', opp.entrada_facilitada) +
+                    fld('ef_qtd_parcelas', 'Parcelas', opp.ef_qtd_parcelas, 'number') +
+                    fld('ef_construtora', 'Construtora', opp.ef_construtora, 'text') +
+                    fld('ef_valor_parcela', 'Valor da parcela', fmtMoney(opp.ef_valor_parcela), 'money') +
+                    fld('ef_valor_total', 'Valor total da entrada', fmtMoney(opp.ef_valor_total), 'money') +
+                    fld('ef_observacao', 'Observação', opp.ef_observacao, 'text') +
+                '</div></div>';
+        }
+
+        // ---- Card 8: Simulação Banco (Caixa) ----
+        function card8SimulacaoBanco() {
+            return cardHead(8, '🏦', 'Simulação Banco (Caixa)') +
+                '<div class="vgcard-body two">' +
+                    fld('banco_financiador', 'Banco financiado', opp.banco_financiador, 'text') +
+                    fld('taxa_juros_anual', 'Taxa de juros (a.a.)', opp.taxa_juros_anual != null ? opp.taxa_juros_anual + '%' : null, 'number') +
+                    fld('tipo_financiamento', 'Tipo de financiamento', opp.tipo_financiamento, 'text') +
+                    fld('valor_total_financiamento', 'Valor do financiamento', fmtMoney(opp.valor_total_financiamento), 'money') +
+                    fld('prazo_simulacao_meses', 'Prazo (meses)', opp.prazo_simulacao_meses, 'number') +
+                    fld('valor_parcela_banco', 'Valor da parcela', fmtMoney(opp.valor_parcela_banco), 'money') +
+                '</div></div>';
+        }
+
+        // ---- Card 9: Equipe e Responsáveis ----
+        function card9Equipe() {
+            return cardOpen(9, '👥', 'Equipe e Responsáveis') +
+                ro('Corretor da imobiliária', opp.corretor_imobiliaria_email) +
+                ro('Proprietário da oportunidade', opp.proprietario_email) +
+                fld('imobiliaria', 'Imobiliária', opp.imobiliaria, 'text') +
+                ro('Responsável atual', opp.responsavel_atual_email) +
+                fld('construtora_nome', 'Construtora', opp.construtora_nome, 'text') +
+                ro('Aprovador', opp.aprovador_email) +
+                cardClose();
+        }
+
+        // ---- Card 10: Documentos Principais (shell; aba Documentos depois) ----
+        function statusDocBadge(s) { return '<span class="doc-st ' + (DOC_ST_CLS[s] || 'doc-pendente') + '">' + (DOC_ST_TXT[s] || _esc(s)) + '</span>'; }
+        function card10Documentos() {
+            const docs = opp.documentos || [];
+            const rows = docs.length
+                ? docs.map(d => '<div class="doc-row"><span class="dn">' + _esc(d.nome) + '</span>' +
+                    statusDocBadge(d.status) +
+                    (d.tem_arquivo ? '<button class="doc-ico" data-act="dl-doc" data-id="' + d.id + '" data-nome="' + _esc(d.nome_arquivo || d.nome) + '" title="Baixar">⬇</button>' : '<span style="width:22px;"></span>') +
+                  '</div>').join('')
+                : '<div class="opp-card-empty" style="padding:10px 0;">Nenhum documento ainda.</div>';
+            return cardOpen(10, '📄', 'Documentos Principais') + rows +
+                '<div style="padding:8px 0 2px;"><a href="#" data-act="tab-documentos" style="font-size:11.5px;font-weight:600;">Ver todos os documentos →</a></div>' +
+                cardClose();
+        }
+
+        // ---- Card 11: Próxima Ação (tarefa automática da etapa ativa) ----
+        function byPrazo(a, b) { return new Date(a.data_atividade || a.created_at) - new Date(b.data_atividade || b.created_at); }
+        function acoesPendentes() { return (opp.activities || []).filter(a => a.status !== 'concluida' && a.status !== 'cancelada'); }
+        function card11ProximaAcao() {
+            const acts = acoesPendentes();
+            const aid = activeStageId();
+            const daEtapa = acts.filter(a => a.stage_id === aid).sort(byPrazo);
+            const next = daEtapa[0] || acts.slice().sort(byPrazo)[0];
+            let body;
+            if (next) {
+                const prazo = next.data_atividade || next.created_at;
+                const venc = prazo && new Date(prazo) < new Date();
+                body = '<div class="next-action">' +
+                    '<div class="na-title">' + (venc ? '⚠️ ' : '✅ ') + _esc(next.assunto) +
+                        (next.auto ? ' <span class="doc-st doc-enviado" style="font-size:9px;padding:1px 5px;">auto</span>' : '') + '</div>' +
+                    (next.descricao ? '<div class="na-meta" style="margin-bottom:4px;">' + _esc(next.descricao) + '</div>' : '') +
+                    '<div class="na-meta">' + (next.proprietario_email ? 'Responsável: ' + _esc(next.proprietario_email) + '<br>' : '') +
+                        'Prazo: ' + (prazo ? fmtDate(prazo) : '—') + (venc ? ' <span style="color:#ef4444;font-weight:700;">(vencida)</span>' : '') + '</div>' +
+                    (canEdit ? '<button class="btn btn-primary btn-sm" data-act="concluir-ativ" data-id="' + next.id + '">Marcar como concluída</button>' : '') +
+                    (acts.length > 1 ? '<div style="margin-top:8px;font-size:11px;color:#8896a6;">+ ' + (acts.length - 1) + ' outra(s) pendente(s) (ver Atividades)</div>' : '') +
+                '</div>';
+            } else {
+                body = '<div class="next-action"><div class="na-meta">Nenhuma ação pendente. Configure a tarefa automática da etapa em <strong>Pipelines</strong> (ela é criada ao entrar na etapa).</div>' +
+                    '<a href="/crm/activities/nova" class="btn btn-ghost btn-sm">+ Nova atividade</a></div>';
+            }
+            return cardOpen(11, '⚡', 'Próxima Ação') + body + cardClose();
+        }
+
+        // ---- Card 12: Resumo Financeiro ----
+        function card12ResumoFinanceiro() {
+            return cardOpen(12, '💰', 'Resumo Financeiro') +
+                fld('valor_imovel', 'Valor do imóvel', fmtMoney(opp.valor_imovel), 'money') +
+                fld('valor_entrada', 'Valor da entrada', fmtMoney(opp.valor_entrada), 'money') +
+                fld('valor_total_financiamento', 'Valor do financiamento', fmtMoney(opp.valor_total_financiamento), 'money') +
+                fld('comissao_total', 'Comissão – Total', fmtMoney(opp.comissao_total), 'money') +
+                fld('comissao_recebimento_1', '1º Recebimento (entrada)', fmtMoney(opp.comissao_recebimento_1), 'money') +
+                fld('comissao_restante', 'Restante (a receber)', fmtMoney(opp.comissao_restante), 'money') +
+                fld('comissao_previsao_recebimento', 'Previsão de recebimento', fmtDate(opp.comissao_previsao_recebimento), 'date') +
+                fldStatusComissao() +
+                cardClose();
+        }
+        function fldStatusComissao() {
+            const v = opp.comissao_status;
+            const badge = v ? '<span class="doc-st ' + (/receb/i.test(v) && !/a receber/i.test(v) ? 'doc-assinado' : 'doc-enviado') + '">' + _esc(v) + '</span>' : '<span class="empty">—</span>';
+            return '<div class="field" data-key="comissao_status" data-type="text">' +
+                '<span class="field-label">Status da comissão</span>' +
+                '<span class="field-value">' + badge + '</span>' +
+                editBtn() + '</div>';
+        }
+
+        // ---- Card 13: Documentação Contábil / Fechamento ----
+        function card13Contabil() {
+            return cardHead(13, '🧾', 'Documentação Contábil / Fechamento Contábil') +
+                '<div class="vgcard-body two">' +
+                    fld('contabil_mes_fechamento', 'Mês de fechamento', opp.contabil_mes_fechamento, 'text') +
+                    fld('comissao_total', 'Valor da comissão – Total', fmtMoney(opp.comissao_total), 'money') +
+                    fld('contabil_data_fechamento', 'Data de fechamento', fmtDate(opp.contabil_data_fechamento), 'date') +
+                    fld('comissao_forma_recebimento', 'Forma de recebimento', opp.comissao_forma_recebimento, 'text') +
+                    fld('numero_contrato', 'Número do contrato', opp.numero_contrato, 'text') +
+                    fld('comissao_previsao_recebimento', 'Previsão de recebimento', fmtDate(opp.comissao_previsao_recebimento), 'date') +
+                    ro('CPF do cliente', opp.cliente_cpf) +
+                    ro('Nome do cliente', opp.cliente_nome) +
+                    fld('empreendimento_nome', 'Empreendimento', opp.empreendimento_nome || opp.imovel_nome, 'text') +
+                    fld('imovel_endereco', 'Endereço do imóvel', opp.imovel_endereco, 'text') +
+                '</div>' +
+                anexosContabeis() +
+                '</div>';
+        }
+
+        // ---- Anexos Contábeis (card 13) — mesmo subsistema de documentos ----
+        function anexosContabeis() {
+            const docs = opp.documentos || [];
+            const rows = docs.length
+                ? docs.map(d => '<div class="anexo-row">' +
+                    '<span class="an-nome">📄 ' + _esc(d.nome) + '</span>' +
+                    '<span class="an-date">' + (d.tem_arquivo ? fmtDate(d.created_at) : '<span style="color:#cbd5e1;">sem arquivo</span>') + '</span>' +
+                    (d.tem_arquivo ? '<button class="doc-ico" data-act="dl-doc" data-id="' + d.id + '" data-nome="' + _esc(d.nome_arquivo || d.nome) + '" title="Baixar">⬇</button>' : '<span style="width:22px;"></span>') +
+                  '</div>').join('')
+                : '<div style="font-size:12px;color:#94a3b8;padding:6px 0;">Nenhum anexo ainda.</div>';
+            return '<div class="vgcard-body anexos-box">' +
+                '<div class="anexos-grid">' +
+                    '<div>' +
+                        '<div class="anexos-titulo">Anexos Contábeis</div>' + rows +
+                        (canEdit ? '<label class="anexo-add" data-tip>+ Adicionar documento<input type="file" data-act="add-anexo" style="display:none;"></label>' : '') +
+                    '</div>' +
+                    '<div class="relatorio-box">' +
+                        '<div class="anexos-titulo">Relatório Contábil</div>' +
+                        '<p style="font-size:11px;color:#64748b;margin:0 0 8px;">Gera o relatório com os dados de venda e documentos para a contabilidade.</p>' +
+                        '<button class="btn btn-ghost btn-sm" data-act="gerar-relatorio">Gerar Relatório</button>' +
+                    '</div>' +
+                '</div></div>';
+        }
+
+        // ---- Card 4: Linha do Tempo da Etapa Atual (sidebar) ----
+        function card4Timeline() {
+            const cur = (opp.stages || []).find(s => s.id === opp.stage_id) || {};
+            const entrou = opp.entrou_na_etapa_em;
+            const sla = cur.sla_dias;
+            const rows = [];
+            if (entrou) rows.push(['', fmtDate(entrou), 'Cliente entrou na etapa', false]);
+            if (entrou && sla != null) {
+                const prazo = addDays(entrou, sla);
+                rows.push(['', fmtDate(prazo), 'Prazo da etapa (' + sla + ' dias)', false]);
+                const rest = daysBetween(new Date(), prazo);
+                const restTxt = rest > 0 ? 'Faltam ' + rest + ' dia' + (rest === 1 ? '' : 's') + ' para o prazo'
+                    : rest === 0 ? 'Prazo é hoje' : 'Atrasado há ' + (-rest) + ' dia' + (rest === -1 ? '' : 's');
+                rows.push(['muted', '', restTxt, true]);
+            }
+            const body = rows.length
+                ? '<div class="tl">' + rows.map(([dotCls, d, s]) =>
+                    '<div class="tl-row"><div class="tl-dot ' + dotCls + '"></div>' +
+                    '<div class="tl-txt">' + (d ? '<div class="d">' + _esc(d) + '</div>' : '') + '<div class="s">' + _esc(s) + '</div></div></div>').join('') + '</div>'
+                : '<div class="opp-card-empty">Sem histórico de etapa.</div>';
+            return '<div class="opp-card"><div class="opp-card-head"><span class="vgcard-num">4</span><h3>Linha do Tempo da Etapa Atual</h3></div>' + body + '</div>';
+        }
+
+        // ---- Card 5: Alertas e Lembretes (sidebar) ----
+        function card5Alertas() {
+            const alerts = [];
+            const cur = (opp.stages || []).find(s => s.id === activeStageId()) || {};
+            const tempo = opp.entrou_na_etapa_em ? daysBetween(opp.entrou_na_etapa_em, new Date()) : null;
+            // SLA da etapa (prazo vencido / cliente parado)
+            if (opp.entrou_na_etapa_em && cur.sla_dias != null) {
+                const rest = cur.sla_dias - (tempo || 0);
+                if (rest < 0) alerts.push(['🔴', '<strong>SLA estourado</strong> há ' + (-rest) + ' dia(s) nesta etapa (cliente parado).']);
+                else if (rest <= 3) alerts.push(['⏰', 'SLA da etapa: faltam ' + rest + ' dia(s) (prazo ' + fmtDate(addDays(opp.entrou_na_etapa_em, cur.sla_dias)) + ').']);
+            } else if (cur.sla_dias == null && tempo != null && tempo >= 15) {
+                alerts.push(['⏱️', 'Cliente parado há ' + tempo + ' dias nesta etapa.']);
+            }
+            // Tarefas pendentes (vencidas em vermelho)
+            acoesPendentes().sort(byPrazo).slice(0, 4).forEach(a => {
+                const prazo = a.data_atividade;
+                const venc = prazo && new Date(prazo) < new Date();
+                alerts.push([venc ? '⚠️' : '📅', (venc ? '<strong style="color:#ef4444;">' : '') + _esc(a.assunto) + (venc ? '</strong>' : '') +
+                    (prazo ? ' — ' + fmtDate(prazo) : '') + (venc ? ' (vencida)' : '')]);
+            });
+            const body = alerts.length
+                ? alerts.map(([ico, txt]) => '<div class="alert-row"><span class="alert-ico">' + ico + '</span><span>' + txt + '</span></div>').join('')
+                : '<div class="opp-card-empty">Sem alertas no momento.</div>';
+            return '<div class="opp-card"><div class="opp-card-head"><span class="vgcard-num">5</span><h3>Alertas e Lembretes</h3></div>' + body +
+                '<div style="padding:8px 14px;border-top:1px solid #f1f5f9;"><a href="#" data-act="tab-atividades" style="font-size:11.5px;font-weight:600;">Ver todos os alertas →</a></div></div>';
+        }
+
+        // ---- Automações + Legenda ----
+        function renderAutomacoes() {
+            const items = [
+                ['📅', '90 DIAS CONTA CAIXA', ['30 dias: alerta automático', '60 dias: alerta automático', '7 dias antes: lembrete', '90 dias: liberar para análise']],
+                ['🔔', 'MUDANÇA DE ETAPA', ['Notifica responsável', 'Cria próxima ação', 'Registra histórico']],
+                ['✅', 'TAREFAS AUTOMÁTICAS', ['Cada etapa cria uma tarefa com: responsável, prazo e descrição']],
+                ['⏱️', 'CLIENTE PARADO', ['Se o cliente ficar X dias na mesma etapa: alerta no sistema e por e-mail']],
+                ['✉️', 'NOTIFICAÇÕES', ['No CRM', 'Por e-mail', 'Para responsável', 'Para construtora']],
+            ];
+            return '<div class="autom"><h4>Automações e Controles <span style="font-weight:400;text-transform:none;letter-spacing:0;">(a configurar)</span></h4>' +
+                '<div class="autom-grid">' + items.map(([ico, t, lis]) =>
+                    '<div class="autom-item"><h5>' + ico + ' ' + _esc(t) + '</h5><ul>' + lis.map(l => '<li>' + _esc(l) + '</li>').join('') + '</ul></div>'
+                ).join('') + '</div></div>';
+        }
+        function renderLegenda() {
+            const L = [['#3b82f6', 'Azul: Bancário/CAIXA'], ['#8b5cf6', 'Roxo: Engenharia'], ['#f59e0b', 'Amarelo: Documentação'],
+                       ['#f97316', 'Laranja: Atenção / Pendências'], ['#22c55e', 'Verde: Concluído / Finalização'], ['#ef4444', 'Vermelho: Atrasado']];
+            return '<div class="legenda">' + L.map(([c, t]) => '<span><span class="dot" style="background:' + c + ';"></span>' + _esc(t) + '</span>').join('') + '</div>';
+        }
+
+        // ============================================================ OUTRAS ABAS
+        function renderAtividades() {
+            const acts = opp.activities || [];
+            if (!acts.length) return '<div class="opp-card"><div class="opp-card-head"><span class="vgcard-num">•</span><h3>Atividades</h3></div><div class="opp-card-empty">Nenhuma atividade.</div></div>';
+            return '<div class="opp-card"><div class="opp-card-head"><span class="vgcard-num">•</span><h3>Atividades</h3>' +
+                '<a href="/crm/activities/nova" class="btn btn-ghost btn-sm" style="margin-left:auto;">Nova</a></div>' +
+                '<div class="timeline">' + acts.map(a => {
+                    const icon = ({ tarefa: '✓', ligacao: '📞', reuniao: '👥', email: '✉️', whatsapp: '💬', nota: '📝' }[a.tipo] || '•');
+                    return '<div class="tl-item"><div class="tl-icon">' + icon + '</div><div class="tl-content">' +
+                        '<h5>' + _esc(a.assunto) + '</h5>' + (a.descricao ? '<p>' + _esc(a.descricao) + '</p>' : '') +
+                        '<div class="date">' + fmtDateTime(a.data_atividade || a.created_at) + ' · ' + _esc(a.status || '') + '</div></div></div>';
+                }).join('') + '</div></div>';
+        }
+
+        function docStatusSelect(id, cur) {
+            return '<select class="doc-status-sel" data-act="status-doc" data-id="' + id + '"' + (canEdit ? '' : ' disabled') + '>' +
+                ['pendente', 'enviado', 'assinado', 'concluido'].map(s =>
+                    '<option value="' + s + '"' + (cur === s ? ' selected' : '') + '>' + DOC_ST_TXT[s] + '</option>').join('') +
+                '</select>';
+        }
+        function renderDocumentos() {
+            const docs = opp.documentos || [];
+            const list = docs.length
+                ? '<table class="doc-table"><thead><tr><th>Documento</th><th>Status</th><th>Arquivo</th>' + (canEdit ? '<th></th>' : '') + '</tr></thead><tbody>' +
+                    docs.map(d => '<tr>' +
+                        '<td><strong>' + _esc(d.nome) + '</strong>' + (d.criado_por_email ? '<div class="doc-sub">' + _esc(d.criado_por_email) + ' · ' + fmtDate(d.created_at) + '</div>' : '') + '</td>' +
+                        '<td>' + docStatusSelect(d.id, d.status) + '</td>' +
+                        '<td>' + (d.tem_arquivo
+                            ? '<button class="btn btn-ghost btn-sm" data-act="dl-doc" data-id="' + d.id + '" data-nome="' + _esc(d.nome_arquivo || d.nome) + '">⬇ ' + _esc((d.nome_arquivo || 'baixar')) + '</button>'
+                            : (canEdit ? '<label class="doc-upbtn">📎 Anexar<input type="file" data-act="up-doc" data-id="' + d.id + '" style="display:none;"></label>' : '<span style="color:#cbd5e1;">—</span>')) + '</td>' +
+                        (canEdit ? '<td><button class="doc-ico del" data-act="del-doc" data-id="' + d.id + '" title="Excluir">🗑</button></td>' : '') +
+                    '</tr>').join('') + '</tbody></table>'
+                : '<div class="opp-card-empty">Nenhum documento ainda.</div>';
+            const dl = '<datalist id="docSugest">' + DOC_SUGESTOES.map(n => '<option value="' + _esc(n) + '">').join('') + '</datalist>';
+            const form = canEdit
+                ? '<div class="doc-add">' + dl +
+                    '<input id="docNome" list="docSugest" placeholder="Nome do documento (ex: Contrato com a construtora)">' +
+                    '<select id="docStatus">' + ['pendente', 'enviado', 'assinado', 'concluido'].map(s => '<option value="' + s + '">' + DOC_ST_TXT[s] + '</option>').join('') + '</select>' +
+                    '<input type="file" id="docArquivo">' +
+                    '<button class="btn btn-primary btn-sm" data-act="add-doc">Adicionar</button>' +
+                  '</div>'
+                : '';
+            return '<div class="opp-card"><div class="opp-card-head"><span class="vgcard-num">📄</span><h3>Documentos <span class="count" style="color:#94a3b8;">(' + docs.length + ')</span></h3>' +
+                (canEdit ? '<button class="btn btn-ghost btn-sm" data-act="add-checklist" style="margin-left:auto;">+ Checklist padrão</button>' : '') + '</div>' +
+                '<div style="padding:4px 14px 14px;">' + list + form + '</div></div>';
+        }
+
+        function renderContabilTab() {
+            return '<div class="vg-grid">' + card13Contabil() + '</div>' +
+                '<div class="vg-grid vg-2">' + card12ResumoFinanceiro() +
+                    '<div class="opp-card"><div class="opp-card-head"><span class="vgcard-num">📎</span><h3>Anexos Contábeis</h3></div>' +
+                    '<div class="opp-card-empty">Upload de anexos contábeis e "Gerar Relatório" — próxima fase.</div></div>' +
+                '</div>';
+        }
+
+        function renderHistorico() {
+            const hist = opp.stage_history || [];
+            return '<div class="opp-card"><div class="opp-card-head"><span class="vgcard-num">🕑</span><h3>Histórico de Etapas</h3></div>' +
+                (hist.length === 0 ? '<div class="opp-card-empty">Sem histórico.</div>' :
+                 hist.map(h => '<div class="stage-hist-row">' +
+                    '<div><div class="stage-name">' + _esc(h.stage_nome) + '</div><div class="meta">' + fmtDateTime(h.created_at) + (h.usuario_email ? ' · ' + _esc(h.usuario_email) : '') + (h.motivo ? ' · ' + _esc(h.motivo) : '') + '</div></div>' +
+                    '<div class="prob">' + (h.probabilidade != null ? h.probabilidade + '%' : '') + '</div>' +
+                '</div>').join('')) + '</div>';
+        }
+
+        function renderChatter() {
+            const notas = opp.notas || [];
+            return '<div class="opp-card"><div class="opp-card-head"><span class="vgcard-num">📝</span><h3>Notas</h3><span class="count" style="color:#94a3b8;margin-left:auto;">' + notas.length + '</span></div>' +
+                (canEdit ? '<div class="nota-form"><textarea id="novaNota" rows="2" placeholder="Escreva uma nota…"></textarea><button data-act="salvar-nota">Adicionar nota</button></div>' : '') +
+                (notas.length === 0 ? '<div class="opp-card-empty">Sem notas ainda.</div>' :
+                 notas.map(n => '<div class="nota-item"><div class="nota-corpo">' + _esc(n.corpo) + '</div>' +
+                    '<div class="nota-meta">' + _esc(n.criado_por_email || '—') + ' · ' + fmtDateTime(n.created_at) +
+                    (canEdit ? ' <button data-act="del-nota" data-id="' + n.id + '" style="background:none;border:none;color:#ef4444;cursor:pointer;float:right;">excluir</button>' : '') +
+                    '</div></div>').join('')) + '</div>';
+        }
+
+        // ============================================================ CARD/FIELD HELPERS
+        // cardHead = só cabeçalho (sem body). cardOpen = head + body padrão.
+        // Cards com corpo 2-col (.vgcard-body.two) DEVEM usar cardHead (senão fica .vgcard sem fechar).
+        function cardHead(num, icon, title, headExtra) {
+            return '<div class="vgcard"><div class="vgcard-head"><span class="vgcard-num">' + num + '</span>' +
+                '<h3>' + _esc(title) + '</h3>' + (headExtra || '') + '</div>';
+        }
+        function cardOpen(num, icon, title, headExtra) {
+            return cardHead(num, icon, title, headExtra) + '<div class="vgcard-body">';
+        }
+        function cardClose() { return '</div></div>'; }
+        function editBtn() {
+            return !canEdit ? '' : '<button class="field-edit" title="Editar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>';
+        }
+        // read-only field
+        function ro(label, value) {
+            const display = (value == null || value === '') ? '<span class="empty">—</span>' : _esc(String(value));
+            return '<div class="field"><span class="field-label">' + _esc(label) + '</span><span class="field-value">' + display + '</span></div>';
+        }
+        // editable field
+        function fld(key, label, value, type) {
+            const display = (value == null || value === '') ? '<span class="empty">—</span>' : _esc(String(value));
+            return '<div class="field" data-key="' + _esc(key) + '" data-type="' + _esc(type || 'text') + '">' +
+                '<span class="field-label">' + _esc(label) + '</span>' +
+                '<span class="field-value">' + display + '</span>' + editBtn() + '</div>';
+        }
+        function fldBool(key, label, value) {
+            const v = value ? '<span class="check-true">✓ Sim</span>' : '<span class="check-false">✗ Não</span>';
+            return '<div class="field" data-key="' + _esc(key) + '" data-type="bool">' +
+                '<span class="field-label">' + _esc(label) + '</span>' +
+                '<span class="field-value">' + v + '</span>' + editBtn() + '</div>';
+        }
+        function fldStatic(label, value) {
+            return ro(label, value);
+        }
+
+        // ============================================================ HANDLERS
+        function attachHeadHandlers() {
+            document.querySelectorAll('.caminho-step').forEach(el => el.addEventListener('click', async () => {
+                if (!canEdit) return;
+                const sid = parseInt(el.dataset.stageId, 10);
+                if (sid === opp.stage_id) return;
+                const sname = (opp.stages.find(s => s.id === sid) || {}).nome || '';
+                const ok = await Modal.confirm('Mover para a etapa <strong>' + _esc(sname) + '</strong>?');
+                if (!ok) return;
+                try { await api.post('/crm/opportunities/' + oppId + '/stage', { stage_id: sid }); showToast('Etapa atualizada!'); await render(); }
+                catch (err) { showToast(err.message, 'error'); }
+            }));
+            ['alterar-prop', 'mais-acoes'].forEach(act => {
+                const b = document.querySelector('[data-act="' + act + '"]');
+                if (b) b.addEventListener('click', () => showToast('Ação "' + act + '" — em breve', 'success'));
+            });
+        }
+
+        function attachBodyHandlers() {
+            // abas (recriadas a cada rebuild do corpo)
+            document.querySelectorAll('.opp-tab').forEach(t => t.addEventListener('click', () => { activeTab = t.dataset.tab; rebuildBody(); }));
+            // inline edit
+            if (canEdit) document.querySelectorAll('.field-edit').forEach(btn =>
+                btn.addEventListener('click', e => { e.stopPropagation(); inlineEdit(btn.closest('.field')); }));
+            // navegação por links internos de aba
+            document.querySelectorAll('[data-act="tab-documentos"]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); switchTab('documentos'); }));
+            document.querySelectorAll('[data-act="tab-atividades"]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); switchTab('atividades'); }));
+            // concluir atividade
+            const cb = document.querySelector('[data-act="concluir-ativ"]');
+            if (cb) cb.addEventListener('click', async () => {
+                try { await api.post('/crm/activities/' + cb.dataset.id + '/concluir', {}); showToast('Atividade concluída!'); await render(); }
+                catch (e) { showToast(e.message, 'error'); }
+            });
+            // salvar nota
+            const sn = document.querySelector('[data-act="salvar-nota"]');
+            if (sn) sn.addEventListener('click', async () => {
+                const ta = document.getElementById('novaNota');
+                if (!ta.value.trim()) return;
+                try { await api.post('/crm/opportunities/' + oppId + '/notas', { corpo: ta.value.trim() }); showToast('Nota adicionada!'); await render(); }
+                catch (e) { showToast(e.message, 'error'); }
+            });
+            document.querySelectorAll('[data-act="del-nota"]').forEach(b => b.addEventListener('click', async () => {
+                if (!await Modal.confirm('Excluir nota?')) return;
+                try { await api.del('/crm/opportunities/notas/' + b.dataset.id); showToast('Excluída'); await render(); }
+                catch (e) { showToast(e.message, 'error'); }
+            }));
+            attachDocHandlers();
+        }
+
+        function attachDocHandlers() {
+            // baixar arquivo (card 10 e aba)
+            document.querySelectorAll('[data-act="dl-doc"]').forEach(b => b.addEventListener('click', () =>
+                api.downloadFile('/crm/opportunities/documentos/' + b.dataset.id + '/arquivo', b.dataset.nome || 'documento')));
+            if (!canEdit) return;
+            // mudar status
+            document.querySelectorAll('[data-act="status-doc"]').forEach(sel => sel.addEventListener('change', async () => {
+                try { await api.put('/crm/opportunities/documentos/' + sel.dataset.id, { status: sel.value }); showToast('Status atualizado'); await render(); }
+                catch (e) { showToast(e.message, 'error'); }
+            }));
+            // adicionar documento (com ou sem arquivo)
+            const addBtn = document.querySelector('[data-act="add-doc"]');
+            if (addBtn) addBtn.addEventListener('click', async () => {
+                const nome = (document.getElementById('docNome').value || '').trim();
+                if (!nome) { showToast('Informe o nome do documento', 'error'); return; }
+                const fd = new FormData();
+                fd.append('nome', nome);
+                fd.append('status', document.getElementById('docStatus').value);
+                const f = document.getElementById('docArquivo').files[0];
+                if (f) fd.append('arquivo', f);
+                try { await api.upload('/crm/opportunities/' + oppId + '/documentos', fd); showToast('Documento adicionado'); await render(); }
+                catch (e) { showToast(e.message, 'error'); }
+            });
+            // anexar arquivo a item existente
+            document.querySelectorAll('[data-act="up-doc"]').forEach(inp => inp.addEventListener('change', async () => {
+                const f = inp.files[0]; if (!f) return;
+                const fd = new FormData(); fd.append('arquivo', f);
+                try { await api.upload('/crm/opportunities/documentos/' + inp.dataset.id + '/arquivo', fd); showToast('Arquivo anexado'); await render(); }
+                catch (e) { showToast(e.message, 'error'); }
+            }));
+            // anexo contábil (card 13): upload rápido cria um documento com o nome do arquivo
+            const addAnexo = document.querySelector('[data-act="add-anexo"]');
+            if (addAnexo) addAnexo.addEventListener('change', async () => {
+                const f = addAnexo.files[0]; if (!f) return;
+                const fd = new FormData(); fd.append('nome', f.name); fd.append('status', 'enviado'); fd.append('arquivo', f);
+                try { await api.upload('/crm/opportunities/' + oppId + '/documentos', fd); showToast('Anexo adicionado'); await render(); }
+                catch (e) { showToast(e.message, 'error'); }
+            });
+            // gerar relatório contábil (XLSX, com filtros)
+            const ger = document.querySelector('[data-act="gerar-relatorio"]');
+            if (ger) ger.addEventListener('click', async () => {
+                let imoveis = [];
+                try { imoveis = await api.get('/lookup/imoveis'); } catch (e) {}
+                const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+                const inp = 'width:100%;padding:7px 10px;border:1px solid #d1d5db;border-radius:5px;font-size:13px;font-family:inherit;';
+                const mesOpts = '<option value="">Todos</option>' + meses.map((m, i) => '<option value="' + (i + 1) + '">' + m + '</option>').join('');
+                const imovOpts = '<option value="">Todos</option>' + imoveis.map(im => '<option value="' + im.id + '"' + (opp.imovel_id === im.id ? ' selected' : '') + '>' + _esc(im.nome) + '</option>').join('');
+                const anoAtual = new Date().getFullYear();
+                const html = '<div style="display:grid;gap:10px;">' +
+                    '<label style="font-size:12px;font-weight:600;color:#475569;">Mês<select id="r_mes" style="' + inp + '">' + mesOpts + '</select></label>' +
+                    '<label style="font-size:12px;font-weight:600;color:#475569;">Ano<input id="r_ano" type="number" value="' + anoAtual + '" style="' + inp + '"></label>' +
+                    '<label style="font-size:12px;font-weight:600;color:#475569;">Empreendimento<select id="r_imovel" style="' + inp + '">' + imovOpts + '</select></label>' +
+                    '<label style="font-size:12px;font-weight:600;color:#475569;">Status da comissão<select id="r_status" style="' + inp + '"><option value="">Todos</option><option value="A RECEBER">A receber</option><option value="RECEBIDO">Recebido</option></select></label>' +
+                    '<p style="font-size:11px;color:#8896a6;margin:0;">Gera um Excel com as vendas/comissões que batem nos filtros (deixe em branco = todos).</p>' +
+                    '</div>';
+                Modal.prompt('Gerar Relatório Contábil (Excel)', html, () => {
+                    const qs = new URLSearchParams();
+                    const mes = document.getElementById('r_mes').value; if (mes) qs.set('mes', mes);
+                    const ano = document.getElementById('r_ano').value; if (ano) qs.set('ano', ano);
+                    const im = document.getElementById('r_imovel').value; if (im) qs.set('imovel_id', im);
+                    const st = document.getElementById('r_status').value; if (st) qs.set('comissao_status', st);
+                    api.downloadFile('/crm/relatorio/contabil?' + qs.toString(), 'relatorio_contabil.xlsx');
+                }, { confirmLabel: 'Gerar Excel' });
+            });
+            // excluir documento
+            document.querySelectorAll('[data-act="del-doc"]').forEach(b => b.addEventListener('click', async () => {
+                if (!await Modal.confirm('Excluir este documento?')) return;
+                try { await api.del('/crm/opportunities/documentos/' + b.dataset.id); showToast('Excluído'); await render(); }
+                catch (e) { showToast(e.message, 'error'); }
+            }));
+            // checklist padrão (adiciona os que faltam)
+            const cl = document.querySelector('[data-act="add-checklist"]');
+            if (cl) cl.addEventListener('click', async () => {
+                const existentes = new Set((opp.documentos || []).map(d => (d.nome || '').toLowerCase()));
+                const faltam = DOC_CHECKLIST_PADRAO.filter(n => !existentes.has(n.toLowerCase()));
+                if (!faltam.length) { showToast('Checklist já está completo'); return; }
+                try {
+                    for (const n of faltam) { const fd = new FormData(); fd.append('nome', n); fd.append('status', 'pendente'); await api.upload('/crm/opportunities/' + oppId + '/documentos', fd); }
+                    showToast(faltam.length + ' itens adicionados'); await render();
+                } catch (e) { showToast(e.message, 'error'); }
+            });
+        }
+
+        function switchTab(tab) {
+            activeTab = tab;
+            rebuildBody();
+        }
+
+        async function inlineEdit(fieldEl) {
+            const key = fieldEl.dataset.key;
+            const type = fieldEl.dataset.type;
+            if (!key) return;
+            const valueEl = fieldEl.querySelector('.field-value');
+            const currentVal = opp[key];
+            let input;
+            if (type === 'bool') {
+                input = document.createElement('select');
+                input.innerHTML = '<option value="false"' + (!currentVal ? ' selected' : '') + '>Não</option><option value="true"' + (currentVal ? ' selected' : '') + '>Sim</option>';
+            } else if (type === 'date') {
+                input = document.createElement('input'); input.type = 'date';
+                input.value = currentVal ? String(currentVal).slice(0, 10) : '';
+            } else if (type === 'number' || type === 'money') {
+                input = document.createElement('input'); input.type = 'number'; input.step = type === 'money' ? '0.01' : '1';
+                input.value = currentVal != null ? currentVal : '';
+            } else {
+                input = document.createElement('input'); input.type = 'text'; input.value = currentVal != null ? currentVal : '';
+            }
+            input.className = 'editing';
+            valueEl.innerHTML = ''; valueEl.appendChild(input);
+            input.focus(); if (input.select) input.select();
+            const save = async () => {
+                input.removeEventListener('blur', save); input.removeEventListener('keydown', onKey);
+                let newVal = input.value;
+                if (type === 'bool') newVal = newVal === 'true';
+                else if (type === 'number') newVal = newVal ? parseInt(newVal, 10) : null;
+                else if (type === 'money') newVal = newVal ? parseFloat(newVal) : null;
+                else if (!newVal) newVal = null;
+                if (newVal === currentVal) { rebuildBody(); return; }
+                try { await patch({ [key]: newVal }); } catch (e) { showToast(e.message, 'error'); rebuildBody(); }
+            };
+            const onKey = e => {
+                if (e.key === 'Enter') { e.preventDefault(); save(); }
+                if (e.key === 'Escape') { rebuildBody(); }
+            };
+            input.addEventListener('blur', save);
+            input.addEventListener('keydown', onKey);
+        }
+
+        async function patch(patchObj) {
+            await api.patch('/crm/opportunities/' + oppId, patchObj);
+            // atualiza objeto local e re-renderiza o corpo (sem refetch pesado)
+            Object.assign(opp, patchObj);
+            showToast('Salvo!');
+            rebuildBody();
+        }
+
+        // ============================================================ HELPERS
+        function fmtDate(v) { if (!v) return null; const d = new Date(v); return isNaN(d) ? v : d.toLocaleDateString('pt-BR'); }
+        function fmtDateTime(v) { if (!v) return null; const d = new Date(v); return isNaN(d) ? v : d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); }
+        function fmtMoney(v) { if (v == null || v === '') return null; return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+        function daysBetween(a, b) { if (!a || !b) return null; return Math.floor((new Date(b) - new Date(a)) / 86400000); }
+        function addDays(v, n) { const d = new Date(v); d.setDate(d.getDate() + n); return d; }
+        function _esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+        function showToast(msg, type) { const t = document.getElementById('toast'); if (!t) return; t.textContent = msg; t.className = 'toast ' + (type || 'success'); t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
+    })();
+    </script>
+</body>
+</html>

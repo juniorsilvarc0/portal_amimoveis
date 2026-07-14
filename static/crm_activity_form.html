@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atividade — CRM</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/layout.css">
+</head>
+<body>
+    <div class="app-layout">
+        <aside class="sidebar" id="sidebar"></aside>
+        <div class="main-content" id="mainContent">
+            <header class="topbar">
+                <button class="topbar-hamburger" aria-label="Abrir menu"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+                <span class="topbar-title" id="pageTitle">Nova Atividade</span>
+            </header>
+            <main class="page-area">
+                <div class="page-header">
+                    <div><h1 class="page-title" id="pageTitleMain">Nova Atividade</h1></div>
+                    <div class="page-actions"><a href="/crm/activities" class="btn btn-ghost">Voltar</a></div>
+                </div>
+                <div class="alert-error" id="alertError"></div>
+                <form id="form">
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible><h3>Dados</h3></div>
+                        <div class="form-card-body">
+                            <div class="form-grid-auto">
+                                <div class="form-group">
+                                    <label for="tipo">Tipo *</label>
+                                    <select id="tipo" required>
+                                        <option value="tarefa">Tarefa</option>
+                                        <option value="ligacao">Ligação</option>
+                                        <option value="reuniao">Reunião</option>
+                                        <option value="email">E-mail</option>
+                                        <option value="whatsapp">WhatsApp</option>
+                                        <option value="nota">Nota</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="prioridade">Prioridade</label>
+                                    <select id="prioridade">
+                                        <option value="baixa">Baixa</option>
+                                        <option value="normal" selected>Normal</option>
+                                        <option value="alta">Alta</option>
+                                        <option value="urgente">Urgente</option>
+                                    </select>
+                                </div>
+                                <div class="form-group full-width">
+                                    <label for="assunto">Assunto *</label>
+                                    <input type="text" id="assunto" required>
+                                </div>
+                                <div class="form-group full-width">
+                                    <label for="descricao">Descrição</label>
+                                    <textarea id="descricao" rows="3"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="data_atividade">Data e hora</label>
+                                    <input type="datetime-local" id="data_atividade">
+                                </div>
+                                <div class="form-group">
+                                    <label for="status">Status</label>
+                                    <select id="status">
+                                        <option value="pendente">Pendente</option>
+                                        <option value="em_andamento">Em andamento</option>
+                                        <option value="concluida">Concluída</option>
+                                        <option value="cancelada">Cancelada</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible><h3>Relacionado a</h3></div>
+                        <div class="form-card-body">
+                            <p style="font-size:13px;color:#8896a6;margin-bottom:8px;">Selecione no máximo um (lead OU oportunidade OU cliente).</p>
+                            <div class="form-grid-auto">
+                                <div class="form-group">
+                                    <label for="lead_id">Lead</label>
+                                    <select id="lead_id"><option value="">—</option></select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="opportunity_id">Oportunidade</label>
+                                    <select id="opportunity_id"><option value="">—</option></select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="cliente_id">Cliente</label>
+                                    <select id="cliente_id"><option value="">—</option></select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="proprietario_id">Responsável</label>
+                                    <select id="proprietario_id"><option value="">—</option></select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <a href="/crm/activities" class="btn btn-ghost">Cancelar</a>
+                        <button type="submit" class="btn btn-primary">Salvar</button>
+                    </div>
+                </form>
+            </main>
+        </div>
+    </div>
+    <div class="toast" id="toast"></div>
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/sidebar.js"></script>
+    <script src="/static/js/forms.js"></script>
+    <script>
+    (async function () {
+        let usuario;
+        try { usuario = await api.requireAuth(); } catch (e) { return; }
+        renderSidebar(document.getElementById('sidebar'), '/crm/activities', usuario);
+        const form = document.getElementById('form');
+        forms.init(form);
+
+        const editId = (() => { const m=location.pathname.match(/\/crm\/activities\/(\d+)\/editar/); return m?parseInt(m[1],10):null; })();
+        if (!api.can('crm_activities', 'ver')) { window.location.href = '/'; return; }
+        var podeEscrever = editId ? api.can('crm_activities', 'editar') : api.can('crm_activities', 'criar');
+        if (!podeEscrever) { window.location.href = '/crm/activities'; return; }
+        if (editId) document.getElementById('pageTitleMain').textContent = 'Editar Atividade';
+
+        await Promise.all([
+            loadSel('lead_id', '/crm/leads?per_page=500', r => r.data || [], l => l.nome),
+            loadSel('opportunity_id', '/crm/opportunities?per_page=500', r => r.data || [], o => o.nome),
+            loadSel('cliente_id', '/clientes?per_page=500', r => r.data || [], c => c.nome),
+            loadSel('proprietario_id', '/usuarios', r => r.data || r || [], u => u.email),
+        ]);
+        if (editId) await carregar(editId);
+
+        async function loadSel(id, url, extract, label) {
+            try {
+                const r = await api.get(url);
+                const list = extract(r);
+                const sel = document.getElementById(id);
+                list.forEach(it => { const o=document.createElement('option'); o.value=it.id; o.textContent=label(it); sel.appendChild(o); });
+            } catch (e) {}
+        }
+
+        async function carregar(id) {
+            try {
+                const a = await api.get('/crm/activities/' + id);
+                ['tipo','assunto','descricao','data_atividade','status','prioridade','lead_id','opportunity_id','cliente_id','proprietario_id'].forEach(f => {
+                    const el = document.getElementById(f);
+                    if (!el || a[f] == null) return;
+                    if (f === 'data_atividade' && a[f]) {
+                        el.value = String(a[f]).slice(0,16);
+                    } else {
+                        el.value = a[f];
+                    }
+                });
+            } catch (e) { forms.alertError(e.message); }
+        }
+
+        form.addEventListener('submit', async e => {
+            e.preventDefault();
+            forms.alertClear();
+            try {
+                const v = id => { const el=document.getElementById(id); return el?(el.value||'').trim():''; };
+                const intval = id => v(id) ? parseInt(v(id),10) : null;
+                const payload = {
+                    tipo: v('tipo'),
+                    assunto: v('assunto'),
+                    descricao: v('descricao') || null,
+                    data_atividade: v('data_atividade') || null,
+                    status: v('status') || 'pendente',
+                    prioridade: v('prioridade') || 'normal',
+                    lead_id: intval('lead_id'),
+                    opportunity_id: intval('opportunity_id'),
+                    cliente_id: intval('cliente_id'),
+                    proprietario_id: intval('proprietario_id'),
+                };
+                if (editId) await api.put('/crm/activities/' + editId, payload);
+                else await api.post('/crm/activities', payload);
+                showToast('Salvo!', 'success');
+                setTimeout(() => location.href = '/crm/activities', 800);
+            } catch (err) { forms.alertError(err.message); }
+        });
+        function showToast(msg, type){const t=document.getElementById('toast');if(!t)return;t.textContent=msg;t.className='toast '+(type||'success');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+    })();
+    </script>
+</body>
+</html>

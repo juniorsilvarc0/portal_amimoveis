@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerentes — AM Imóveis</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/layout.css">
+</head>
+<body>
+    <div class="app-layout">
+
+        <aside class="sidebar" id="sidebar" aria-label="Menu lateral"></aside>
+
+        <div class="main-content" id="mainContent">
+
+            <header class="topbar">
+                <button class="topbar-hamburger" aria-label="Abrir menu">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="6" x2="21" y2="6"/>
+                        <line x1="3" y1="12" x2="21" y2="12"/>
+                        <line x1="3" y1="18" x2="21" y2="18"/>
+                    </svg>
+                </button>
+                <span class="topbar-title">Gerentes</span>
+            </header>
+
+            <main class="page-area">
+
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Gerentes</h1>
+                        <p class="page-subtitle">Cadastro de gerentes das agências</p>
+                    </div>
+                    <div class="page-actions">
+                        <button class="btn btn-primary" id="btnNovo">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2.5"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="12" y1="5" x2="12" y2="19"/>
+                                <line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                            Novo Gerente
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card" style="padding: 0; overflow: hidden;">
+                    <div id="grid" style="padding: 0;"></div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <div class="toast" id="toast" role="alert" aria-live="polite"></div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/sidebar.js"></script>
+    <script src="/static/js/masks.js"></script>
+    <script src="/static/js/forms.js"></script>
+    <script src="/static/js/modal.js"></script>
+    <script src="/static/js/datagrid.js"></script>
+
+    <script>
+        (async function () {
+            'use strict';
+
+            /* ---- 1. Auth ---- */
+            var usuario;
+            try {
+                usuario = await api.requireAuth();
+            } catch (e) {
+                return;
+            }
+
+            if (!api.can('cad_gerentes', 'ver')) { window.location.href = '/'; return; }
+
+            /* ---- 2. Sidebar ---- */
+            renderSidebar(document.getElementById('sidebar'), '/cadastros/gerentes', usuario);
+
+            /* ---- 3. Permissões ---- */
+            var canWrite = api.can('cad_gerentes', 'criar') || api.can('cad_gerentes', 'editar');
+            var canDelete = api.can('cad_gerentes', 'excluir');
+            if (!canWrite) {
+                var btn = document.getElementById('btnNovo');
+                if (btn) btn.style.display = 'none';
+            }
+
+            /* ---- 4. DataGrid ---- */
+            var grid = new DataGrid(document.getElementById('grid'), {
+                endpoint: '/gerentes',
+                searchable: true,
+                perPage: 25,
+                emptyMessage: 'Nenhum gerente cadastrado.',
+                columns: [
+                    {
+                        key: 'id',
+                        label: '#',
+                        sortable: true,
+                        width: '60px',
+                        align: 'center',
+                    },
+                    {
+                        key: 'nome',
+                        label: 'Nome',
+                        sortable: true,
+                    },
+                    {
+                        key: 'agencia_nome',
+                        label: 'Agência',
+                        format: function (v) { return v || '—'; },
+                    },
+                    {
+                        key: 'created_at',
+                        label: 'Criado em',
+                        width: '130px',
+                        align: 'center',
+                        format: function (v) {
+                            if (!v) return '—';
+                            return new Date(v).toLocaleDateString('pt-BR');
+                        },
+                    },
+                ],
+                rowActions: function (row) {
+                    var actions = [];
+                    if (canWrite) {
+                        actions.push({
+                            label: 'Editar',
+                            className: 'btn-ghost',
+                            onClick: function (r) { openEditModal(r); },
+                        });
+                    }
+                    if (canDelete) {
+                        actions.push({
+                            label: 'Excluir',
+                            className: 'btn-danger',
+                            onClick: function (r) { deletar(r); },
+                        });
+                    }
+                    return actions;
+                },
+            });
+
+            document.getElementById('btnNovo').addEventListener('click', function () {
+                openEditModal(null);
+            });
+
+            /* ---- 5. Modal de criar/editar ---- */
+            async function openEditModal(row) {
+                var isEdit = !!row;
+
+                var m = new Modal({
+                    title: isEdit ? 'Editar Gerente' : 'Novo Gerente',
+                    bodyHtml:
+                        '<form id="gerenteForm" novalidate>' +
+                            '<div class="alert-error" id="alertError"></div>' +
+                            '<div class="form-grid-auto">' +
+                                '<div class="form-group full-width">' +
+                                    '<label for="m-nome">Nome <span class="required">*</span></label>' +
+                                    '<input type="text" id="m-nome" name="nome" placeholder="Ex: João Silva" required>' +
+                                    '<small class="field-error"></small>' +
+                                '</div>' +
+                                '<div class="form-group full-width">' +
+                                    '<label for="m-agencia_id">Agência <span class="required">*</span></label>' +
+                                    '<select id="m-agencia_id" name="agencia_id" required>' +
+                                        '<option value="">Carregando...</option>' +
+                                    '</select>' +
+                                    '<small class="field-error"></small>' +
+                                '</div>' +
+                            '</div>' +
+                        '</form>',
+                    footerHtml:
+                        '<button class="btn btn-ghost" id="m-cancelar">Cancelar</button>' +
+                        '<button class="btn btn-primary" id="m-salvar">' + (isEdit ? 'Salvar' : 'Criar') + '</button>',
+                    width: '440px',
+                });
+                m.open();
+
+                var form      = document.getElementById('gerenteForm');
+                var agenciaEl = document.getElementById('m-agencia_id');
+                var salvarBtn = document.getElementById('m-salvar');
+
+                forms.init(form);
+
+                /* Carregar lookup de agências */
+                try {
+                    var agencias = await api.get('/lookup/agencias');
+                    agenciaEl.innerHTML = '<option value="">— Selecione —</option>' +
+                        agencias.map(function (a) {
+                            return '<option value="' + a.id + '">' + a.nome + '</option>';
+                        }).join('');
+                } catch (e) {
+                    agenciaEl.innerHTML = '<option value="">Erro ao carregar agências</option>';
+                }
+
+                if (row) forms.fillForm(form, row);
+
+                document.getElementById('m-cancelar').addEventListener('click', function () { m.close(); });
+
+                salvarBtn.addEventListener('click', async function () {
+                    forms.alertClear();
+                    if (!forms.validate(form)) return;
+
+                    var payload = forms.readForm(form);
+                    if (payload.agencia_id) payload.agencia_id = parseInt(payload.agencia_id, 10);
+
+                    salvarBtn.disabled = true;
+                    salvarBtn.textContent = 'Salvando...';
+
+                    try {
+                        if (isEdit) {
+                            await api.put('/gerentes/' + row.id, payload);
+                            showToast('Gerente atualizado.', 'success');
+                        } else {
+                            await api.post('/gerentes', payload);
+                            showToast('Gerente criado.', 'success');
+                        }
+                        m.close();
+                        grid.refresh();
+                    } catch (e) {
+                        forms.alertError('Erro ao salvar: ' + (e.message || 'Tente novamente.'));
+                        salvarBtn.disabled = false;
+                        salvarBtn.textContent = isEdit ? 'Salvar' : 'Criar';
+                    }
+                });
+            }
+
+            /* ---- 6. Excluir ---- */
+            async function deletar(row) {
+                var ok = await Modal.confirm('Excluir o gerente <strong>' + _esc(row.nome) + '</strong>?<br><small style="color:#9aa4b0">Esta ação não pode ser desfeita.</small>');
+                if (!ok) return;
+                try {
+                    await api.del('/gerentes/' + row.id);
+                    showToast('Gerente excluído.', 'success');
+                    grid.refresh();
+                } catch (e) {
+                    showToast(e.message || 'Erro ao excluir.', 'error');
+                }
+            }
+
+            /* ---- Helpers ---- */
+            function _esc(s) {
+                return String(s || '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
+            function showToast(msg, type, duration) {
+                type = type || 'success';
+                duration = duration || 3500;
+                var t = document.getElementById('toast');
+                if (!t) return;
+                t.textContent = msg;
+                t.className = 'toast ' + type;
+                t.classList.add('show');
+                setTimeout(function () { t.classList.remove('show'); }, duration);
+            }
+        })();
+    </script>
+</body>
+</html>

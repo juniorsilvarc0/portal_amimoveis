@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Importar Leads — CRM</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/layout.css">
+    <style>
+        .upload-card { background:#fff; border:2px dashed #d1d5db; border-radius:10px; padding:32px; text-align:center; }
+        .upload-card.dragover { border-color:#E5094B; background:#fef3f2; }
+        .upload-card input[type=file] { font-size:14px; margin-top:12px; }
+        .result-card { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:20px; margin-top:16px; }
+        .result-ok { color:#22c55e; font-weight:700; font-size:24px; }
+        .result-fail { color:#ef4444; font-size:14px; margin-top:8px; }
+        pre.example { background:#f5f7fa; padding:12px; border-radius:6px; font-size:12px; overflow-x:auto; }
+    </style>
+</head>
+<body>
+    <div class="app-layout">
+        <aside class="sidebar" id="sidebar"></aside>
+        <div class="main-content">
+            <header class="topbar">
+                <button class="topbar-hamburger"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+                <span class="topbar-title">Importar Leads</span>
+            </header>
+            <main class="page-area">
+                <div class="page-header">
+                    <div><h1 class="page-title">Importar Leads (CSV)</h1><p class="page-subtitle">Upload de planilha em massa</p></div>
+                    <div class="page-actions"><a href="/crm/leads" class="btn btn-ghost">Voltar</a></div>
+                </div>
+                <div class="card">
+                    <div class="upload-card" id="uploadCard">
+                        <p style="font-size:14px;color:#8896a6;margin-bottom:8px;">Arraste um CSV ou clique para selecionar</p>
+                        <input type="file" id="csvFile" accept=".csv,text/csv">
+                        <br><br>
+                        <button class="btn btn-primary" id="btnUpload" disabled>Importar</button>
+                    </div>
+                    <div id="result"></div>
+                </div>
+                <div class="card" style="margin-top:16px;">
+                    <h3 style="margin:0 0 12px;font-size:15px;">Formato esperado</h3>
+                    <p style="font-size:13px;color:#8896a6;margin-bottom:8px;">
+                        Cabeçalho na primeira linha. Aceita separadores <code>,</code> <code>;</code> <code>|</code> ou tab.
+                        UTF-8 ou Latin-1.
+                    </p>
+                    <pre class="example">nome,email,whatsapp,cpf_cnpj,origem,interesse,valor_estimado
+João Silva,joao@email.com,(86) 99999-0000,123.456.789-00,site,comprar,250000
+Maria Santos,maria@email.com,(86) 98888-1111,,indicacao,alugar,</pre>
+                    <p style="font-size:12px;color:#8896a6;margin-top:8px;">
+                        Colunas aceitas (qualquer ordem): <code>nome</code> (obrigatório), <code>email</code>, <code>telefone</code>, <code>whatsapp</code>, <code>cpf_cnpj</code>, <code>origem</code>, <code>status</code>, <code>interesse</code>, <code>valor_estimado</code>, <code>observacoes</code>.
+                    </p>
+                </div>
+            </main>
+        </div>
+    </div>
+    <div class="toast" id="toast"></div>
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/sidebar.js"></script>
+    <script>
+    (async function () {
+        let usuario;
+        try { usuario = await api.requireAuth(); } catch (e) { return; }
+        if (!api.can('crm_leads', 'ver')) { window.location.href = '/'; return; }
+        if (!api.can('crm_leads', 'criar')) { window.location.href = '/crm/leads'; return; }
+        renderSidebar(document.getElementById('sidebar'), '/crm/import', usuario);
+
+        const card = document.getElementById('uploadCard');
+        const fileInput = document.getElementById('csvFile');
+        const btn = document.getElementById('btnUpload');
+        const result = document.getElementById('result');
+
+        fileInput.addEventListener('change', () => { btn.disabled = !fileInput.files.length; });
+        card.addEventListener('dragover', e => { e.preventDefault(); card.classList.add('dragover'); });
+        card.addEventListener('dragleave', () => card.classList.remove('dragover'));
+        card.addEventListener('drop', e => {
+            e.preventDefault();
+            card.classList.remove('dragover');
+            if (e.dataTransfer.files.length) { fileInput.files = e.dataTransfer.files; btn.disabled = false; }
+        });
+
+        btn.addEventListener('click', async () => {
+            if (!fileInput.files.length) return;
+            const fd = new FormData();
+            fd.append('arquivo', fileInput.files[0]);
+            btn.disabled = true; btn.textContent = 'Importando…';
+            try {
+                const token = localStorage.getItem('token');
+                const r = await fetch('/api/v1/crm/import/leads', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token },
+                    body: fd,
+                });
+                if (!r.ok) {
+                    const err = await r.json().catch(() => ({}));
+                    throw new Error(err.detail || 'Erro');
+                }
+                const res = await r.json();
+                result.innerHTML =
+                    '<div class="result-card">' +
+                        '<div class="result-ok">' + res.sucesso + ' / ' + res.total + ' leads importados</div>' +
+                        (res.falhas.length ? '<div class="result-fail">' + res.falhas.length + ' falhas:</div>' +
+                            '<ul style="font-size:12px;color:#ef4444;margin-top:6px;">' +
+                            res.falhas.map(f => '<li>Linha ' + f.linha + ': ' + _esc(f.erro) + '</li>').join('') +
+                            '</ul>' : '') +
+                    '</div>';
+            } catch (e) {
+                result.innerHTML = '<div class="result-card"><div class="result-fail">Erro: ' + _esc(e.message) + '</div></div>';
+            }
+            btn.disabled = false; btn.textContent = 'Importar';
+        });
+
+        function _esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+    })();
+    </script>
+</body>
+</html>

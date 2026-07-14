@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proposta — AM Imoveis</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/layout.css">
+    <style>
+        /* Pagamentos grid — estrutura visual específica desta página, não canônica */
+        .pg-grid {
+            display: grid;
+            grid-template-columns: 1.6fr 0.7fr 1.2fr 1.2fr 1.1fr 1.2fr;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+        .pg-head {
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-weight: 700;
+            padding: 0 4px;
+        }
+        .pg-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .pg-grid input {
+            padding: 7px 10px;
+            border: 1.5px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: inherit;
+            width: 100%;
+            outline: none;
+            transition: border-color var(--transition);
+        }
+        .pg-grid input:focus {
+            border-color: var(--secondary);
+            box-shadow: 0 0 0 3px rgba(6, 86, 118, 0.10);
+        }
+        @media (max-width: 768px) {
+            .pg-grid {
+                grid-template-columns: 1fr;
+                gap: 4px;
+                margin-bottom: 14px;
+                border-bottom: 1px dashed var(--border);
+                padding-bottom: 10px;
+            }
+            .pg-head { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-layout">
+
+        <aside class="sidebar" id="sidebar" aria-label="Menu lateral"></aside>
+
+        <div class="main-content" id="mainContent">
+
+            <header class="topbar">
+                <button class="topbar-hamburger" aria-label="Abrir menu">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="6" x2="21" y2="6"/>
+                        <line x1="3" y1="12" x2="21" y2="12"/>
+                        <line x1="3" y1="18" x2="21" y2="18"/>
+                    </svg>
+                </button>
+                <span class="topbar-title" id="pageTitle">Nova Proposta</span>
+            </header>
+
+            <main class="page-area">
+
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title" id="pageTitleMain">Nova Proposta</h1>
+                        <p class="page-subtitle">Preencha os dados da proposta de compra</p>
+                    </div>
+                    <div class="page-actions">
+                        <a href="/proposta" class="btn btn-ghost">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="15 18 9 12 15 6"/>
+                            </svg>
+                            Voltar
+                        </a>
+                    </div>
+                </div>
+
+                <div class="alert-error" id="alertError"></div>
+
+                <form id="form" autocomplete="off" novalidate>
+
+                    <!-- 01. Imóvel & Empreendimento -->
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible>
+                            <span class="section-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                                    <polyline points="9 22 9 12 15 12 15 22"/>
+                                </svg>
+                            </span>
+                            <h3>01. Imóvel &amp; Empreendimento</h3>
+                            <span class="chevron-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2.5"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </span>
+                        </div>
+                        <div class="form-card-body">
+                            <div class="form-grid-auto">
+                                <div class="form-group">
+                                    <label for="imovel_id">Empreendimento / Imóvel</label>
+                                    <select id="imovel_id" name="imovel_id">
+                                        <option value="">Carregando...</option>
+                                    </select>
+                                    <small class="field-error"></small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="unidade">Unidade / Bloco</label>
+                                    <input type="text" id="unidade" name="unidade">
+                                    <small class="field-error"></small>
+                                </div>
+                                <div data-field="money" data-name="valor_total" data-label="Valor Total (R$)"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 02. Proponente -->
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible>
+                            <span class="section-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="12" cy="7" r="4"/>
+                                </svg>
+                            </span>
+                            <h3>02. Proponente / Contratante</h3>
+                            <span class="chevron-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2.5"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </span>
+                        </div>
+                        <div class="form-card-body">
+                            <div id="editClienteLinkHost" style="display:none;padding:8px 0 12px;"></div>
+                            <div class="form-grid-auto">
+                                <div data-field="cpf"></div>
+                                <div data-field="nome" data-name="prop_nome" data-full-width></div>
+                                <div data-field="nacionalidade" data-name="prop_nacionalidade"></div>
+                                <div data-field="estado_civil" data-name="prop_estado_civil"></div>
+                                <div data-field="regime_bens" data-name="prop_regime"></div>
+                                <div data-field="nascimento" data-name="prop_nasc"></div>
+                                <div data-field="profissao" data-name="prop_profissao"></div>
+                                <div data-field="rg" data-name="prop_rg"></div>
+                                <div data-field="rg_orgao" data-name="prop_rg_orgao"></div>
+                                <div data-field="endereco" data-name="prop_endereco" data-full-width></div>
+                                <div data-field="bairro" data-name="prop_bairro"></div>
+                                <div data-field="cep" data-name="prop_cep"></div>
+                                <div data-field="bairro" data-name="prop_cidade" data-label="Cidade / UF"></div>
+                                <div data-field="telefone_fixo" data-name="prop_fixo"></div>
+                                <div data-field="whatsapp" data-name="prop_whats1" data-label="WhatsApp principal"></div>
+                                <div data-field="whatsapp" data-name="prop_whats2" data-label="WhatsApp secundário"></div>
+                                <div data-field="email" data-name="prop_email"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 03. Cônjuge / 2º Proponente -->
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible>
+                            <span class="section-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="9" cy="7" r="4"/>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                </svg>
+                            </span>
+                            <h3>03. Cônjuge / 2º Proponente</h3>
+                            <span class="chevron-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2.5"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </span>
+                        </div>
+                        <div class="form-card-body">
+                            <div class="form-grid-auto">
+                                <div data-field="nome" data-name="conj_nome" data-full-width></div>
+                                <div data-field="nacionalidade" data-name="conj_nacionalidade"></div>
+                                <div data-field="estado_civil" data-name="conj_estado_civil"></div>
+                                <div data-field="nascimento" data-name="conj_nasc"></div>
+                                <div data-field="profissao" data-name="conj_profissao"></div>
+                                <div data-field="rg" data-name="conj_rg"></div>
+                                <div data-field="rg_orgao" data-name="conj_rg_orgao"></div>
+                                <div data-field="cpf" data-name="conj_cpf"></div>
+                                <div data-field="whatsapp" data-name="conj_whats" data-label="WhatsApp"></div>
+                                <div data-field="telefone_fixo" data-name="conj_fixo"></div>
+                                <div data-field="email" data-name="conj_email"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 04. Condições de Pagamento — grid visual específico, mantido intacto -->
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible>
+                            <span class="section-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="2" y="5" width="20" height="14" rx="2"/>
+                                    <line x1="2" y1="10" x2="22" y2="10"/>
+                                </svg>
+                            </span>
+                            <h3>04. Condições de Pagamento</h3>
+                            <span class="chevron-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2.5"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </span>
+                        </div>
+                        <div class="form-card-body">
+                            <div class="pg-grid" style="margin-bottom: 10px;">
+                                <div class="pg-head">Descrição</div>
+                                <div class="pg-head">Qtd.</div>
+                                <div class="pg-head">Valor parcela</div>
+                                <div class="pg-head">Valor total</div>
+                                <div class="pg-head">Forma</div>
+                                <div class="pg-head">Vencimento</div>
+                            </div>
+                            <div id="pgRows"></div>
+                        </div>
+                    </div>
+
+                    <!-- 05. Observações & Condições Especiais -->
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible>
+                            <span class="section-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                    <polyline points="14 2 14 8 20 8"/>
+                                    <line x1="16" y1="13" x2="8" y2="13"/>
+                                    <line x1="16" y1="17" x2="8" y2="17"/>
+                                </svg>
+                            </span>
+                            <h3>05. Observações &amp; Condições Especiais</h3>
+                            <span class="chevron-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2.5"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </span>
+                        </div>
+                        <div class="form-card-body">
+                            <div class="form-grid-auto">
+                                <div class="form-group full-width">
+                                    <label for="observacoes">Cláusulas, dependências ou acordos particulares</label>
+                                    <textarea id="observacoes" name="observacoes"></textarea>
+                                    <small class="field-error"></small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="validade">Validade da proposta</label>
+                                    <input type="text" id="validade" name="validade" placeholder="Ex.: 5 dias úteis">
+                                    <small class="field-error"></small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="corretor_id">Corretor responsável</label>
+                                    <select id="corretor_id" name="corretor_id">
+                                        <option value="">Carregando...</option>
+                                    </select>
+                                    <small class="field-error"></small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="corretor_creci">CRECI</label>
+                                    <input type="text" id="corretor_creci" name="corretor_creci" readonly placeholder="Preenchido automaticamente">
+                                    <small class="field-error"></small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 06. Data da Assinatura -->
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible>
+                            <span class="section-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                    <line x1="16" y1="2" x2="16" y2="6"/>
+                                    <line x1="8" y1="2" x2="8" y2="6"/>
+                                    <line x1="3" y1="10" x2="21" y2="10"/>
+                                </svg>
+                            </span>
+                            <h3>06. Data da Assinatura (Teresina)</h3>
+                            <span class="chevron-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2.5"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </span>
+                        </div>
+                        <div class="form-card-body">
+                            <div class="form-grid-auto">
+                                <div data-field="data" data-name="data_assinatura" data-label="Data da assinatura"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <a href="/proposta" class="btn btn-ghost">Cancelar</a>
+                        <button type="submit" class="btn btn-primary" id="btnSalvar">
+                            <span id="btnSalvarLabel">Salvar Proposta</span>
+                            <span id="btnSalvarSpinner" class="spinner" style="display:none;"></span>
+                        </button>
+                    </div>
+
+                </form>
+
+            </main>
+        </div>
+    </div>
+
+    <div class="toast" id="toast" role="alert" aria-live="polite"></div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/sidebar.js"></script>
+    <script src="/static/js/masks.js"></script>
+    <script src="/static/js/forms.js"></script>
+    <script src="/static/js/modal.js"></script>
+    <script src="/static/js/cpf_lookup.js"></script>
+
+    <script>
+        const PG_ROWS = [
+            ['Sinal', 'sinal'],
+            ['Parcelamento do sinal', 'parcsinal'],
+            ['Parcelas mensais', 'parcelas'],
+            ['1ª Intercalada', 'inter1'],
+            ['2ª Intercalada', 'inter2'],
+            ['3ª Intercalada', 'inter3'],
+            ['FGTS', 'fgts'],
+            ['Subsídio', 'subsidio'],
+            ['Financiamento', 'fin'],
+        ];
+
+        const PG_FORMAS = ['À vista', 'Cartão de Crédito', 'Boleto', 'Caixa Econômica'];
+
+        function buildPgRows() {
+            const container = document.getElementById('pgRows');
+            const formaOpts = '<option value="">Selecione</option>' +
+                PG_FORMAS.map(f => `<option value="${f}">${f}</option>`).join('');
+            container.innerHTML = PG_ROWS.map(([label, k]) => `
+                <div class="pg-grid">
+                    <div class="pg-label">${label}</div>
+                    <input id="pg_${k}_qtd" name="pg_${k}_qtd" placeholder="Qtd." inputmode="numeric">
+                    <input id="pg_${k}_valor" name="pg_${k}_valor" placeholder="Valor parcela" data-mask="money">
+                    <input id="pg_${k}_total" name="pg_${k}_total" placeholder="Valor total" data-mask="money" readonly tabindex="-1">
+                    <select id="pg_${k}_forma" name="pg_${k}_forma">${formaOpts}</select>
+                    <input id="pg_${k}_venc" name="pg_${k}_venc" placeholder="Vencimento">
+                </div>
+            `).join('');
+
+            // Aplica máscaras money nos inputs dinâmicos via autoMask
+            if (typeof window.autoMask === 'function') {
+                window.autoMask(container);
+            }
+
+            // Auto-compute: valor_total = qtd × valor_parcela
+            PG_ROWS.forEach(([, k]) => {
+                const qtdEl = document.getElementById(`pg_${k}_qtd`);
+                const valEl = document.getElementById(`pg_${k}_valor`);
+                const totEl = document.getElementById(`pg_${k}_total`);
+                if (!qtdEl || !valEl || !totEl) return;
+                const recalc = () => {
+                    const qtd = parseInt((qtdEl.value || '').replace(/\D/g, ''), 10) || 0;
+                    const valor = window.unmaskedMoney ? window.unmaskedMoney(valEl.value) : 0;
+                    const total = qtd * valor;
+                    totEl.value = total > 0 && window.maskMoney ? window.maskMoney(total) : '';
+                };
+                qtdEl.addEventListener('input', recalc);
+                valEl.addEventListener('input', recalc);
+                valEl.addEventListener('blur', recalc);
+            });
+        }
+
+        (async function () {
+            'use strict';
+
+            let usuario;
+            try {
+                usuario = await api.requireAuth();
+            } catch (e) {
+                return;
+            }
+
+            renderSidebar(document.getElementById('sidebar'), '/proposta', usuario);
+
+            /* ---- Modo edição ---- */
+            function getId() {
+                var m = window.location.pathname.match(/\/proposta\/(\d+)\/editar/);
+                return m ? parseInt(m[1], 10) : null;
+            }
+
+            var editId = getId();
+
+            var podeEscrever = editId ? api.can('proposta', 'editar') : api.can('proposta', 'criar');
+            if (!podeEscrever) {
+                window.location.href = '/proposta';
+                return;
+            }
+            var clienteId = null;
+
+            /* IMPORTANTE: forms.init() expande os <div data-field="..."> em inputs reais
+               e aplica máscaras. DEVE rodar ANTES de qualquer getElementById('cpf') etc,
+               senão os placeholders ainda não foram substituídos e os refs viram null. */
+            var form = document.getElementById('form');
+            forms.init(form);
+
+            // PG rows só depois do init pra não sumir com os presets
+            buildPgRows();
+
+            var cpfInput = document.getElementById('cpf');
+            var camposCliente = [
+                'prop_nome', 'prop_nacionalidade', 'prop_estado_civil', 'prop_regime',
+                'prop_nasc', 'prop_profissao', 'prop_rg', 'prop_rg_orgao',
+                'prop_endereco', 'prop_bairro', 'prop_cep', 'prop_cidade',
+                'prop_fixo', 'prop_whats1', 'prop_whats2', 'prop_email',
+            ];
+
+            /* Carrega dropdown de Imóveis/Empreendimentos */
+            var imovelSelect = document.getElementById('imovel_id');
+            try {
+                var imoveis = await api.get('/lookup/imoveis');
+                if (imoveis && imoveis.length) {
+                    imovelSelect.innerHTML = '<option value="">— Selecione —</option>' +
+                        imoveis.map(function (i) {
+                            return '<option value="' + i.id + '">' + _escHtml(i.nome) + '</option>';
+                        }).join('');
+                } else {
+                    imovelSelect.innerHTML = '<option value="">Nenhum imóvel cadastrado</option>';
+                }
+            } catch (e) {
+                imovelSelect.innerHTML = '<option value="">Erro ao carregar imóveis</option>';
+            }
+
+            /* Carrega dropdown de Corretores. CRECI é auto-preenchido ao selecionar. */
+            var corretorSelect = document.getElementById('corretor_id');
+            var creciInput = document.getElementById('corretor_creci');
+            try {
+                var corretores = await api.get('/lookup/corretores');
+                if (corretores && corretores.length) {
+                    corretorSelect.innerHTML = '<option value="">— Selecione —</option>' +
+                        corretores.map(function (c) {
+                            return '<option value="' + c.id + '" data-creci="' + _escHtml(c.creci || '') + '" data-nome="' + _escHtml(c.nome) + '">' + _escHtml(c.nome) + '</option>';
+                        }).join('');
+                } else {
+                    corretorSelect.innerHTML = '<option value="">Nenhum corretor cadastrado</option>';
+                }
+            } catch (e) {
+                corretorSelect.innerHTML = '<option value="">Erro ao carregar corretores</option>';
+            }
+            corretorSelect.addEventListener('change', function () {
+                var opt = corretorSelect.options[corretorSelect.selectedIndex];
+                creciInput.value = opt && opt.dataset.creci ? opt.dataset.creci : '';
+            });
+
+            function _escHtml(s) {
+                return String(s == null ? '' : s)
+                    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            }
+
+            /* Conversão de nome de mês por extenso ↔ número 2-dígitos (legado). */
+            var _MESES = ['janeiro','fevereiro','março','abril','maio','junho',
+                          'julho','agosto','setembro','outubro','novembro','dezembro'];
+            function _nomeMesParaNumero(nome) {
+                if (!nome) return '';
+                var n = String(nome).trim().toLowerCase();
+                // Aceita "março", "Março", "03", "3"
+                if (/^\d{1,2}$/.test(n)) return n.padStart(2, '0');
+                var idx = _MESES.indexOf(n);
+                return idx >= 0 ? String(idx + 1).padStart(2, '0') : '';
+            }
+            function _numeroParaNomeMes(num) {
+                var n = parseInt(num, 10);
+                return n >= 1 && n <= 12 ? _MESES[n - 1] : '';
+            }
+
+            if (editId) {
+                document.getElementById('pageTitleMain').textContent = 'Editar Proposta';
+                document.getElementById('pageTitle').textContent = 'Editar Proposta';
+                document.getElementById('btnSalvarLabel').textContent = 'Atualizar Proposta';
+                await carregarProposta(editId);
+            }
+
+            /* Helpers de cliente — fonte única da verdade é /clientes.
+               Aqui só carregamos + bloqueamos edição dos campos pessoais. */
+
+            function _setPhone(id, v) {
+                var el = document.getElementById(id);
+                if (!el) return;
+                el.value = v ? (typeof maskPhone === 'function' ? maskPhone(v) : v) : '';
+            }
+            function _setCPF(id, v) {
+                var el = document.getElementById(id);
+                if (!el) return;
+                el.value = v ? (typeof maskCPF === 'function' ? maskCPF(v) : v) : '';
+            }
+            function _setCEP(id, v) {
+                var el = document.getElementById(id);
+                if (!el) return;
+                el.value = v ? (typeof maskCEP === 'function' ? maskCEP(v) : v) : '';
+            }
+            function _setText(id, v) {
+                var el = document.getElementById(id);
+                if (el) el.value = v == null ? '' : v;
+            }
+
+            /** Preenche todos os campos pessoais do proponente a partir de um
+             *  objeto cliente (API). Aceita `conjuge` aninhado. */
+            function _preencherCliente(c) {
+                if (!c) return;
+                _setText('prop_nome',         c.nome);
+                _setText('prop_nacionalidade',c.nacionalidade);
+                _setText('prop_estado_civil', c.estado_civil);
+                _setText('prop_regime',       c.regime_bens);
+                _setText('prop_nasc',         c.nascimento ? String(c.nascimento).substring(0, 10) : '');
+                _setText('prop_profissao',    c.profissao);
+                _setText('prop_rg',           c.rg);
+                _setText('prop_rg_orgao',     c.rg_orgao);
+                _setText('prop_endereco',     c.endereco);
+                _setText('prop_bairro',       c.bairro);
+                _setCEP ('prop_cep',          c.cep);
+                _setText('prop_cidade',       c.cidade_nome ? (c.cidade_nome + (c.cidade_uf ? '/' + c.cidade_uf : '')) : '');
+                _setPhone('prop_fixo',        c.telefone_fixo);
+                _setPhone('prop_whats1',      c.whatsapp1);
+                _setPhone('prop_whats2',      c.whatsapp2);
+                _setText('prop_email',        c.email);
+
+                if (c.conjuge && (c.conjuge.nome || c.conjuge.cpf)) {
+                    _preencherConjuge(c.conjuge);
+                }
+            }
+
+            function _preencherConjuge(cj) {
+                if (!cj) return;
+                _setText('conj_nome',         cj.nome);
+                _setText('conj_nacionalidade',cj.nacionalidade);
+                _setText('conj_estado_civil', cj.estado_civil);
+                _setText('conj_nasc',         cj.nascimento ? String(cj.nascimento).substring(0, 10) : '');
+                _setText('conj_profissao',    cj.profissao);
+                _setText('conj_rg',           cj.rg);
+                _setText('conj_rg_orgao',     cj.rg_orgao);
+                _setCPF ('conj_cpf',          cj.cpf);
+                _setPhone('conj_whats',       cj.whatsapp);
+                _setPhone('conj_fixo',        cj.fixo);
+                _setText('conj_email',        cj.email);
+            }
+
+            var _camposConjugeReadonly = [
+                'conj_nome', 'conj_nacionalidade', 'conj_estado_civil', 'conj_nasc',
+                'conj_profissao', 'conj_rg', 'conj_rg_orgao', 'conj_cpf',
+                'conj_whats', 'conj_fixo', 'conj_email',
+            ];
+
+            function _lockClienteFields() {
+                camposCliente.concat(_camposConjugeReadonly).forEach(function (f) {
+                    var el = document.getElementById(f);
+                    if (!el) return;
+                    if (el.tagName === 'SELECT') el.setAttribute('disabled', true);
+                    else el.setAttribute('readonly', true);
+                });
+                _showEditClienteLink();
+            }
+            function _unlockClienteFields() {
+                camposCliente.concat(_camposConjugeReadonly).forEach(function (f) {
+                    var el = document.getElementById(f);
+                    if (!el) return;
+                    if (el.tagName === 'SELECT') el.removeAttribute('disabled');
+                    else el.removeAttribute('readonly');
+                });
+                _hideEditClienteLink();
+            }
+
+            function _showEditClienteLink() {
+                if (!clienteId) return;
+                var host = document.getElementById('editClienteLinkHost');
+                if (!host) return;
+                host.innerHTML = '<a href="/cliente/' + clienteId + '/editar" class="btn btn-ghost btn-sm" target="_blank">Editar cadastro do cliente ↗</a>';
+                host.style.display = '';
+            }
+            function _hideEditClienteLink() {
+                var host = document.getElementById('editClienteLinkHost');
+                if (host) { host.innerHTML = ''; host.style.display = 'none'; }
+            }
+
+            if (!editId) {
+                attachCpfLookup(cpfInput, function onFound(cliente) {
+                    clienteId = cliente.id;
+                    _preencherCliente(cliente);
+                    _lockClienteFields();
+                }, function onNotFound() {
+                    clienteId = null;
+                    _unlockClienteFields();
+                });
+            }
+
+            /* ---- Carregar no modo edição ---- */
+            async function carregarProposta(id) {
+                try {
+                    var p = await api.get('/propostas/' + id);
+                    clienteId = p.cliente_id;
+
+                    if (p.cliente_cpf) {
+                        cpfInput.value = typeof maskCPF === 'function' ? maskCPF(p.cliente_cpf) : p.cliente_cpf;
+                        cpfInput.setAttribute('readonly', true);
+                    }
+
+                    // Monta objeto cliente a partir dos campos cliente_* do JOIN
+                    _preencherCliente({
+                        nome:          p.cliente_nome,
+                        nacionalidade: p.cliente_nacionalidade,
+                        estado_civil:  p.cliente_estado_civil,
+                        regime_bens:   p.cliente_regime_bens,
+                        nascimento:    p.cliente_nascimento,
+                        profissao:     p.cliente_profissao,
+                        rg:            p.cliente_rg,
+                        rg_orgao:      p.cliente_rg_orgao,
+                        endereco:      p.cliente_endereco,
+                        bairro:        p.cliente_bairro,
+                        cep:           p.cliente_cep,
+                        cidade_nome:   p.cliente_cidade_nome,
+                        cidade_uf:     p.cliente_cidade_uf,
+                        telefone_fixo: p.cliente_telefone_fixo,
+                        whatsapp1:     p.cliente_whatsapp1,
+                        whatsapp2:     p.cliente_whatsapp2,
+                        email:         p.cliente_email,
+                        conjuge: p.conjuge_nome ? {
+                            nome:          p.conjuge_nome,
+                            cpf:           p.conjuge_cpf,
+                            nacionalidade: p.conjuge_nacionalidade,
+                            estado_civil:  p.conjuge_estado_civil,
+                            nascimento:    p.conjuge_nascimento,
+                            profissao:     p.conjuge_profissao,
+                            rg:            p.conjuge_rg,
+                            rg_orgao:      p.conjuge_rg_orgao,
+                            whatsapp:      p.conjuge_whatsapp,
+                            fixo:          p.conjuge_fixo,
+                            email:         p.conjuge_email,
+                        } : null,
+                    });
+                    _lockClienteFields();
+
+                    var simpleFields = [
+                        'unidade', 'valor_total',
+                        'observacoes', 'validade',
+                    ];
+                    simpleFields.forEach(function (f) {
+                        var el = document.getElementById(f);
+                        if (el && p[f] != null) el.value = p[f];
+                    });
+
+                    // Corretor: seleciona via corretor_id e preenche o CRECI
+                    // (que vem do JOIN, podendo ser legado se id for NULL).
+                    if (p.corretor_id != null) {
+                        corretorSelect.value = String(p.corretor_id);
+                    }
+                    creciInput.value = p.corretor_creci || '';
+                    // Se não há corretor cadastrado mas tem texto legado, mostra opção
+                    if (!corretorSelect.value && p.corretor_nome) {
+                        var legacyCorretor = document.createElement('option');
+                        legacyCorretor.value = '';
+                        legacyCorretor.textContent = p.corretor_nome + ' (texto legado)';
+                        legacyCorretor.dataset.creci = p.corretor_creci || '';
+                        legacyCorretor.dataset.nome = p.corretor_nome;
+                        legacyCorretor.selected = true;
+                        corretorSelect.appendChild(legacyCorretor);
+                    }
+
+                    // data_assinatura reconstruída a partir de data_dia/mes/ano (legado)
+                    var dataAssEl = document.getElementById('data_assinatura');
+                    if (dataAssEl && (p.data_dia || p.data_mes || p.data_ano)) {
+                        var dd = (p.data_dia || '').toString().padStart(2, '0');
+                        var mm = _nomeMesParaNumero(p.data_mes);
+                        var yyyy = (p.data_ano || '').toString();
+                        if (dd && mm && yyyy.length === 4) {
+                            dataAssEl.value = yyyy + '-' + mm + '-' + dd;
+                        }
+                    }
+
+                    // Seleciona o imóvel (empreendimento) via imovel_id; se ainda não
+                    // houver match, adiciona option com o texto legado de empreendimento.
+                    if (p.imovel_id != null) {
+                        imovelSelect.value = String(p.imovel_id);
+                    }
+                    if (!imovelSelect.value && p.empreendimento) {
+                        var legacyOpt = document.createElement('option');
+                        legacyOpt.value = '';
+                        legacyOpt.textContent = p.empreendimento + ' (texto legado)';
+                        legacyOpt.selected = true;
+                        legacyOpt.dataset.legacy = p.empreendimento;
+                        imovelSelect.appendChild(legacyOpt);
+                    }
+
+                    // Pagamentos
+                    var keyMap = {
+                        'Sinal': 'sinal',
+                        'Parcelamento do sinal': 'parcsinal',
+                        'Parcelas mensais': 'parcelas',
+                        '1ª Intercalada': 'inter1',
+                        '2ª Intercalada': 'inter2',
+                        '3ª Intercalada': 'inter3',
+                        'FGTS': 'fgts',
+                        'Subsídio': 'subsidio',
+                        'Financiamento': 'fin',
+                    };
+                    (p.pagamentos || []).forEach(function (pag) {
+                        var k = keyMap[pag.descricao];
+                        if (!k) return;
+                        setVal('pg_' + k + '_qtd', pag.quantidade);
+                        setVal('pg_' + k + '_valor', pag.valor_parcela);
+                        setVal('pg_' + k + '_total', pag.valor_total);
+                        setVal('pg_' + k + '_forma', pag.forma);
+                        setVal('pg_' + k + '_venc', pag.vencimento);
+                    });
+                } catch (e) {
+                    showToast('Erro ao carregar proposta: ' + e.message, 'error');
+                }
+            }
+
+            function setVal(id, v) {
+                var el = document.getElementById(id);
+                if (el && v != null) el.value = v;
+            }
+
+            /* ---- Submit ---- */
+            form.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                forms.alertClear();
+
+                var btn = document.getElementById('btnSalvar');
+                var label = document.getElementById('btnSalvarLabel');
+                var spinner = document.getElementById('btnSalvarSpinner');
+                btn.disabled = true;
+                label.style.display = 'none';
+                spinner.style.display = 'inline-block';
+
+                try {
+                    var payload = montarPayload();
+                    if (editId) {
+                        await api.put('/propostas/' + editId, payload);
+                    } else {
+                        await api.post('/propostas', payload);
+                    }
+                    showToast('Proposta salva com sucesso!', 'success');
+                    setTimeout(function () {
+                        window.location.href = '/proposta';
+                    }, 1000);
+                } catch (err) {
+                    forms.alertError(err.message || 'Erro ao salvar proposta.');
+                    btn.disabled = false;
+                    label.style.display = 'inline';
+                    spinner.style.display = 'none';
+                }
+            });
+
+            function montarPayload() {
+                var cpfRaw = cpfInput.value.replace(/\D/g, '');
+                var payload = {};
+
+                if (clienteId) {
+                    payload.cliente_id = clienteId;
+                } else {
+                    payload.cliente = {
+                        cpf: cpfRaw,
+                        nome: val('prop_nome'),
+                        nacionalidade: val('prop_nacionalidade'),
+                        estado_civil: val('prop_estado_civil'),
+                        regime_bens: val('prop_regime'),
+                        nascimento: val('prop_nasc') || null,
+                        profissao: val('prop_profissao'),
+                        rg: val('prop_rg'),
+                        rg_orgao: val('prop_rg_orgao'),
+                        endereco: val('prop_endereco'),
+                        bairro: val('prop_bairro'),
+                        cep: val('prop_cep'),
+                        telefone_fixo: val('prop_fixo'),
+                        whatsapp1: val('prop_whats1'),
+                        whatsapp2: val('prop_whats2'),
+                        email: val('prop_email'),
+                    };
+                }
+
+                var conjNome = val('conj_nome');
+                if (conjNome) {
+                    payload.conjuge = {
+                        nome: conjNome,
+                        cpf: val('conj_cpf'),
+                        nacionalidade: val('conj_nacionalidade'),
+                        estado_civil: val('conj_estado_civil'),
+                        nascimento: val('conj_nasc') || null,
+                        profissao: val('conj_profissao'),
+                        rg: val('conj_rg'),
+                        rg_orgao: val('conj_rg_orgao'),
+                        email: val('conj_email'),
+                        whatsapp: val('conj_whats'),
+                        fixo: val('conj_fixo'),
+                    };
+                }
+
+                // Imóvel: agora é FK. O texto de empreendimento continua sendo
+                // persistido como snapshot (legado + busca textual).
+                var imovelSel = document.getElementById('imovel_id');
+                var selectedOpt = imovelSel ? imovelSel.options[imovelSel.selectedIndex] : null;
+                var imovelIdVal = imovelSel ? imovelSel.value : '';
+                if (imovelIdVal) {
+                    payload.imovel_id = parseInt(imovelIdVal, 10);
+                    payload.empreendimento = selectedOpt ? selectedOpt.textContent : null;
+                } else {
+                    payload.imovel_id = null;
+                    // fallback legado: preserva o texto da option marcada como legado
+                    payload.empreendimento = (selectedOpt && selectedOpt.dataset.legacy) || null;
+                }
+                payload.unidade = val('unidade') || null;
+                payload.valor_total = val('valor_total') || null;
+                payload.observacoes = val('observacoes') || null;
+                payload.validade = val('validade') || null;
+
+                // Corretor: FK + snapshot textual (nome+creci) pra preservar
+                // visualmente mesmo se o corretor for deletado depois.
+                var corretorSel = document.getElementById('corretor_id');
+                var corretorOpt = corretorSel ? corretorSel.options[corretorSel.selectedIndex] : null;
+                var corretorIdVal = corretorSel ? corretorSel.value : '';
+                if (corretorIdVal) {
+                    payload.corretor_id = parseInt(corretorIdVal, 10);
+                    payload.corretor_nome = corretorOpt && corretorOpt.dataset.nome ? corretorOpt.dataset.nome : null;
+                    payload.corretor_creci = corretorOpt && corretorOpt.dataset.creci ? corretorOpt.dataset.creci : null;
+                } else {
+                    payload.corretor_id = null;
+                    // Fallback legado: opção marcada como "(texto legado)"
+                    payload.corretor_nome = corretorOpt && corretorOpt.dataset.nome ? corretorOpt.dataset.nome : null;
+                    payload.corretor_creci = val('corretor_creci') || null;
+                }
+                // data_assinatura (yyyy-mm-dd) → quebra em dia/mes(nome)/ano para o backend legado
+                var dataAss = val('data_assinatura');
+                if (dataAss && /^\d{4}-\d{2}-\d{2}$/.test(dataAss)) {
+                    var parts = dataAss.split('-');
+                    payload.data_ano = parts[0];
+                    payload.data_mes = _numeroParaNomeMes(parts[1]);
+                    payload.data_dia = String(parseInt(parts[2], 10));
+                } else {
+                    payload.data_dia = null;
+                    payload.data_mes = null;
+                    payload.data_ano = null;
+                }
+
+                // Pagamentos
+                var pagamentos = [];
+                PG_ROWS.forEach(function ([label, k], index) {
+                    var qtd = val('pg_' + k + '_qtd');
+                    var valor = val('pg_' + k + '_valor');
+                    var total = val('pg_' + k + '_total');
+                    var forma = val('pg_' + k + '_forma');
+                    var venc = val('pg_' + k + '_venc');
+                    if (qtd || valor || total || forma || venc) {
+                        pagamentos.push({
+                            ordem: index + 1,
+                            descricao: label,
+                            quantidade: qtd || null,
+                            valor_parcela: valor || null,
+                            valor_total: total || null,
+                            forma: forma || null,
+                            vencimento: venc || null,
+                        });
+                    }
+                });
+                payload.pagamentos = pagamentos;
+
+                return payload;
+            }
+
+            function val(id) {
+                var el = document.getElementById(id);
+                return el ? (el.value || '').trim() : '';
+            }
+
+            function showToast(msg, type, duration) {
+                type = type || 'success';
+                duration = duration || 3500;
+                var t = document.getElementById('toast');
+                if (!t) return;
+                t.textContent = msg;
+                t.className = 'toast ' + type;
+                t.classList.add('show');
+                setTimeout(function () { t.classList.remove('show'); }, duration);
+            }
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro de Corretor — AM Imóveis</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/layout.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #065676 0%, #0a4760 100%);
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'DM Sans', sans-serif;
+            padding: 28px 16px;
+        }
+        .public-shell { max-width: 720px; margin: 0 auto; }
+        .public-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 36px 32px;
+            box-shadow: 0 24px 80px rgba(0,0,0,0.18);
+            position: relative;
+        }
+        .public-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0;
+            height: 5px; background: linear-gradient(90deg, #E5094B, #065676);
+            border-radius: 16px 16px 0 0;
+        }
+        .public-card .header {
+            text-align: center; margin-bottom: 28px;
+        }
+        .public-card .header img { height: 84px; display: block; margin: 0 auto; }
+        .public-card h1 {
+            font-size: 22px; color: #065676; font-weight: 700;
+            margin: 14px 0 6px;
+        }
+        .public-card p.intro { color: #7a8694; font-size: 14px; margin: 0; }
+
+        .success-screen {
+            text-align: center; padding: 30px 20px;
+        }
+        .success-screen .check {
+            width: 80px; height: 80px; border-radius: 50%;
+            background: #ecfdf5; display: inline-flex;
+            align-items: center; justify-content: center;
+            margin-bottom: 16px;
+        }
+        .success-screen .check svg { color: #10b981; }
+        .success-screen h2 { color: #065676; font-size: 24px; font-weight: 700; margin: 0 0 8px; }
+        .success-screen p { color: #5a6773; font-size: 15px; margin: 0 0 24px; }
+
+        .closed-screen {
+            text-align: center; padding: 40px 20px;
+        }
+        .closed-screen h2 { color: #065676; font-size: 22px; margin-bottom: 8px; }
+        .closed-screen p { color: #7a8694; }
+
+        /* Botão CADASTRAR — full width, centralizado, uppercase */
+        .btn-cadastrar {
+            width: 100%;
+            padding: 16px 20px;
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            border-radius: 10px;
+            min-height: 52px;
+        }
+
+        /* === Responsividade mobile total === */
+        @media (max-width: 768px) {
+            body { padding: 16px 12px; }
+            .public-card { padding: 28px 20px; border-radius: 14px; }
+            .public-card .header img { height: 72px; }
+            .public-card h1 { font-size: 19px; }
+        }
+        @media (max-width: 600px) {
+            body { padding: 12px 8px; }
+            .public-card { padding: 22px 16px; border-radius: 12px; }
+            .public-card .header { margin-bottom: 22px; }
+            .public-card .header img { height: 64px; }
+            .public-card h1 { font-size: 18px; }
+            .public-card p.intro { font-size: 13px; }
+            .form-grid-auto { gap: 12px; }
+            .btn-cadastrar { font-size: 14px; padding: 14px 16px; min-height: 48px; }
+        }
+        @media (max-width: 400px) {
+            body { padding: 8px 6px; }
+            .public-card { padding: 18px 14px; }
+            .public-card .header img { height: 56px; }
+            .public-card h1 { font-size: 17px; }
+        }
+
+        /* Previne overflow horizontal em telas estreitas */
+        html, body { overflow-x: hidden; max-width: 100vw; }
+        .public-shell { width: 100%; box-sizing: border-box; }
+        .public-card, .public-card * { box-sizing: border-box; }
+        .form-group input, .form-group select, .form-group textarea { max-width: 100%; }
+    </style>
+</head>
+<body>
+    <div class="public-shell">
+        <div class="public-card">
+
+            <!-- Tela de cadastro fechado (mostrada quando flag está OFF) -->
+            <div class="closed-screen" id="closedScreen" style="display:none;">
+                <div class="header"><img src="/static/logoAM.png" alt="AM Imóveis"></div>
+                <h2>Cadastro encerrado</h2>
+                <p>O cadastro público de corretores não está disponível no momento.<br>Entre em contato com a equipe da AM Imóveis para mais informações.</p>
+            </div>
+
+            <!-- Tela do formulário (default) -->
+            <div id="formScreen">
+                <div class="header">
+                    <img src="/static/logoAM.png" alt="AM Imóveis">
+                    <h1>Cadastro de Corretor</h1>
+                    <p class="intro">Preencha todos os campos abaixo para se cadastrar</p>
+                </div>
+
+                <form id="corretorForm" novalidate>
+                    <div class="alert-error" id="alertError"></div>
+                    <div class="form-grid-auto">
+                        <div data-field="nome" data-name="nome" data-required></div>
+                        <div data-field="cpf" data-name="cpf" data-required></div>
+                        <div data-field="nascimento" data-name="nascimento" data-required></div>
+                        <div data-field="whatsapp" data-name="telefone" data-label="Telefone" data-required></div>
+                        <div data-field="email" data-name="email" data-required></div>
+                        <div class="form-group">
+                            <label for="creci">CRECI <span class="required">*</span></label>
+                            <input type="text" id="creci" name="creci" placeholder="Ex: 12345-F" required>
+                            <small class="field-error"></small>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="cidade_id">Cidade <span class="required">*</span></label>
+                            <select id="cidade_id" name="cidade_id" required>
+                                <option value="">Carregando...</option>
+                            </select>
+                            <small class="field-error"></small>
+                        </div>
+                        <div class="form-group">
+                            <label for="tamanho_camisa">Tamanho de camisa</label>
+                            <select id="tamanho_camisa" name="tamanho_camisa">
+                                <option value="">Selecione</option>
+                                <option value="PP">PP</option>
+                                <option value="P">P</option>
+                                <option value="M">M</option>
+                                <option value="G">G</option>
+                                <option value="GG">GG</option>
+                                <option value="XGG">XGG</option>
+                            </select>
+                            <small class="field-error"></small>
+                        </div>
+                        <div class="form-group">
+                            <label for="chocolate_preferido">Chocolate preferido</label>
+                            <input type="text" id="chocolate_preferido" name="chocolate_preferido" placeholder="Ex: Lacta, Bis...">
+                            <small class="field-error"></small>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="bebida_preferida">Bebida preferida</label>
+                            <input type="text" id="bebida_preferida" name="bebida_preferida" placeholder="Ex: Café, Coca-Cola, Suco...">
+                            <small class="field-error"></small>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 24px;">
+                        <button type="submit" class="btn btn-primary btn-cadastrar" id="btnSalvar">
+                            CADASTRAR
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Tela de sucesso -->
+            <div class="success-screen" id="successScreen" style="display:none;">
+                <div class="check">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                </div>
+                <h2>Cadastrado com sucesso!</h2>
+                <p>Seus dados foram registrados. A equipe da AM Imóveis entrará em contato.</p>
+                <button type="button" class="btn btn-ghost" id="btnNovoCadastro">Fazer outro cadastro</button>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/masks.js"></script>
+    <script src="/static/js/forms.js"></script>
+
+    <script>
+        (async function () {
+            'use strict';
+
+            var formScreen = document.getElementById('formScreen');
+            var successScreen = document.getElementById('successScreen');
+            var closedScreen = document.getElementById('closedScreen');
+            var form = document.getElementById('corretorForm');
+            var cidadeEl = document.getElementById('cidade_id');
+            var btnSalvar = document.getElementById('btnSalvar');
+
+            forms.init(form);
+
+            /* Verifica se o cadastro público está ativo */
+            try {
+                var setting = await api.get('/settings/public/corretores_publico_ativo');
+                if (String(setting.value).toLowerCase() !== 'true') {
+                    formScreen.style.display = 'none';
+                    closedScreen.style.display = '';
+                    return;
+                }
+            } catch (e) {
+                // Se a API estiver fora, mostramos o form mesmo assim — submit vai falhar com mensagem amigável
+            }
+
+            /* Carrega cidades via endpoint público */
+            try {
+                var cidades = await api.get('/lookup/cidades-publico');
+                cidadeEl.innerHTML = '<option value="">— Selecione —</option>' +
+                    cidades.map(function (c) {
+                        return '<option value="' + c.id + '">' + c.nome + (c.uf ? '/' + c.uf : '') + '</option>';
+                    }).join('');
+            } catch (e) {
+                cidadeEl.innerHTML = '<option value="">Erro ao carregar cidades</option>';
+            }
+
+            form.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                forms.alertClear();
+                if (!forms.validate(form)) return;
+
+                var payload = forms.readForm(form);
+                if (payload.cidade_id) payload.cidade_id = parseInt(payload.cidade_id, 10);
+                if (!payload.nascimento) delete payload.nascimento;
+
+                btnSalvar.disabled = true;
+                btnSalvar.textContent = 'ENVIANDO...';
+
+                try {
+                    await api.post('/corretores', payload);
+                    formScreen.style.display = 'none';
+                    successScreen.style.display = '';
+                } catch (err) {
+                    forms.alertError(err.message || 'Erro ao enviar cadastro. Tente novamente.');
+                    btnSalvar.disabled = false;
+                    btnSalvar.textContent = 'CADASTRAR';
+                }
+            });
+
+            document.getElementById('btnNovoCadastro').addEventListener('click', function () {
+                form.reset();
+                successScreen.style.display = 'none';
+                formScreen.style.display = '';
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+        })();
+    </script>
+</body>
+</html>

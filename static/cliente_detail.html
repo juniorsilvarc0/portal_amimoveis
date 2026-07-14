@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cliente — AM Imoveis</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/layout.css">
+    <style>
+        .cli-page { display: grid; grid-template-columns: 1fr 380px; gap: 16px; }
+        @media (max-width: 1100px) { .cli-page { grid-template-columns: 1fr; } }
+
+        .cli-head { background: #fff; border-radius: 8px; padding: 16px 20px; border: 1px solid #e5e7eb; margin-bottom: 16px; }
+        .cli-head-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+        .cli-head-title { display: flex; gap: 12px; align-items: center; }
+        .cli-icon { width: 36px; height: 36px; border-radius: 6px; background: #8b5cf6; color: #fff;
+            display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+        .cli-head .label { font-size: 11px; color: #8896a6; text-transform: uppercase; letter-spacing: .5px; }
+        .cli-head h1 { font-size: 20px; font-weight: 700; margin: 0; color: #1a1a2e; line-height: 1.2; }
+        .cli-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+        .cli-actions .btn { font-size: 12px; padding: 6px 12px; }
+
+        .cli-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px; margin-top: 16px; padding-top: 12px; border-top: 1px solid #f1f5f9; }
+        .cli-sum-item .value { font-size: 14px; font-weight: 600; color: #1a1a2e; }
+        .cli-sum-item .value a { color: #065676; text-decoration: none; }
+
+        .cli-tabs { display: flex; gap: 0; border-bottom: 2px solid #e5e7eb;
+            margin-bottom: 16px; background: #fff; padding: 0 16px; border-radius: 8px 8px 0 0; }
+        .cli-tab { padding: 12px 20px; cursor: pointer; font-size: 14px; font-weight: 600;
+            color: #64748b; border-bottom: 3px solid transparent; margin-bottom: -2px; }
+        .cli-tab.active { color: #065676; border-bottom-color: #065676; }
+        .cli-tab:hover { color: #065676; }
+
+        .cli-section { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px;
+            margin-bottom: 12px; overflow: hidden; }
+        .cli-section-head { padding: 10px 16px; background: #f8fafc; cursor: pointer;
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid #e5e7eb; }
+        .cli-section-head h3 { margin: 0; font-size: 14px; font-weight: 600; color: #1a1a2e; }
+        .cli-section-head .toggle { color: #64748b; transition: transform .2s; }
+        .cli-section.collapsed .toggle { transform: rotate(-90deg); }
+        .cli-section.collapsed .cli-section-body { display: none; }
+        .cli-section-body { padding: 12px 16px; }
+
+        .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+        @media (max-width: 700px) { .field-grid { grid-template-columns: 1fr; } }
+        .field { display: flex; flex-direction: column; padding: 10px 12px;
+            border-bottom: 1px solid #f1f5f9; position: relative; }
+        .field:hover { background: #f8fafc; }
+        .field:hover .field-edit { opacity: 1; }
+        .field-label { font-size: 11px; font-weight: 600; color: #8896a6; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 3px; }
+        .field-value { font-size: 13px; color: #1a1a2e; min-height: 18px; word-break: break-word; }
+        .field-value.empty { color: #cbd5e1; font-style: italic; }
+        .field-value a { color: #065676; text-decoration: none; }
+        .field-value a:hover { text-decoration: underline; }
+        .field-edit { position: absolute; right: 8px; top: 8px; opacity: 0;
+            background: none; border: none; cursor: pointer; color: #94a3b8; transition: opacity .15s; }
+        .field-edit:hover { color: #065676; }
+        .field-edit svg { width: 14px; height: 14px; }
+        .field input.editing, .field select.editing, .field textarea.editing {
+            font-family: inherit; font-size: 13px; padding: 4px 8px;
+            border: 1px solid #065676; border-radius: 4px; width: 100%;
+            box-sizing: border-box; background: #fff; }
+        .check-true { color: #22c55e; font-weight: 600; }
+        .check-false { color: #cbd5e1; }
+
+        /* Sidebar */
+        .cli-sidebar { display: flex; flex-direction: column; gap: 12px; }
+        .cli-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
+        .cli-card-head { padding: 10px 14px; background: #f8fafc;
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid #e5e7eb; }
+        .cli-card-head h3 { margin: 0; font-size: 13px; font-weight: 700; color: #1a1a2e; }
+        .cli-card-head .count { color: #8896a6; font-weight: 400; font-size: 12px; }
+        .cli-card-head .actions { display: flex; gap: 6px; }
+        .cli-card-head .actions a, .cli-card-head .actions button {
+            font-size: 11px; padding: 4px 8px; background: #fff; border: 1px solid #cbd5e1;
+            color: #065676; border-radius: 4px; cursor: pointer; text-decoration: none; font-weight: 600; }
+        .cli-card-empty { color: #cbd5e1; font-size: 12px; padding: 12px; text-align: center; }
+        .cli-card-row { padding: 8px 14px; border-bottom: 1px solid #f1f5f9;
+            display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
+        .cli-card-row:last-child { border-bottom: none; }
+        .cli-card-row .title { color: #065676; font-weight: 600; text-decoration: none; }
+        .cli-card-row .title:hover { text-decoration: underline; }
+        .cli-card-row .meta { color: #8896a6; font-size: 11px; }
+
+        /* Map placeholder */
+        .endereco-map { background: #f1f5f9; padding: 12px; border-radius: 6px; text-align: center;
+            color: #8896a6; font-size: 12px; margin-top: 12px; }
+        .endereco-map a { color: #065676; font-weight: 600; }
+
+        /* Chatter */
+        .nota-form { padding: 12px 14px; border-bottom: 1px solid #f1f5f9; }
+        .nota-form textarea { width: 100%; padding: 6px 10px; border: 1px solid #d1d5db;
+            border-radius: 4px; font-size: 12px; font-family: inherit; resize: vertical; box-sizing: border-box; }
+        .nota-form button { margin-top: 6px; padding: 4px 10px; font-size: 12px;
+            background: #065676; color: #fff; border: none; border-radius: 4px;
+            cursor: pointer; font-weight: 600; }
+        .nota-item .nota-corpo { font-size: 12px; color: #1a1a2e; white-space: pre-wrap; }
+        .nota-item .nota-meta { font-size: 11px; color: #8896a6; }
+
+        /* Status pill */
+        .pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+        .pill.aberta { background: #dbeafe; color: #1e40af; }
+        .pill.ganha { background: #dcfce7; color: #166534; }
+        .pill.perdida { background: #fee2e2; color: #991b1b; }
+
+        /* Modo somente-leitura: esconde os lápis de edição inline */
+        #page.readonly .field-edit { display: none !important; }
+
+        /* Barra de criação (modo novo) */
+        .create-bar { position: sticky; bottom: 0; display: flex; align-items: center; gap: 12px;
+            justify-content: flex-end; padding: 14px 24px; margin-top: 8px;
+            background: #fff; border-top: 1px solid #e5e9ef; box-shadow: 0 -4px 12px rgba(0,0,0,.05); z-index: 20; }
+        .create-bar .create-hint { margin-right: auto; color: #8896a6; font-size: 13px; }
+    </style>
+</head>
+<body>
+    <div class="app-layout">
+        <aside class="sidebar" id="sidebar"></aside>
+        <div class="main-content">
+            <header class="topbar">
+                <button class="topbar-hamburger"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+                <span class="topbar-title">Cliente</span>
+            </header>
+            <main class="page-area" id="page">
+                <div style="padding:40px;text-align:center;color:#8896a6;">Carregando…</div>
+            </main>
+        </div>
+    </div>
+    <div class="toast" id="toast"></div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/sidebar.js"></script>
+    <script src="/static/js/masks.js"></script>
+    <script src="/static/js/modal.js"></script>
+    <script>
+    (async function () {
+        'use strict';
+        let usuario;
+        try { usuario = await api.requireAuth(); } catch (e) { return; }
+        renderSidebar(document.getElementById('sidebar'), '/clientes', usuario);
+
+        // Modo NOVO (criação) quando a rota é /cliente/novo; senão modo detalhe por id.
+        const isNew = location.pathname === '/cliente/novo' || location.pathname.endsWith('/clientes/novo');
+        let cliId = isNew ? null : (() => { const m = location.pathname.match(/\/clientes\/(\d+)/); return m ? parseInt(m[1], 10) : null; })();
+        if (!isNew && !cliId) { document.getElementById('page').innerHTML = '<p>ID inválido.</p>'; return; }
+
+        // Gating: criar precisa de clientes.criar; ver precisa de clientes.ver.
+        if (isNew && !api.can('clientes', 'criar')) { window.location.href = '/clientes'; return; }
+        if (!isNew && !api.can('clientes', 'ver')) { window.location.href = '/'; return; }
+        const canEdit = isNew ? api.can('clientes', 'criar') : api.can('clientes', 'editar');
+
+        // Cache de cidades para o select inline.
+        let cidadesCache = [];
+        try { cidadesCache = (await api.get('/lookup/cidades')) || []; } catch (e) {}
+
+        // Em modo novo, cli é um rascunho local (buffered) — não persiste no servidor até "Criar".
+        let cli = isNew ? { tipo_pessoa: 'Fisica', ativo: true, cpf_pendente: false } : null;
+        let activeTab = 'detalhes';
+
+        await render();
+
+        async function render() {
+            if (!isNew) {
+                try {
+                    cli = await api.get('/clientes/' + cliId + '/full');
+                } catch (e) {
+                    document.getElementById('page').innerHTML = '<p style="color:#ef4444;padding:24px;">' + e.message + '</p>';
+                    return;
+                }
+            }
+            const pageEl = document.getElementById('page');
+            pageEl.innerHTML = renderHead() + renderTabs() + renderBody() + (isNew ? renderCreateBar() : '');
+            pageEl.classList.toggle('readonly', !canEdit);
+            attachHandlers();
+        }
+
+        function renderHead() {
+            const fones = [cli.whatsapp1, cli.whatsapp2, cli.telefone_fixo].filter(Boolean);
+            return '<div class="cli-head">' +
+                '<div class="cli-head-top">' +
+                    '<div class="cli-head-title">' +
+                        '<div class="cli-icon">👤</div>' +
+                        '<div>' +
+                            '<div class="label">' + (isNew ? 'Novo' : 'Cliente') + '</div>' +
+                            '<h1>' + _esc(isNew ? (cli.nome || 'Novo Cliente') : cli.nome) + '</h1>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="cli-actions">' +
+                        (isNew ? '' : (
+                            '<button class="btn btn-ghost" data-act="seguir">+ Seguir</button>' +
+                            '<button class="btn btn-ghost" data-act="print">Modo de exibição imprimível</button>' +
+                            (cli.lead_vinculado ? '<a class="btn btn-ghost" href="/crm/leads/' + cli.lead_vinculado.id + '/editar">Acessar Lead</a>' : '') +
+                            (canEdit ? '<a class="btn btn-ghost" href="/cliente/' + cli.id + '/editar">Cônjuge / mais campos</a>' : '')
+                        )) +
+                    '</div>' +
+                '</div>' +
+                '<div class="cli-summary">' +
+                    sumItem('Cargo', cli.cargo) +
+                    sumItem('Telefone (' + fones.length + ')', fones.length ? fones.map(f => typeof maskPhone==='function' ? maskPhone(f) : f).join(', ') : null) +
+                    sumItem('Email', cli.email ? '<a href="mailto:' + _esc(cli.email) + '">' + _esc(cli.email) + '</a>' : null) +
+                    sumItem('Proprietário do cliente', cli.proprietario_email) +
+                '</div>' +
+            '</div>';
+        }
+
+        function sumItem(label, value) {
+            return '<div class="cli-sum-item"><span class="label">' + _esc(label) + '</span><div class="value">' +
+                (value ? value : '<span style="color:#cbd5e1;">—</span>') + '</div></div>';
+        }
+
+        function renderTabs() {
+            const tabs = isNew ? ['detalhes'] : ['detalhes', 'chatter'];
+            return '<div class="cli-tabs">' +
+                tabs.map(t =>
+                    '<div class="cli-tab' + (activeTab === t ? ' active' : '') + '" data-tab="' + t + '">' + capitalize(t) + '</div>'
+                ).join('') +
+            '</div>';
+        }
+
+        function renderBody() {
+            const sidebar = isNew
+                ? '<div class="cli-card"><div class="cli-card-empty">Salve o cliente para adicionar oportunidades, atividades, propostas e notas.</div></div>'
+                : renderSidebarCards();
+            return '<div class="cli-page">' +
+                '<div>' + (activeTab === 'detalhes' ? renderDetalhes() : renderChatter()) + '</div>' +
+                '<aside class="cli-sidebar">' + sidebar + '</aside>' +
+            '</div>';
+        }
+
+        function renderCreateBar() {
+            return '<div class="create-bar">' +
+                '<span class="create-hint">Preencha os campos acima e clique em Criar.</span>' +
+                '<button class="btn btn-ghost" data-act="cancelar-novo">Cancelar</button>' +
+                '<button class="btn btn-primary" data-act="criar-cliente">Criar cliente</button>' +
+            '</div>';
+        }
+
+        function renderDetalhes() {
+            return [
+                section('Identificação', [
+                    fld('nome', 'Nome do cliente', cli.nome, 'text'),
+                    fld('nascimento', 'Data de nascimento', fmtDate(cli.nascimento), 'date'),
+                    fld('sexo', 'Sexo', cli.sexo, 'select', [['','—'],['Feminino','Feminino'],['Masculino','Masculino'],['Outro','Outro']]),
+                    fldLink('proprietario_id', 'Proprietário do cliente', null, cli.proprietario_email),
+                    fld('cpf', 'CPF', cli.cpf ? maskCPF(cli.cpf) : null, 'text'),
+                    fldYesNo('cpf_pendente', 'CPF pendente', cli.cpf_pendente),
+                    fld('whatsapp1', 'Celular', cli.whatsapp1 ? maskPhone(cli.whatsapp1) : null, 'phone'),
+                    fldBool('ativo', 'Ativo', cli.ativo),
+                    fld('telefone_fixo', 'Telefone', cli.telefone_fixo ? maskPhone(cli.telefone_fixo) : null, 'phone'),
+                    fld('profissao', 'Profissão', cli.profissao, 'text'),
+                    fld('email', 'Email', cli.email, 'email'),
+                    fld('tipo_pessoa', 'Tipo de pessoa', cli.tipo_pessoa || 'Fisica', 'select', [['Fisica','Física'],['Juridica','Jurídica']]),
+                    fld('naturalidade', 'Naturalidade', cli.naturalidade, 'text'),
+                    fld('estado_civil', 'Estado civil', cli.estado_civil, 'select', [['','—'],['solteiro','Solteiro(a)'],['casado','Casado(a)'],['uniao_estavel','União Estável'],['divorciado','Divorciado(a)'],['viuvo','Viúvo(a)']]),
+                    fld('escolaridade', 'Escolaridade', cli.escolaridade, 'select', [['','—'],['Ensino fundamental incompleto','Ensino fundamental incompleto'],['Ensino fundamental completo','Ensino fundamental completo'],['Ensino médio incompleto','Ensino médio incompleto'],['Ensino médio completo','Ensino médio completo'],['Ensino superior incompleto','Ensino superior incompleto'],['Ensino superior completo','Ensino superior completo'],['Pós-graduação','Pós-graduação']]),
+                    fld('cargo', 'Cargo', cli.cargo, 'text'),
+                    fld('whatsapp2', 'WhatsApp 2', cli.whatsapp2 ? maskPhone(cli.whatsapp2) : null, 'phone'),
+                ]),
+                section('Documentos', [
+                    fld('rg', 'Número RG', cli.rg, 'text'),
+                    fld('rg_orgao', 'Orgão Emissor', cli.rg_orgao, 'text'),
+                    fld('nome_mae', 'Nome da mãe', cli.nome_mae, 'text'),
+                    fld('numero_pis', 'Número PIS', cli.numero_pis, 'text'),
+                    fld('nome_pai', 'Nome do pai', cli.nome_pai, 'text'),
+                    fld('titulo_eleitor', 'Título de eleitor', cli.titulo_eleitor, 'text'),
+                ]),
+                section('Informações adicionais', [
+                    fld('categoria', 'Categoria', cli.categoria, 'text'),
+                    fld('codigo_sap', 'Código SAP', cli.codigo_sap, 'text'),
+                    fld('codigo_crm', 'Código CRM', cli.codigo_crm, 'text'),
+                    fld('regime_bens', 'Regime de bens', cli.regime_bens, 'select', [['','—'],['comunhao_parcial','Comunhão Parcial'],['comunhao_universal','Comunhão Universal'],['separacao_total','Separação Total'],['participacao_final','Participação Final nos Aquestos']]),
+                    fld('nacionalidade', 'Nacionalidade', cli.nacionalidade, 'text'),
+                ]),
+                renderEnderecoSection(),
+                section('Observações', [
+                    fld('observacoes', 'Observações', cli.observacoes, 'textarea'),
+                ]),
+                (isNew ? '' : section('Informações do sistema', [
+                    fldStatic('Criado por', (cli.criado_por_email || '—') + ', ' + fmtDateTime(cli.created_at)),
+                    fldStatic('Modificado pela última vez por', (cli.modificado_por_email || cli.criado_por_email || '—') + ', ' + fmtDateTime(cli.updated_at)),
+                ])),
+            ].join('');
+        }
+
+        function renderEnderecoSection() {
+            const endereco_completo = [cli.endereco, cli.bairro,
+                                       (cli.cidade_nome ? cli.cidade_nome + (cli.cidade_uf ? '-' + cli.cidade_uf : '') : null),
+                                       cli.cep].filter(Boolean).join('<br>');
+            const fields = [
+                fld('endereco', 'Endereço', cli.endereco, 'text'),
+                fld('bairro', 'Bairro', cli.bairro, 'text'),
+                fld('cidade_id', 'Cidade', cli.cidade_nome ? cli.cidade_nome + (cli.cidade_uf ? ' (' + cli.cidade_uf + ')' : '') : null, 'cidade'),
+                fld('cep', 'CEP', cli.cep, 'text'),
+            ];
+
+            let mapHtml = '';
+            if (endereco_completo) {
+                const q = encodeURIComponent([cli.endereco, cli.bairro, cli.cidade_nome, cli.cidade_uf, 'Brasil'].filter(Boolean).join(', '));
+                mapHtml = '<div class="endereco-map">📍 ' + endereco_completo.replace(/<br>/g, ' · ') +
+                    '<br><a href="https://www.google.com/maps/search/?api=1&query=' + q + '" target="_blank">Ver no Google Maps ↗</a></div>';
+            }
+            return '<div class="cli-section">' +
+                '<div class="cli-section-head"><h3>Informações de endereço</h3><span class="toggle">▾</span></div>' +
+                '<div class="cli-section-body">' +
+                    '<div class="field-grid">' + fields.join('') + '</div>' +
+                    mapHtml +
+                '</div>' +
+            '</div>';
+        }
+
+        function section(title, fields) {
+            return '<div class="cli-section">' +
+                '<div class="cli-section-head"><h3>' + _esc(title) + '</h3><span class="toggle">▾</span></div>' +
+                '<div class="cli-section-body"><div class="field-grid">' + fields.join('') + '</div></div>' +
+            '</div>';
+        }
+
+        function fld(key, label, value, type, options) {
+            const display = (value == null || value === '') ? '<span class="empty">—</span>' : _esc(String(value));
+            const dataOpts = options ? ' data-options=\'' + _attr(JSON.stringify(options)) + '\'' : '';
+            return '<div class="field" data-key="' + _esc(key) + '" data-type="' + _esc(type || 'text') + '"' + dataOpts + '>' +
+                '<span class="field-label">' + _esc(label) + '</span>' +
+                '<span class="field-value">' + display + '</span>' +
+                '<button class="field-edit" title="Editar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' +
+            '</div>';
+        }
+        function fldLink(key, label, href, text) {
+            const value = text ? (href ? '<a href="' + href + '">' + _esc(text) + '</a>' : _esc(text)) : '<span class="empty">—</span>';
+            return '<div class="field"><span class="field-label">' + _esc(label) + '</span><span class="field-value">' + value + '</span></div>';
+        }
+        function fldBool(key, label, value) {
+            const v = value ? '<span class="check-true">✓ Ativo</span>' : '<span class="check-false">✗ Inativo</span>';
+            return '<div class="field" data-key="' + _esc(key) + '" data-type="bool">' +
+                '<span class="field-label">' + _esc(label) + '</span>' +
+                '<span class="field-value">' + v + '</span>' +
+                '<button class="field-edit" title="Editar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' +
+            '</div>';
+        }
+        function fldStatic(label, value) {
+            return '<div class="field">' +
+                '<span class="field-label">' + _esc(label) + '</span>' +
+                '<span class="field-value">' + (value ? _esc(value) : '<span class="empty">—</span>') + '</span>' +
+            '</div>';
+        }
+        function fldYesNo(key, label, value) {
+            const v = value ? '<span class="check-true">Sim</span>' : '<span class="check-false">Não</span>';
+            return '<div class="field" data-key="' + _esc(key) + '" data-type="yesno">' +
+                '<span class="field-label">' + _esc(label) + '</span>' +
+                '<span class="field-value">' + v + '</span>' +
+                '<button class="field-edit" title="Editar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' +
+            '</div>';
+        }
+
+        function renderChatter() {
+            const notas = cli.notas || [];
+            return '<div class="cli-card">' +
+                '<div class="cli-card-head"><h3>Chatter <span class="count">' + notas.length + '</span></h3></div>' +
+                '<div class="nota-form">' +
+                    '<textarea id="novaNota" rows="2" placeholder="Escreva uma nota…"></textarea>' +
+                    '<button data-act="salvar-nota">Adicionar nota</button>' +
+                '</div>' +
+                (notas.length === 0 ? '<div class="cli-card-empty">Sem notas ainda.</div>' :
+                 notas.map(n => '<div class="cli-card-row nota-item">' +
+                    '<div class="nota-corpo">' + _esc(n.corpo) + '</div>' +
+                    '<div class="nota-meta">' + _esc(n.criado_por_email || '—') + ' · ' + fmtDateTime(n.created_at) +
+                        ' <button data-act="del-nota" data-id="' + n.id + '" style="background:none;border:none;color:#ef4444;cursor:pointer;float:right;">excluir</button></div>' +
+                 '</div>').join('')) +
+            '</div>';
+        }
+
+        // ============================================
+        // SIDEBAR
+        // ============================================
+        function renderSidebarCards() {
+            const cards = [];
+
+            // Atividades
+            const ativAbertas = (cli.activities || []).filter(a => a.status !== 'concluida' && a.status !== 'cancelada');
+            cards.push('<div class="cli-card">' +
+                '<div class="cli-card-head"><h3>Atividades <span class="count">(' + ativAbertas.length + ')</span></h3>' +
+                    '<div class="actions">' +
+                        '<a href="/crm/activities/nova?cliente_id=' + cli.id + '">Nova tarefa</a>' +
+                        '<a href="/crm/activities/nova?cliente_id=' + cli.id + '&tipo=reuniao">Novo compromisso</a>' +
+                    '</div>' +
+                '</div>' +
+                (ativAbertas.length === 0 ? '<div class="cli-card-empty">Sem atividades abertas</div>' :
+                 ativAbertas.slice(0, 6).map(a => '<div class="cli-card-row">' +
+                    '<a href="/crm/activities/' + a.id + '/editar" class="title">' + _esc(a.assunto) + '</a>' +
+                    '<span class="meta">' + _esc(a.tipo) + ' · ' + fmtDateTime(a.data_atividade || a.created_at) + '</span>' +
+                '</div>').join('')) +
+            '</div>');
+
+            // Histórico de Leads (captação de origem + reativações)
+            const leads = cli.leads || [];
+            if (leads.length) cards.push('<div class="cli-card">' +
+                '<div class="cli-card-head"><h3>Histórico de Leads <span class="count">(' + leads.length + ')</span></h3></div>' +
+                leads.slice(0, 8).map(l => '<div class="cli-card-row">' +
+                    '<a href="/crm/leads/' + l.id + '/editar" class="title">' + _esc(l.nome) + '</a>' +
+                    '<span class="meta">' +
+                        '<span class="pill ' + (l.status === 'convertido' ? 'ganha' : l.status === 'reativado' ? 'aberta' : l.status === 'descartado' ? 'perdida' : 'aberta') + '">' + _esc(l.status) + '</span>' +
+                        (l.origem ? ' · ' + _esc(l.origem) : '') +
+                        (l.campaign_nome ? ' · ' + _esc(l.campaign_nome) : '') +
+                        ' · ' + fmtDate(l.created_at) +
+                    '</span>' +
+                '</div>').join('') +
+            '</div>');
+
+            // Oportunidades
+            const opps = cli.oportunidades || [];
+            cards.push('<div class="cli-card">' +
+                '<div class="cli-card-head"><h3>Oportunidades <span class="count">(' + opps.length + ')</span></h3>' +
+                    '<div class="actions"><a href="/crm/opportunities/novo?cliente_id=' + cli.id + '">Criar</a></div></div>' +
+                (opps.length === 0 ? '<div class="cli-card-empty">Sem oportunidades</div>' :
+                 opps.slice(0, 6).map(o => '<div class="cli-card-row">' +
+                    '<a href="/crm/opportunities/' + o.id + '" class="title">' + _esc(o.nome) + '</a>' +
+                    '<span class="meta">' +
+                        '<span style="background:' + (o.stage_cor || '#065676') + ';color:#fff;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600;">' + _esc(o.stage_nome) + '</span> · ' +
+                        '<span class="pill ' + (o.status || 'aberta') + '">' + (o.status || 'aberta') + '</span>' +
+                        (o.data_previsao ? ' · ' + fmtDate(o.data_previsao) : '') +
+                        (o.valor ? '<br>R$ ' + Number(o.valor).toLocaleString('pt-BR', {minimumFractionDigits: 2}) : '') +
+                    '</span>' +
+                '</div>').join('')) +
+            '</div>');
+
+            // Histórico de atividades
+            const ativConcluidas = (cli.activities || []).filter(a => a.status === 'concluida' || a.status === 'cancelada');
+            cards.push('<div class="cli-card">' +
+                '<div class="cli-card-head"><h3>Histórico de atividades <span class="count">(' + ativConcluidas.length + ')</span></h3>' +
+                    '<div class="actions">' + (cli.email ? '<a href="mailto:' + _esc(cli.email) + '">Enviar um email</a>' : '') + '</div>' +
+                '</div>' +
+                (ativConcluidas.length === 0 ? '<div class="cli-card-empty">Sem histórico</div>' :
+                 ativConcluidas.slice(0, 6).map(a => '<div class="cli-card-row">' +
+                    '<a href="/crm/activities/' + a.id + '/editar" class="title">' + _esc(a.assunto) + '</a>' +
+                    '<span class="meta">' + _esc(a.tipo) + ' · ' + fmtDateTime(a.data_conclusao || a.data_atividade || a.created_at) + '</span>' +
+                '</div>').join('')) +
+            '</div>');
+
+            // Propostas
+            const props = cli.propostas || [];
+            if (props.length) cards.push('<div class="cli-card">' +
+                '<div class="cli-card-head"><h3>Propostas <span class="count">(' + props.length + ')</span></h3></div>' +
+                props.slice(0, 6).map(p => '<div class="cli-card-row">' +
+                    '<a href="/proposta/' + p.id + '/editar" class="title">#' + p.id + ' · ' + _esc(p.empreendimento || 'Proposta') + '</a>' +
+                    '<span class="meta">' + (p.unidade ? _esc(p.unidade) + ' · ' : '') + (p.valor_total ? _esc(p.valor_total) + ' · ' : '') + fmtDate(p.created_at) + '</span>' +
+                '</div>').join('') +
+            '</div>');
+
+            // Habitações
+            const habs = cli.habitacao || [];
+            if (habs.length) cards.push('<div class="cli-card">' +
+                '<div class="cli-card-head"><h3>Habitação <span class="count">(' + habs.length + ')</span></h3></div>' +
+                habs.slice(0, 6).map(h => '<div class="cli-card-row">' +
+                    '<a href="/habitacao/' + h.id + '/editar" class="title">Ficha #' + h.id + '</a>' +
+                    '<span class="meta">' + (h.empreendimento ? _esc(h.empreendimento) + ' · ' : '') + fmtDate(h.created_at) + '</span>' +
+                '</div>').join('') +
+            '</div>');
+
+            // Recibos
+            const recs = cli.recibos || [];
+            if (recs.length) cards.push('<div class="cli-card">' +
+                '<div class="cli-card-head"><h3>Recibos <span class="count">(' + recs.length + ')</span></h3></div>' +
+                recs.slice(0, 6).map(r => '<div class="cli-card-row">' +
+                    '<a href="/recibos/' + r.id + '/editar" class="title">' + _esc(r.numero_contrato || 'Recibo #' + r.id) + '</a>' +
+                    '<span class="meta">' + (r.valor_recebido ? 'R$ ' + Number(r.valor_recebido).toLocaleString('pt-BR', {minimumFractionDigits: 2}) + ' · ' : '') + fmtDate(r.data_recibo || r.created_at) + '</span>' +
+                '</div>').join('') +
+            '</div>');
+
+            return cards.join('');
+        }
+
+        // ============================================
+        // HANDLERS
+        // ============================================
+        function attachHandlers() {
+            document.querySelectorAll('.cli-tab').forEach(t => t.addEventListener('click', e => {
+                activeTab = e.target.dataset.tab;
+                render();
+            }));
+
+            document.querySelectorAll('.cli-section-head').forEach(h => h.addEventListener('click', e => {
+                if (e.target.closest('button')) return;
+                h.parentElement.classList.toggle('collapsed');
+            }));
+
+            if (canEdit) {
+                document.querySelectorAll('.field-edit').forEach(btn => btn.addEventListener('click', e => {
+                    e.stopPropagation();
+                    inlineEdit(btn.closest('.field'));
+                }));
+            }
+
+            // Modo novo: barra de criação
+            const cancelarBtn = document.querySelector('[data-act="cancelar-novo"]');
+            if (cancelarBtn) cancelarBtn.addEventListener('click', () => { window.location.href = '/clientes'; });
+            const criarBtn = document.querySelector('[data-act="criar-cliente"]');
+            if (criarBtn) criarBtn.addEventListener('click', criarCliente);
+
+            const inicNotaBtn = document.querySelector('[data-act="salvar-nota"]');
+            if (inicNotaBtn) inicNotaBtn.addEventListener('click', async () => {
+                const ta = document.getElementById('novaNota');
+                if (!ta.value.trim()) return;
+                try {
+                    await api.post('/clientes/' + cliId + '/notas', { corpo: ta.value.trim() });
+                    showToast('Nota adicionada!', 'success');
+                    await render();
+                } catch (e) { showToast(e.message, 'error'); }
+            });
+
+            document.querySelectorAll('[data-act="del-nota"]').forEach(b => b.addEventListener('click', async () => {
+                const ok = await Modal.confirm('Excluir nota?');
+                if (!ok) return;
+                try {
+                    await api.del('/clientes/notas/' + b.dataset.id);
+                    showToast('Excluída');
+                    await render();
+                } catch (e) { showToast(e.message, 'error'); }
+            }));
+
+            const segBtn = document.querySelector('[data-act="seguir"]');
+            if (segBtn) segBtn.addEventListener('click', () => showToast('Seguindo cliente (placeholder)', 'success'));
+            const printBtn = document.querySelector('[data-act="print"]');
+            if (printBtn) printBtn.addEventListener('click', () => window.print());
+        }
+
+        async function inlineEdit(fieldEl) {
+            const key = fieldEl.dataset.key;
+            const type = fieldEl.dataset.type;
+            if (!key) return;
+            const valueEl = fieldEl.querySelector('.field-value');
+            const currentVal = cli[key];
+            let input;
+            if (type === 'bool') {
+                input = document.createElement('select');
+                input.innerHTML = '<option value="true"' + (currentVal ? ' selected' : '') + '>Ativo</option><option value="false"' + (!currentVal ? ' selected' : '') + '>Inativo</option>';
+            } else if (type === 'yesno') {
+                input = document.createElement('select');
+                input.innerHTML = '<option value="true"' + (currentVal ? ' selected' : '') + '>Sim</option><option value="false"' + (!currentVal ? ' selected' : '') + '>Não</option>';
+            } else if (type === 'cidade') {
+                input = document.createElement('select');
+                input.innerHTML = '<option value="">—</option>' + cidadesCache.map(c => '<option value="' + c.id + '"' + (String(currentVal) === String(c.id) ? ' selected' : '') + '>' + _esc(c.nome + (c.uf ? ' (' + c.uf + ')' : '')) + '</option>').join('');
+            } else if (type === 'select') {
+                input = document.createElement('select');
+                const opts = JSON.parse(fieldEl.dataset.options || '[]');
+                input.innerHTML = opts.map(o => '<option value="' + _attr(o[0]) + '"' + (currentVal === o[0] ? ' selected' : '') + '>' + _esc(o[1]) + '</option>').join('');
+            } else if (type === 'date') {
+                input = document.createElement('input'); input.type = 'date';
+                input.value = currentVal ? String(currentVal).slice(0, 10) : '';
+            } else if (type === 'textarea') {
+                input = document.createElement('textarea'); input.rows = 3;
+                input.value = currentVal || '';
+            } else if (type === 'phone') {
+                input = document.createElement('input'); input.type = 'text';
+                input.value = currentVal != null ? currentVal : '';
+                if (typeof attachMask === 'function' && typeof maskPhone === 'function') attachMask(input, maskPhone);
+            } else if (type === 'email') {
+                input = document.createElement('input'); input.type = 'email';
+                input.value = currentVal || '';
+            } else {
+                input = document.createElement('input'); input.type = 'text';
+                input.value = currentVal != null ? currentVal : '';
+            }
+            input.className = 'editing';
+            valueEl.innerHTML = '';
+            valueEl.appendChild(input);
+            input.focus();
+            if (input.select) input.select();
+
+            const save = async () => {
+                input.removeEventListener('blur', save);
+                input.removeEventListener('keydown', onKey);
+                let newVal = input.value;
+                if (type === 'bool' || type === 'yesno') newVal = newVal === 'true';
+                else if (type === 'cidade') newVal = newVal ? parseInt(newVal, 10) : null;
+                else if (type === 'phone') newVal = newVal.replace(/\D/g, '') || null;
+                else if (!newVal) newVal = null;
+                if (newVal === currentVal) { await render(); return; }
+
+                // Modo novo: bufferiza localmente (sem servidor) até "Criar cliente".
+                if (isNew) {
+                    cli[key] = newVal;
+                    if (key === 'cidade_id') {
+                        const c = cidadesCache.find(x => x.id === newVal);
+                        cli.cidade_nome = c ? c.nome : null;
+                        cli.cidade_uf = c ? c.uf : null;
+                    }
+                    await render();
+                    return;
+                }
+
+                try {
+                    await api.patch('/clientes/' + cliId, { [key]: newVal });
+                    showToast('Salvo!', 'success');
+                    await render();
+                } catch (e) { showToast(e.message, 'error'); await render(); }
+            };
+            const onKey = e => {
+                if (e.key === 'Enter' && type !== 'textarea') { e.preventDefault(); save(); }
+                if (e.key === 'Escape') { render(); }
+            };
+            input.addEventListener('blur', save);
+            input.addEventListener('keydown', onKey);
+        }
+
+        // ============================================
+        // CRIAR (modo novo)
+        // ============================================
+        async function criarCliente() {
+            if (!cli.nome || !String(cli.nome).trim()) { showToast('Informe o nome do cliente.', 'error'); return; }
+            const cpfDigits = String(cli.cpf || '').replace(/\D/g, '');
+            if (!cli.cpf_pendente && cpfDigits.length !== 11) {
+                showToast('Informe um CPF válido (11 dígitos) ou marque "CPF pendente".', 'error');
+                return;
+            }
+            const KEYS = ['nome','rg','rg_orgao','nascimento','nacionalidade','estado_civil','regime_bens',
+                'profissao','email','telefone_fixo','whatsapp1','whatsapp2','endereco','bairro','cep','cidade_id',
+                'observacoes','sexo','ativo','tipo_pessoa','naturalidade','escolaridade','nome_mae','nome_pai',
+                'numero_pis','titulo_eleitor','categoria','codigo_sap','codigo_crm','cargo'];
+            const payload = {};
+            KEYS.forEach(k => { if (cli[k] !== undefined && cli[k] !== null && cli[k] !== '') payload[k] = cli[k]; });
+            payload.cpf = cli.cpf_pendente ? '' : cpfDigits;
+            payload.cpf_pendente = !!cli.cpf_pendente;
+            const criarBtn = document.querySelector('[data-act="criar-cliente"]');
+            if (criarBtn) { criarBtn.disabled = true; criarBtn.textContent = 'Criando…'; }
+            try {
+                const novo = await api.post('/clientes', payload);
+                showToast('Cliente criado!', 'success');
+                setTimeout(() => { window.location.href = '/clientes/' + novo.id; }, 600);
+            } catch (e) {
+                showToast(e.message || 'Erro ao criar cliente.', 'error');
+                if (criarBtn) { criarBtn.disabled = false; criarBtn.textContent = 'Criar cliente'; }
+            }
+        }
+
+        // ============================================
+        // HELPERS
+        // ============================================
+        function fmtDate(v) {
+            if (!v) return null;
+            const d = new Date(v);
+            if (isNaN(d)) return v;
+            return d.toLocaleDateString('pt-BR');
+        }
+        function fmtDateTime(v) {
+            if (!v) return null;
+            const d = new Date(v);
+            if (isNaN(d)) return v;
+            return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        }
+        function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+        function _esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+        function _attr(s) { return String(s == null ? '' : s).replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+        function showToast(msg, type) {
+            const t = document.getElementById('toast');
+            if (!t) return;
+            t.textContent = msg; t.className = 'toast ' + (type || 'success');
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+    })();
+    </script>
+</body>
+</html>

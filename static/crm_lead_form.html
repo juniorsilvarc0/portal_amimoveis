@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lead — CRM</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/layout.css">
+</head>
+<body>
+    <div class="app-layout">
+        <aside class="sidebar" id="sidebar"></aside>
+        <div class="main-content" id="mainContent">
+            <header class="topbar">
+                <button class="topbar-hamburger" aria-label="Abrir menu"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+                <span class="topbar-title" id="pageTitle">Novo Lead</span>
+            </header>
+            <main class="page-area">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title" id="pageTitleMain">Novo Lead</h1>
+                        <p class="page-subtitle">Prospect a ser qualificado</p>
+                    </div>
+                    <div class="page-actions">
+                        <a href="/crm/leads" class="btn btn-ghost">Voltar</a>
+                    </div>
+                </div>
+                <div class="alert-error" id="alertError"></div>
+                <form id="form" autocomplete="off" novalidate>
+
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible><h3>01. Identificação</h3></div>
+                        <div class="form-card-body">
+                            <div class="form-grid-auto">
+                                <div class="form-group full-width">
+                                    <label for="nome">Nome *</label>
+                                    <input type="text" id="nome" name="nome" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="email">E-mail</label>
+                                    <input type="email" id="email" name="email">
+                                </div>
+                                <div class="form-group">
+                                    <label for="whatsapp">WhatsApp</label>
+                                    <input type="text" id="whatsapp" name="whatsapp" data-mask="phone" placeholder="(00) 00000-0000">
+                                </div>
+                                <div class="form-group">
+                                    <label for="telefone">Telefone</label>
+                                    <input type="text" id="telefone" name="telefone" data-mask="phone">
+                                </div>
+                                <div class="form-group">
+                                    <label for="cpf_cnpj">CPF / CNPJ</label>
+                                    <input type="text" id="cpf_cnpj" name="cpf_cnpj">
+                                    <small class="field-error"></small>
+                                    <div id="clienteMatchBadge" style="display:none;margin-top:6px;padding:8px 10px;background:#dcfce7;border:1px solid #22c55e;border-radius:6px;font-size:12px;color:#166534;"></div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="cidade_id">Cidade</label>
+                                    <select id="cidade_id" name="cidade_id"><option value="">— Selecione —</option></select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible><h3>02. Qualificação</h3></div>
+                        <div class="form-card-body">
+                            <div class="form-grid-auto">
+                                <div class="form-group">
+                                    <label for="status">Status</label>
+                                    <select id="status" name="status">
+                                        <option value="novo">Novo</option>
+                                        <option value="contatado">Contatado</option>
+                                        <option value="qualificado">Qualificado</option>
+                                        <option value="descartado">Descartado</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="score">Score (0-100)</label>
+                                    <input type="number" id="score" name="score" min="0" max="100" value="0">
+                                </div>
+                                <div class="form-group">
+                                    <label for="interesse">Interesse</label>
+                                    <select id="interesse" name="interesse">
+                                        <option value="">— Selecione —</option>
+                                        <option value="comprar">Comprar</option>
+                                        <option value="alugar">Alugar</option>
+                                        <option value="vender">Vender</option>
+                                        <option value="financiar">Financiar</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="valor_estimado">Valor estimado</label>
+                                    <input type="text" id="valor_estimado" name="valor_estimado" data-mask="money">
+                                </div>
+                                <div class="form-group">
+                                    <label for="imovel_interesse_id">Imóvel de interesse</label>
+                                    <select id="imovel_interesse_id" name="imovel_interesse_id"><option value="">— Selecione —</option></select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible><h3>03. Origem</h3></div>
+                        <div class="form-card-body">
+                            <div class="form-grid-auto">
+                                <div class="form-group">
+                                    <label for="origem">Origem (texto livre)</label>
+                                    <input type="text" id="origem" name="origem" placeholder="Ex: site, indicação, anúncio">
+                                </div>
+                                <div class="form-group">
+                                    <label for="campaign_id">Campanha</label>
+                                    <select id="campaign_id" name="campaign_id"><option value="">— Selecione —</option></select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="proprietario_id">Responsável (corretor)</label>
+                                    <select id="proprietario_id" name="proprietario_id"><option value="">— Selecione —</option></select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible><h3>04. Observações</h3></div>
+                        <div class="form-card-body">
+                            <div class="form-grid-auto">
+                                <div class="form-group full-width">
+                                    <label for="observacoes">Observações</label>
+                                    <textarea id="observacoes" name="observacoes" rows="3"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <a href="/crm/leads" class="btn btn-ghost">Cancelar</a>
+                        <button type="submit" class="btn btn-primary" id="btnSalvar">
+                            <span id="btnSalvarLabel">Salvar Lead</span>
+                            <span id="btnSalvarSpinner" class="spinner" style="display:none;"></span>
+                        </button>
+                    </div>
+                </form>
+            </main>
+        </div>
+    </div>
+    <div class="toast" id="toast"></div>
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/sidebar.js"></script>
+    <script src="/static/js/masks.js"></script>
+    <script src="/static/js/forms.js"></script>
+    <script src="/static/js/modal.js"></script>
+    <script>
+    (async function () {
+        'use strict';
+        let usuario;
+        try { usuario = await api.requireAuth(); } catch (e) { return; }
+        renderSidebar(document.getElementById('sidebar'), '/crm/leads', usuario);
+
+        const form = document.getElementById('form');
+        forms.init(form);
+        if (typeof autoMask === 'function') autoMask(form);
+
+        const editId = getId();
+        if (!api.can('crm_leads', 'ver')) { window.location.href = '/'; return; }
+        var podeEscrever = editId ? api.can('crm_leads', 'editar') : api.can('crm_leads', 'criar');
+        if (!podeEscrever) { window.location.href = '/crm/leads'; return; }
+        if (editId) {
+            document.getElementById('pageTitleMain').textContent = 'Editar Lead';
+            document.getElementById('pageTitle').textContent = 'Editar Lead';
+            document.getElementById('btnSalvarLabel').textContent = 'Atualizar Lead';
+        }
+
+        // Carregar listas
+        await Promise.all([
+            loadSelect('cidade_id', '/lookup/cidades', c => c.nome + (c.uf ? ' (' + c.uf + ')' : '')),
+            loadSelect('imovel_interesse_id', '/lookup/imoveis', i => i.nome),
+            loadCampanhas(),
+            loadCorretores(),
+        ]);
+
+        if (editId) await carregarLead(editId);
+
+        /* ---- CPF/CNPJ lookup → cliente existente ---- */
+        let clienteVinculadoId = null;
+        const cpfInput = document.getElementById('cpf_cnpj');
+        const cpfBadge = document.getElementById('clienteMatchBadge');
+        if (cpfInput) {
+            let lookupTimer;
+            cpfInput.addEventListener('input', () => {
+                clearTimeout(lookupTimer);
+                lookupTimer = setTimeout(doLookup, 400);
+            });
+            cpfInput.addEventListener('blur', doLookup);
+        }
+        async function doLookup() {
+            const raw = (cpfInput.value || '').replace(/\D/g, '');
+            if (raw.length < 11) {
+                cpfBadge.style.display = 'none';
+                clienteVinculadoId = null;
+                return;
+            }
+            try {
+                const r = await api.get('/crm/leads/lookup-cliente?cpf_cnpj=' + raw);
+                if (r.cliente) {
+                    clienteVinculadoId = r.cliente.id;
+                    cpfBadge.innerHTML =
+                        '✓ Cliente já cadastrado: <strong>' + _esc(r.cliente.nome) + '</strong> (#' + r.cliente.id + ')' +
+                        '<br><small>Este lead será automaticamente vinculado ao cliente. ' +
+                        (r.leads_anteriores > 0 ? r.leads_anteriores + ' lead(s) anterior(es) deste cliente.' : 'Primeira captação deste cliente no CRM.') +
+                        '</small>';
+                    cpfBadge.style.display = 'block';
+                } else {
+                    clienteVinculadoId = null;
+                    cpfBadge.innerHTML = 'ℹ Cliente novo — será criado ao converter o lead.';
+                    cpfBadge.style.background = '#dbeafe';
+                    cpfBadge.style.borderColor = '#3b82f6';
+                    cpfBadge.style.color = '#1e40af';
+                    cpfBadge.style.display = 'block';
+                }
+            } catch (e) {
+                cpfBadge.style.display = 'none';
+            }
+        }
+        function _esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+        async function loadSelect(id, url, label) {
+            const sel = document.getElementById(id);
+            if (!sel) return;
+            try {
+                const list = await api.get(url);
+                (list || []).forEach(item => {
+                    const opt = document.createElement('option');
+                    opt.value = item.id;
+                    opt.textContent = label(item);
+                    sel.appendChild(opt);
+                });
+            } catch (e) {}
+        }
+        async function loadCampanhas() {
+            try {
+                const resp = await api.get('/crm/campaigns?ativo=true&per_page=200');
+                const sel = document.getElementById('campaign_id');
+                (resp.data || []).forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.id; opt.textContent = c.nome; sel.appendChild(opt);
+                });
+            } catch (e) {}
+        }
+        async function loadCorretores() {
+            try {
+                const resp = await api.get('/usuarios');
+                const sel = document.getElementById('proprietario_id');
+                (resp.data || resp || []).forEach(u => {
+                    const opt = document.createElement('option');
+                    opt.value = u.id; opt.textContent = u.email; sel.appendChild(opt);
+                });
+            } catch (e) {}
+        }
+
+        async function carregarLead(id) {
+            try {
+                const l = await api.get('/crm/leads/' + id);
+                ['nome','email','whatsapp','telefone','cpf_cnpj','cidade_id','status','score','interesse','valor_estimado','imovel_interesse_id','origem','campaign_id','proprietario_id','observacoes'].forEach(f => {
+                    const el = document.getElementById(f);
+                    if (el && l[f] != null) el.value = l[f];
+                });
+            } catch (e) { showToast('Erro ao carregar lead', 'error'); }
+        }
+
+        form.addEventListener('submit', async e => {
+            e.preventDefault();
+            forms.alertClear();
+            const btn = document.getElementById('btnSalvar');
+            btn.disabled = true;
+            try {
+                const p = montarPayload();
+                if (editId) await api.put('/crm/leads/' + editId, p);
+                else await api.post('/crm/leads', p);
+                showToast('Lead salvo!', 'success');
+                setTimeout(() => { window.location.href = '/crm/leads'; }, 800);
+            } catch (err) {
+                forms.alertError(err.message || 'Erro ao salvar.');
+                btn.disabled = false;
+            }
+        });
+
+        function montarPayload() {
+            const v = id => { const el = document.getElementById(id); return el ? (el.value || '').trim() : ''; };
+            const intval = id => v(id) ? parseInt(v(id), 10) : null;
+            const money = id => {
+                let x = v(id); if (!x) return null;
+                x = x.replace(/[R$\s.]/g, '').replace(',', '.');
+                return parseFloat(x) || null;
+            };
+            return {
+                nome: v('nome'),
+                email: v('email') || null,
+                whatsapp: v('whatsapp') || null,
+                telefone: v('telefone') || null,
+                cpf_cnpj: v('cpf_cnpj') || null,
+                cidade_id: intval('cidade_id'),
+                status: v('status') || 'novo',
+                score: intval('score') || 0,
+                interesse: v('interesse') || null,
+                valor_estimado: money('valor_estimado'),
+                imovel_interesse_id: intval('imovel_interesse_id'),
+                origem: v('origem') || null,
+                campaign_id: intval('campaign_id'),
+                proprietario_id: intval('proprietario_id'),
+                observacoes: v('observacoes') || null,
+            };
+        }
+        function getId() { const m = window.location.pathname.match(/\/crm\/leads\/(\d+)\/editar/); return m ? parseInt(m[1], 10) : null; }
+        function showToast(msg, type){const t=document.getElementById('toast');if(!t)return;t.textContent=msg;t.className='toast '+(type||'success');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+    })();
+    </script>
+</body>
+</html>

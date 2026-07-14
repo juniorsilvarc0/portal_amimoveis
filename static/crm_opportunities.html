@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oportunidades — CRM</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/layout.css">
+    <style>
+        .badge-st { display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600; }
+        .st-aberta { background:#dbeafe;color:#1e40af; }
+        .st-ganha { background:#dcfce7;color:#166534; }
+        .st-perdida { background:#fee2e2;color:#991b1b; }
+    </style>
+</head>
+<body>
+    <div class="app-layout">
+        <aside class="sidebar" id="sidebar"></aside>
+        <div class="main-content" id="mainContent">
+            <header class="topbar">
+                <button class="topbar-hamburger" aria-label="Abrir menu"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+                <span class="topbar-title">Oportunidades</span>
+            </header>
+            <main class="page-area">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Oportunidades</h1>
+                        <p class="page-subtitle">Negociações em andamento</p>
+                    </div>
+                    <div class="page-actions">
+                        <a href="/crm/kanban" class="btn btn-ghost">Ver Kanban</a>
+                        <a href="/crm/opportunities/novo" class="btn btn-primary" id="btnNovo">Nova</a>
+                    </div>
+                </div>
+                <div class="card" style="padding:0;overflow:hidden;"><div id="grid" style="padding:0;"></div></div>
+            </main>
+        </div>
+    </div>
+    <div class="toast" id="toast"></div>
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/sidebar.js"></script>
+    <script src="/static/js/masks.js"></script>
+    <script src="/static/js/modal.js"></script>
+    <script src="/static/js/datagrid.js"></script>
+    <script>
+    (async function () {
+        'use strict';
+        let usuario;
+        try { usuario = await api.requireAuth(); } catch (e) { return; }
+        if (!api.can('crm_opportunities', 'ver')) { window.location.href = '/'; return; }
+        var canWrite = api.can('crm_opportunities', 'criar') || api.can('crm_opportunities', 'editar');
+        var canDelete = api.can('crm_opportunities', 'excluir');
+        renderSidebar(document.getElementById('sidebar'), '/crm/opportunities', usuario);
+        if (!canWrite) { var _bn = document.getElementById('btnNovo'); if (_bn) _bn.style.display = 'none'; }
+
+        const fmt = v => v ? 'R$ ' + Number(v).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '—';
+
+        function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+
+        const grid = new DataGrid(document.getElementById('grid'), {
+            endpoint: '/crm/opportunities',
+            searchable: true,
+            perPage: 25,
+            emptyMessage: 'Nenhuma oportunidade.',
+            columns: [
+                { key: 'id', label: '#', width: '60px', align: 'center' },
+                { key: 'nome', label: 'Nome', format: v => v || '—' },
+                { key: 'cliente_nome', label: 'Cliente', format: v => v || '—' },
+                { key: 'stage_nome', label: 'Etapa', width: '140px', html: true,
+                  format: (v, r) => '<span style="background:'+esc(r.stage_cor||'#065676')+';color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;">'+esc(v||'—')+'</span>' },
+                { key: 'valor', label: 'Valor', width: '140px', align: 'right', format: fmt },
+                { key: 'status', label: 'Status', width: '90px', align: 'center', html: true,
+                  format: v => '<span class="badge-st st-'+esc(v||'aberta')+'">'+esc(v||'aberta')+'</span>' },
+                { key: 'data_previsao', label: 'Previsão', width: '110px', align: 'center',
+                  format: v => v ? new Date(v).toLocaleDateString('pt-BR') : '—' },
+            ],
+            rowActions: function (r) {
+                const actions = [
+                { label: 'Abrir', className: 'btn-ghost',
+                  onClick: x => { window.location.href = '/crm/opportunities/' + x.id; } },
+                ];
+                if (canWrite) {
+                actions.push({ label: 'Gerar Proposta', className: 'btn-ghost',
+                  onClick: async x => {
+                      try {
+                          const res = await api.post('/crm/opportunities/' + x.id + '/gerar-proposta', {});
+                          showToast('Proposta criada!', 'success');
+                          setTimeout(() => { window.location.href = res.edit_url; }, 800);
+                      } catch (e) { showToast(e.message, 'error'); }
+                  } });
+                }
+                if (canDelete) {
+                actions.push({ label: 'Excluir', className: 'btn-danger',
+                  onClick: async x => {
+                      const ok = await Modal.confirm('Excluir oportunidade <strong>' + _esc(x.nome) + '</strong>?');
+                      if (!ok) return;
+                      try { await api.del('/crm/opportunities/' + x.id); showToast('Excluída', 'success'); grid.refresh(); }
+                      catch (e) { showToast(e.message, 'error'); }
+                  } });
+                }
+                return actions;
+            },
+        });
+        function _esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+        function showToast(msg, type){const t=document.getElementById('toast');if(!t)return;t.textContent=msg;t.className='toast '+(type||'success');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+    })();
+    </script>
+</body>
+</html>

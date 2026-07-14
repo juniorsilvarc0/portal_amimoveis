@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recibos — AM Imoveis</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/layout.css">
+</head>
+<body>
+    <div class="app-layout">
+
+        <aside class="sidebar" id="sidebar" aria-label="Menu lateral"></aside>
+
+        <div class="main-content" id="mainContent">
+
+            <header class="topbar">
+                <button class="topbar-hamburger" aria-label="Abrir menu">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="6" x2="21" y2="6"/>
+                        <line x1="3" y1="12" x2="21" y2="12"/>
+                        <line x1="3" y1="18" x2="21" y2="18"/>
+                    </svg>
+                </button>
+                <span class="topbar-title">Recibos</span>
+            </header>
+
+            <main class="page-area">
+
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Recibos</h1>
+                        <p class="page-subtitle">Recibos de pagamento com geração de PDF</p>
+                    </div>
+                    <div class="page-actions">
+                        <a href="/recibos/novo" class="btn btn-primary" id="btnNovo">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2.5"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="12" y1="5" x2="12" y2="19"/>
+                                <line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                            Novo Recibo
+                        </a>
+                    </div>
+                </div>
+
+                <div class="card" style="padding: 0; overflow: hidden;">
+                    <div id="grid" style="padding: 0;"></div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <div class="toast" id="toast" role="alert" aria-live="polite"></div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/sidebar.js"></script>
+    <script src="/static/js/masks.js"></script>
+    <script src="/static/js/modal.js"></script>
+    <script src="/static/js/datagrid.js"></script>
+
+    <script>
+        (async function () {
+            'use strict';
+
+            let usuario;
+            try {
+                usuario = await api.requireAuth();
+            } catch (e) {
+                return;
+            }
+
+            if (!api.can('recibo', 'ver')) { window.location.href = '/'; return; }
+            var canWrite = api.can('recibo', 'criar') || api.can('recibo', 'editar');
+            var canDelete = api.can('recibo', 'excluir');
+
+            renderSidebar(document.getElementById('sidebar'), '/recibos', usuario);
+
+            if (!canWrite) {
+                var btn = document.getElementById('btnNovo');
+                if (btn) btn.style.display = 'none';
+            }
+
+            var grid = new DataGrid(document.getElementById('grid'), {
+                endpoint: '/recibos',
+                searchable: true,
+                exportable: true,
+                perPage: 25,
+                emptyMessage: 'Nenhum recibo cadastrado.',
+                columns: [
+                    {
+                        key: 'id',
+                        label: '#',
+                        sortable: true,
+                        width: '60px',
+                        align: 'center',
+                    },
+                    {
+                        key: 'cliente_nome',
+                        label: 'Cliente',
+                        sortable: true,
+                        format: function (v) { return v || '—'; },
+                    },
+                    {
+                        key: 'numero_contrato',
+                        label: 'Contrato',
+                        width: '160px',
+                        format: function (v) { return v || '—'; },
+                    },
+                    {
+                        key: 'valor_recebido',
+                        label: 'Valor',
+                        width: '130px',
+                        align: 'right',
+                        format: function (v) {
+                            if (!v) return '—';
+                            return 'R$ ' + parseFloat(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                        },
+                    },
+                    {
+                        key: 'data_recibo',
+                        label: 'Data',
+                        width: '110px',
+                        align: 'center',
+                        format: function (v) { return v || '—'; },
+                    },
+                    {
+                        key: 'created_at',
+                        label: 'Criado em',
+                        width: '110px',
+                        align: 'center',
+                        format: function (v) {
+                            if (!v) return '—';
+                            return new Date(v).toLocaleDateString('pt-BR');
+                        },
+                    },
+                ],
+                rowActions: function (row) {
+                    var actions = [
+                        {
+                            label: 'PDF',
+                            className: 'btn-ghost',
+                            onClick: function (r) {
+                                api.downloadPdf('/recibos/' + r.id + '/pdf');
+                            },
+                        },
+                        {
+                            label: 'Editar',
+                            className: 'btn-ghost',
+                            onClick: function (r) {
+                                window.location.href = '/recibos/' + r.id + '/editar';
+                            },
+                        },
+                    ];
+
+                    if (canDelete) {
+                        actions.push({
+                            label: 'Excluir',
+                            className: 'btn-danger',
+                            onClick: async function (r) {
+                                var ok = await Modal.confirm(
+                                    'Excluir o recibo de <strong>' + _esc(r.cliente_nome || '#' + r.id) + '</strong>?<br>' +
+                                    '<small style="color:#9aa4b0">Esta ação não pode ser desfeita.</small>'
+                                );
+                                if (!ok) return;
+                                try {
+                                    await api.del('/recibos/' + r.id);
+                                    showToast('Recibo excluído.', 'success');
+                                    grid.refresh();
+                                } catch (e) {
+                                    showToast(e.message || 'Erro ao excluir recibo.', 'error');
+                                }
+                            },
+                        });
+                    }
+
+                    return actions;
+                },
+            });
+
+            function _esc(s) {
+                return String(s || '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
+            function showToast(msg, type, duration) {
+                type = type || 'success';
+                duration = duration || 3500;
+                var t = document.getElementById('toast');
+                if (!t) return;
+                t.textContent = msg;
+                t.className = 'toast ' + type;
+                t.classList.add('show');
+                setTimeout(function () { t.classList.remove('show'); }, duration);
+            }
+        })();
+    </script>
+</body>
+</html>

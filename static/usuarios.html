@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Usuários — AM Imóveis</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/layout.css">
+    <style>
+        .badge-perfil { display: inline-block; font-size: 11px; font-weight: 700;
+            padding: 3px 10px; border-radius: 12px; letter-spacing: 0.5px; }
+        .badge-perfil-admin { background: #fef3f2; color: #be123c; }
+        .badge-perfil-usuario { background: #eff6ff; color: #1d4ed8; }
+        .badge-status { display: inline-block; font-size: 11px; font-weight: 700;
+            padding: 3px 10px; border-radius: 12px; letter-spacing: 0.5px; }
+        .badge-ativo { background: #ecfdf5; color: #047857; }
+        .badge-inativo { background: #f3f4f6; color: #6b7280; }
+    </style>
+</head>
+<body>
+    <div class="app-layout">
+        <aside class="sidebar" id="sidebar" aria-label="Menu lateral"></aside>
+        <div class="main-content" id="mainContent">
+            <header class="topbar">
+                <button class="topbar-hamburger" aria-label="Abrir menu">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="6" x2="21" y2="6"/>
+                        <line x1="3" y1="12" x2="21" y2="12"/>
+                        <line x1="3" y1="18" x2="21" y2="18"/>
+                    </svg>
+                </button>
+                <span class="topbar-title">Usuários</span>
+            </header>
+
+            <main class="page-area">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Usuários</h1>
+                        <p class="page-subtitle">Gestão de acesso ao portal — apenas administradores</p>
+                    </div>
+                    <div class="page-actions">
+                        <button class="btn btn-primary" id="btnNovo">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="12" y1="5" x2="12" y2="19"/>
+                                <line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                            Novo Usuário
+                        </button>
+                    </div>
+                </div>
+                <div class="card">
+                    <div id="grid"></div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <div class="toast" id="toast" role="alert" aria-live="polite"></div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/sidebar.js"></script>
+    <script src="/static/js/masks.js"></script>
+    <script src="/static/js/forms.js"></script>
+    <script src="/static/js/modal.js"></script>
+    <script src="/static/js/datagrid.js"></script>
+
+    <script>
+        (async function () {
+            'use strict';
+
+            let usuario;
+            try { usuario = await api.requireAuth(); } catch (e) { return; }
+
+            // Gating por permissão de VER usuários
+            if (!api.can('usuarios', 'ver')) {
+                window.location.href = '/';
+                return;
+            }
+
+            const canCriar = api.can('usuarios', 'criar');
+            const canEditar = api.can('usuarios', 'editar');
+            const canExcluir = api.can('usuarios', 'excluir');
+
+            renderSidebar(document.getElementById('sidebar'), '/usuarios', usuario);
+
+            // Carrega perfis (roles) para o select do formulário
+            let rolesCache = null;
+            async function loadRoles() {
+                if (rolesCache) return rolesCache;
+                try {
+                    const r = await api.get('/perfis');
+                    rolesCache = (r && r.data) || [];
+                } catch (_) {
+                    rolesCache = [];
+                }
+                return rolesCache;
+            }
+
+            const grid = new DataGrid(document.getElementById('grid'), {
+                endpoint: '/usuarios',
+                searchable: true,
+                columns: [
+                    { key: 'id',    label: '#',     width: '60px',  format: v => v || '—' },
+                    { key: 'nome',  label: 'Nome',  sortable: true },
+                    { key: 'email', label: 'E-mail', format: v => v || '—' },
+                    {
+                        key: 'role_nome',
+                        label: 'Perfil',
+                        width: '150px',
+                        html: true,
+                        format: (v, row) => {
+                            const nome = v || (row && row.perfil === 'admin' ? 'Administrador' : (row && row.perfil) || '');
+                            if (!nome) return '—';
+                            const isAdmin = (v === 'Administrador') || (row && row.perfil === 'admin');
+                            const cls = isAdmin ? 'badge-perfil-admin' : 'badge-perfil-usuario';
+                            return '<span class="badge-perfil ' + cls + '">' + _escSel(nome) + '</span>';
+                        }
+                    },
+                    {
+                        key: 'ativo',
+                        label: 'Status',
+                        width: '100px',
+                        html: true,
+                        format: v => v
+                            ? '<span class="badge-status badge-ativo">Ativo</span>'
+                            : '<span class="badge-status badge-inativo">Inativo</span>'
+                    },
+                    {
+                        key: 'created_at',
+                        label: 'Criado em',
+                        width: '120px',
+                        format: v => v ? new Date(v).toLocaleDateString('pt-BR') : '—'
+                    },
+                ],
+                rowActions: function (row) {
+                    const acoes = [];
+                    if (canEditar) {
+                        acoes.push({ label: 'Editar', className: 'btn-ghost', onClick: r => openEditModal(r) });
+                    }
+                    if (canExcluir) {
+                        acoes.push({ label: 'Excluir', className: 'btn-danger',
+                          visible: () => row.id !== usuario.id,
+                          onClick: r => deletar(r) });
+                    }
+                    return acoes;
+                },
+            });
+
+            const btnNovo = document.getElementById('btnNovo');
+            if (canCriar) {
+                btnNovo.onclick = function () { openEditModal(null); };
+            } else {
+                btnNovo.style.display = 'none';
+            }
+
+            async function openEditModal(row) {
+                const isEdit = !!row;
+                const m = new Modal({
+                    title: isEdit ? 'Editar Usuário' : 'Novo Usuário',
+                    bodyHtml:
+                        '<form id="usuarioForm" novalidate>' +
+                            '<div class="alert-error" id="alertError"></div>' +
+                            '<div class="form-grid-auto">' +
+                                '<div class="form-group full-width">' +
+                                    '<label for="m-nome">Nome <span class="required">*</span></label>' +
+                                    '<input type="text" id="m-nome" name="nome" required autocomplete="name" data-no-upper>' +
+                                    '<small class="field-error"></small>' +
+                                '</div>' +
+                                '<div class="form-group full-width">' +
+                                    '<label for="m-email">E-mail <span class="required">*</span></label>' +
+                                    '<input type="email" id="m-email" name="email" required autocomplete="email">' +
+                                    '<small class="field-error"></small>' +
+                                '</div>' +
+                                '<div class="form-group">' +
+                                    '<label for="m-role">Perfil de acesso <span class="required">*</span></label>' +
+                                    '<select id="m-role" name="role_id" required>' +
+                                        '<option value="">Carregando...</option>' +
+                                    '</select>' +
+                                    '<small class="field-error"></small>' +
+                                '</div>' +
+                                '<div class="form-group">' +
+                                    '<label for="m-ativo">Status</label>' +
+                                    '<select id="m-ativo" name="ativo">' +
+                                        '<option value="true">Ativo</option>' +
+                                        '<option value="false">Inativo</option>' +
+                                    '</select>' +
+                                    '<small class="field-error"></small>' +
+                                '</div>' +
+                                '<div class="form-group full-width">' +
+                                    '<label for="m-senha">' +
+                                        (isEdit ? 'Nova senha (deixe em branco para manter)' : 'Senha <span class="required">*</span>') +
+                                    '</label>' +
+                                    '<input type="password" id="m-senha" name="senha"' + (isEdit ? '' : ' required') + ' autocomplete="new-password">' +
+                                    '<small class="field-error"></small>' +
+                                '</div>' +
+                            '</div>' +
+                        '</form>',
+                    footerHtml:
+                        '<button class="btn btn-ghost" id="m-cancelar">Cancelar</button>' +
+                        '<button class="btn btn-primary" id="m-salvar">' + (isEdit ? 'Salvar' : 'Criar') + '</button>',
+                    width: '520px',
+                });
+                m.open();
+
+                const form = document.getElementById('usuarioForm');
+                const salvarBtn = document.getElementById('m-salvar');
+
+                forms.init(form);
+
+                // Popula o select de perfis de acesso (roles)
+                const roleSel = document.getElementById('m-role');
+                (async function () {
+                    const roles = await loadRoles();
+                    roleSel.innerHTML =
+                        '<option value="">Selecione...</option>' +
+                        roles.map(function (r) {
+                            return '<option value="' + r.id + '">' + _escSel(r.nome) + '</option>';
+                        }).join('');
+                    if (row && row.role_id != null) {
+                        roleSel.value = String(row.role_id);
+                    }
+                })();
+
+                if (row) {
+                    document.getElementById('m-nome').value = row.nome || '';
+                    document.getElementById('m-email').value = row.email || '';
+                    document.getElementById('m-ativo').value = row.ativo ? 'true' : 'false';
+                }
+
+                document.getElementById('m-cancelar').onclick = function () { m.close(); };
+
+                salvarBtn.onclick = async function () {
+                    forms.alertClear();
+                    if (!forms.validate(form)) return;
+
+                    const payload = forms.readForm(form);
+                    payload.ativo = payload.ativo === 'true' || payload.ativo === true;
+                    // role_id como inteiro (NOT NULL no payload do usuário)
+                    if (payload.role_id === '' || payload.role_id == null) {
+                        forms.alertError('Selecione um perfil de acesso.');
+                        return;
+                    }
+                    payload.role_id = parseInt(payload.role_id, 10);
+                    if (isEdit && !payload.senha) delete payload.senha;
+
+                    salvarBtn.disabled = true;
+                    salvarBtn.textContent = 'Salvando...';
+                    try {
+                        if (isEdit) {
+                            await api.put('/usuarios/' + row.id, payload);
+                            showToast('Usuário atualizado.', 'success');
+                        } else {
+                            await api.post('/usuarios', payload);
+                            showToast('Usuário criado.', 'success');
+                        }
+                        m.close();
+                        grid.refresh();
+                    } catch (e) {
+                        forms.alertError('Erro ao salvar: ' + (e.message || 'tente novamente'));
+                        salvarBtn.disabled = false;
+                        salvarBtn.textContent = isEdit ? 'Salvar' : 'Criar';
+                    }
+                };
+            }
+
+            async function deletar(row) {
+                if (row.id === usuario.id) {
+                    Modal.alert('Você não pode excluir seu próprio usuário.');
+                    return;
+                }
+                const ok = await Modal.confirm('Excluir o usuário "' + row.nome + '"?');
+                if (!ok) return;
+                try {
+                    await api.del('/usuarios/' + row.id);
+                    showToast('Usuário excluído.', 'success');
+                    grid.refresh();
+                } catch (e) {
+                    Modal.alert('Erro ao excluir: ' + (e.message || 'tente novamente'));
+                }
+            }
+
+            function _escSel(str) {
+                return String(str == null ? '' : str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
+            function showToast(msg, type) {
+                const t = document.getElementById('toast');
+                if (!t) return;
+                t.textContent = msg;
+                t.className = 'toast ' + (type || 'success');
+                t.classList.add('show');
+                setTimeout(() => t.classList.remove('show'), 3000);
+            }
+        })();
+    </script>
+</body>
+</html>

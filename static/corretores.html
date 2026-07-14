@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Corretores — AM Imóveis</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/layout.css">
+    <style>
+        .toggle-switch {
+            display: inline-flex; align-items: center; gap: 10px;
+            padding: 8px 14px; background: #fff; border: 1.5px solid var(--border);
+            border-radius: 999px; font-size: 13px; font-weight: 600;
+            color: var(--text); cursor: pointer; transition: all 0.2s;
+        }
+        .toggle-switch:hover { border-color: var(--secondary); }
+        .toggle-switch .dot {
+            width: 36px; height: 20px; background: #cbd5e1; border-radius: 999px;
+            position: relative; transition: background 0.2s;
+        }
+        .toggle-switch .dot::after {
+            content: ''; position: absolute; top: 2px; left: 2px;
+            width: 16px; height: 16px; background: #fff; border-radius: 50%;
+            transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        .toggle-switch.on .dot { background: #10b981; }
+        .toggle-switch.on .dot::after { transform: translateX(16px); }
+        .toggle-switch .status { font-size: 12px; color: var(--text-muted); }
+        .toggle-switch.on .status { color: #047857; }
+        .public-link-info {
+            background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px;
+            padding: 12px 16px; margin-bottom: 16px; font-size: 13px;
+            display: flex; align-items: center; gap: 10px; color: #047857;
+        }
+        .public-link-info code {
+            background: #fff; padding: 2px 8px; border-radius: 4px; color: #065676;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-layout">
+        <aside class="sidebar" id="sidebar" aria-label="Menu lateral"></aside>
+
+        <div class="main-content" id="mainContent">
+            <header class="topbar">
+                <button class="topbar-hamburger" aria-label="Abrir menu">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="6" x2="21" y2="6"/>
+                        <line x1="3" y1="12" x2="21" y2="12"/>
+                        <line x1="3" y1="18" x2="21" y2="18"/>
+                    </svg>
+                </button>
+                <span class="topbar-title">Corretores</span>
+            </header>
+
+            <main class="page-area">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Corretores</h1>
+                        <p class="page-subtitle">Cadastro de corretores de imóveis</p>
+                    </div>
+                    <div class="page-actions" style="gap:10px;">
+                        <button type="button" class="toggle-switch" id="toggleFormPublico" title="Liga/desliga o cadastro público">
+                            <span class="dot"></span>
+                            <span>Form público</span>
+                            <span class="status" id="toggleStatus">—</span>
+                        </button>
+                        <button class="btn btn-primary" id="btnNovo">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="12" y1="5" x2="12" y2="19"/>
+                                <line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                            Novo Corretor
+                        </button>
+                    </div>
+                </div>
+
+                <div class="public-link-info" id="publicLinkInfo">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                    Link público para divulgação:
+                    <code id="publicUrl"></code>
+                    <button type="button" class="btn btn-ghost btn-sm" id="btnCopiarLink">Copiar</button>
+                </div>
+
+                <div class="card" style="padding: 0; overflow: hidden;">
+                    <div id="grid" style="padding: 0;"></div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <div class="toast" id="toast" role="alert" aria-live="polite"></div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/sidebar.js"></script>
+    <script src="/static/js/masks.js"></script>
+    <script src="/static/js/forms.js"></script>
+    <script src="/static/js/modal.js"></script>
+    <script src="/static/js/datagrid.js"></script>
+
+    <script>
+        (async function () {
+            'use strict';
+
+            var usuario;
+            try { usuario = await api.requireAuth(); } catch (e) { return; }
+
+            if (!api.can('cad_corretores', 'ver')) { window.location.href = '/'; return; }
+
+            renderSidebar(document.getElementById('sidebar'), '/cadastros/corretores', usuario);
+
+            var canWrite = api.can('cad_corretores', 'criar') || api.can('cad_corretores', 'editar');
+            var canDelete = api.can('cad_corretores', 'excluir');
+            if (!canWrite) {
+                var btn = document.getElementById('btnNovo');
+                if (btn) btn.style.display = 'none';
+                document.getElementById('toggleFormPublico').style.display = 'none';
+            }
+
+            /* Mostra link público */
+            var publicUrl = window.location.origin + '/corretor/cadastro';
+            document.getElementById('publicUrl').textContent = publicUrl;
+            document.getElementById('btnCopiarLink').addEventListener('click', function () {
+                navigator.clipboard.writeText(publicUrl).then(function () {
+                    showToast('Link copiado!', 'success');
+                });
+            });
+
+            /* Toggle form público on/off via app_settings */
+            var toggleEl = document.getElementById('toggleFormPublico');
+            var statusEl = document.getElementById('toggleStatus');
+            var infoEl = document.getElementById('publicLinkInfo');
+
+            async function carregarToggle() {
+                try {
+                    var r = await api.get('/settings/corretores_publico_ativo');
+                    setToggleState(String(r.value).toLowerCase() === 'true');
+                } catch (e) {
+                    setToggleState(true);
+                }
+            }
+            function setToggleState(on) {
+                toggleEl.classList.toggle('on', on);
+                statusEl.textContent = on ? 'Ativo' : 'Desativado';
+                infoEl.style.display = on ? '' : 'none';
+            }
+            toggleEl.addEventListener('click', async function () {
+                if (!canWrite) return;
+                var newOn = !toggleEl.classList.contains('on');
+                try {
+                    await api.put('/settings/corretores_publico_ativo', { value: String(newOn) });
+                    setToggleState(newOn);
+                    showToast(newOn ? 'Cadastro público ativado.' : 'Cadastro público desativado.', 'success');
+                } catch (e) {
+                    showToast('Erro ao salvar: ' + (e.message || ''), 'error');
+                }
+            });
+            carregarToggle();
+
+            var grid = new DataGrid(document.getElementById('grid'), {
+                endpoint: '/corretores',
+                searchable: true,
+                perPage: 25,
+                emptyMessage: 'Nenhum corretor cadastrado.',
+                columns: [
+                    { key: 'id',     label: '#', sortable: true, width: '60px', align: 'center' },
+                    { key: 'nome',   label: 'Nome', sortable: true },
+                    { key: 'cpf',    label: 'CPF', width: '140px',
+                      format: function (v) { return v ? maskCPF(v) : '—'; } },
+                    { key: 'creci',  label: 'CRECI', width: '100px',
+                      format: function (v) { return v || '—'; } },
+                    { key: 'telefone', label: 'Telefone', width: '140px',
+                      format: function (v) { return v ? maskPhone(v) : '—'; } },
+                    { key: 'email',  label: 'E-mail',
+                      format: function (v) { return v || '—'; } },
+                    { key: 'cidade_nome', label: 'Cidade', width: '140px',
+                      format: function (v, r) {
+                          if (!v) return '—';
+                          return v + (r.cidade_uf ? '/' + r.cidade_uf : '');
+                      } },
+                    { key: 'tamanho_camisa', label: 'Camisa', width: '80px', align: 'center',
+                      format: function (v) { return v || '—'; } },
+                    { key: 'chocolate_preferido', label: 'Chocolate', width: '120px',
+                      format: function (v) { return v || '—'; } },
+                    { key: 'bebida_preferida', label: 'Bebida', width: '120px',
+                      format: function (v) { return v || '—'; } },
+                ],
+                rowActions: function (row) {
+                    var actions = [];
+                    if (canWrite) {
+                        actions.push({ label: 'Editar', className: 'btn-ghost', onClick: function (r) { openEditModal(r); } });
+                    }
+                    if (canDelete) {
+                        actions.push({ label: 'Excluir', className: 'btn-danger', onClick: function (r) { deletar(r); } });
+                    }
+                    return actions;
+                },
+            });
+
+            document.getElementById('btnNovo').addEventListener('click', function () { openEditModal(null); });
+
+            async function openEditModal(row) {
+                var isEdit = !!row;
+
+                var m = new Modal({
+                    title: isEdit ? 'Editar Corretor' : 'Novo Corretor',
+                    bodyHtml:
+                        '<form id="corretorForm" novalidate>' +
+                            '<div class="alert-error" id="alertError"></div>' +
+                            '<div class="form-grid-auto">' +
+                                '<div data-field="nome" data-name="nome" data-required></div>' +
+                                '<div data-field="cpf" data-name="cpf" data-required></div>' +
+                                '<div data-field="nascimento" data-name="nascimento" data-required></div>' +
+                                '<div data-field="whatsapp" data-name="telefone" data-label="Telefone" data-required></div>' +
+                                '<div data-field="email" data-name="email" data-required></div>' +
+                                '<div class="form-group">' +
+                                    '<label for="m-creci">CRECI <span class="required">*</span></label>' +
+                                    '<input type="text" id="m-creci" name="creci" placeholder="Ex: 12345-F" required>' +
+                                    '<small class="field-error"></small>' +
+                                '</div>' +
+                                '<div class="form-group">' +
+                                    '<label for="m-cidade_id">Cidade <span class="required">*</span></label>' +
+                                    '<select id="m-cidade_id" name="cidade_id" required>' +
+                                        '<option value="">Carregando...</option>' +
+                                    '</select>' +
+                                    '<small class="field-error"></small>' +
+                                '</div>' +
+                                '<div class="form-group">' +
+                                    '<label for="m-tamanho_camisa">Tamanho de camisa <span class="required">*</span></label>' +
+                                    '<select id="m-tamanho_camisa" name="tamanho_camisa" required>' +
+                                        '<option value="">Selecione</option>' +
+                                        '<option value="PP">PP</option>' +
+                                        '<option value="P">P</option>' +
+                                        '<option value="M">M</option>' +
+                                        '<option value="G">G</option>' +
+                                        '<option value="GG">GG</option>' +
+                                        '<option value="XGG">XGG</option>' +
+                                    '</select>' +
+                                    '<small class="field-error"></small>' +
+                                '</div>' +
+                                '<div class="form-group">' +
+                                    '<label for="m-chocolate_preferido">Chocolate preferido <span class="required">*</span></label>' +
+                                    '<input type="text" id="m-chocolate_preferido" name="chocolate_preferido" placeholder="Ex: Lacta, Bis, Sonho de Valsa..." required>' +
+                                    '<small class="field-error"></small>' +
+                                '</div>' +
+                                '<div class="form-group">' +
+                                    '<label for="m-bebida_preferida">Bebida preferida <span class="required">*</span></label>' +
+                                    '<input type="text" id="m-bebida_preferida" name="bebida_preferida" placeholder="Ex: Café, Coca, Suco de laranja..." required>' +
+                                    '<small class="field-error"></small>' +
+                                '</div>' +
+                            '</div>' +
+                        '</form>',
+                    footerHtml:
+                        '<button class="btn btn-ghost" id="m-cancelar">Cancelar</button>' +
+                        '<button class="btn btn-primary" id="m-salvar">' + (isEdit ? 'Salvar' : 'Criar') + '</button>',
+                    width: '760px',
+                });
+                m.open();
+
+                var form = document.getElementById('corretorForm');
+                var cidadeEl = document.getElementById('m-cidade_id');
+                var salvarBtn = document.getElementById('m-salvar');
+
+                forms.init(form);
+
+                try {
+                    var cidades = await api.get('/lookup/cidades');
+                    cidadeEl.innerHTML = '<option value="">— Selecione —</option>' +
+                        cidades.map(function (c) {
+                            return '<option value="' + c.id + '">' + c.nome + '</option>';
+                        }).join('');
+                } catch (e) {
+                    cidadeEl.innerHTML = '<option value="">Erro ao carregar cidades</option>';
+                }
+
+                if (row) {
+                    forms.fillForm(form, {
+                        nome: row.nome,
+                        cpf: row.cpf,
+                        nascimento: row.nascimento ? String(row.nascimento).substring(0, 10) : '',
+                        telefone: row.telefone,
+                        email: row.email,
+                        creci: row.creci,
+                        cidade_id: row.cidade_id,
+                        tamanho_camisa: row.tamanho_camisa,
+                        chocolate_preferido: row.chocolate_preferido,
+                        bebida_preferida: row.bebida_preferida,
+                    });
+                }
+
+                document.getElementById('m-cancelar').addEventListener('click', function () { m.close(); });
+
+                salvarBtn.addEventListener('click', async function () {
+                    forms.alertClear();
+                    if (!forms.validate(form)) return;
+
+                    var payload = forms.readForm(form);
+                    if (payload.cidade_id) payload.cidade_id = parseInt(payload.cidade_id, 10);
+                    if (!payload.nascimento) delete payload.nascimento;
+
+                    salvarBtn.disabled = true;
+                    salvarBtn.textContent = 'Salvando...';
+
+                    try {
+                        if (isEdit) {
+                            await api.put('/corretores/' + row.id, payload);
+                            showToast('Corretor atualizado.', 'success');
+                        } else {
+                            await api.post('/corretores', payload);
+                            showToast('Corretor criado.', 'success');
+                        }
+                        m.close();
+                        grid.refresh();
+                    } catch (e) {
+                        forms.alertError('Erro ao salvar: ' + (e.message || 'Tente novamente.'));
+                        salvarBtn.disabled = false;
+                        salvarBtn.textContent = isEdit ? 'Salvar' : 'Criar';
+                    }
+                });
+            }
+
+            async function deletar(row) {
+                var ok = await Modal.confirm('Excluir o corretor <strong>' + _esc(row.nome) + '</strong>?<br><small style="color:#9aa4b0">Esta ação não pode ser desfeita.</small>');
+                if (!ok) return;
+                try {
+                    await api.del('/corretores/' + row.id);
+                    showToast('Corretor excluído.', 'success');
+                    grid.refresh();
+                } catch (e) {
+                    showToast(e.message || 'Erro ao excluir.', 'error');
+                }
+            }
+
+            function _esc(s) {
+                return String(s || '')
+                    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            }
+
+            function showToast(msg, type, duration) {
+                type = type || 'success';
+                duration = duration || 3500;
+                var t = document.getElementById('toast');
+                if (!t) return;
+                t.textContent = msg;
+                t.className = 'toast ' + type;
+                t.classList.add('show');
+                setTimeout(function () { t.classList.remove('show'); }, duration);
+            }
+        })();
+    </script>
+</body>
+</html>

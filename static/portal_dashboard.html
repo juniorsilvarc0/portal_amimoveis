@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard — AM Imoveis</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/layout.css">
+    <style>
+        .recent-table { width: 100%; border-collapse: collapse; }
+        .recent-table th {
+            padding: 10px 14px;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #8896a6;
+            font-weight: 700;
+            border-bottom: 2px solid #f2f4f7;
+            text-align: left;
+        }
+        .recent-table td {
+            padding: 11px 14px;
+            font-size: 13px;
+            border-bottom: 1px solid #f2f4f7;
+        }
+        .recent-table tr:last-child td { border-bottom: none; }
+        .recent-table tr:hover td { background: #fafbfc; }
+        .recent-placeholder {
+            text-align: center;
+            padding: 32px;
+            color: #9aa4b0;
+            font-size: 13px;
+        }
+        .welcome-banner {
+            background: linear-gradient(135deg, var(--secondary) 0%, #054f6b 100%);
+            color: white;
+            border-radius: var(--radius);
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .welcome-text h2 { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+        .welcome-text p { font-size: 14px; opacity: 0.8; }
+        .welcome-logo { height: 52px; filter: brightness(10); opacity: 0.9; }
+        @media (max-width: 600px) {
+            .welcome-logo { display: none; }
+            .welcome-banner { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-layout">
+
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar" aria-label="Menu lateral"></aside>
+
+        <!-- Main Content -->
+        <div class="main-content" id="mainContent">
+
+            <!-- Topbar mobile -->
+            <header class="topbar">
+                <button class="topbar-hamburger" aria-label="Abrir menu">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="6" x2="21" y2="6"/>
+                        <line x1="3" y1="12" x2="21" y2="12"/>
+                        <line x1="3" y1="18" x2="21" y2="18"/>
+                    </svg>
+                </button>
+                <span class="topbar-title">Dashboard</span>
+            </header>
+
+            <main class="page-area">
+
+                <!-- Welcome Banner -->
+                <div class="welcome-banner">
+                    <div class="welcome-text">
+                        <h2 id="welcomeMsg">Bem-vindo ao Portal</h2>
+                        <p>AM Imoveis — Sistema de Gestão Imobiliária</p>
+                    </div>
+                    <img src="/static/logoBRANCA.png" alt="AM Imoveis" class="welcome-logo">
+                </div>
+
+                <!-- Counter Cards -->
+                <div class="counter-grid" id="counterGrid">
+                    <div class="counter-card">
+                        <div class="counter-icon primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                            </svg>
+                        </div>
+                        <div class="counter-body">
+                            <div class="counter-value" id="cnt-clientes">–</div>
+                            <div class="counter-label">Clientes</div>
+                        </div>
+                    </div>
+                    <div class="counter-card">
+                        <div class="counter-icon secondary">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+                            </svg>
+                        </div>
+                        <div class="counter-body">
+                            <div class="counter-value" id="cnt-habitacoes">–</div>
+                            <div class="counter-label">Habitações</div>
+                        </div>
+                    </div>
+                    <div class="counter-card">
+                        <div class="counter-icon green">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>
+                            </svg>
+                        </div>
+                        <div class="counter-body">
+                            <div class="counter-value" id="cnt-propostas">–</div>
+                            <div class="counter-label">Propostas</div>
+                        </div>
+                    </div>
+                    <div class="counter-card">
+                        <div class="counter-icon amber">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="8" width="18" height="12" rx="2"/><path d="M7 8V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/>
+                            </svg>
+                        </div>
+                        <div class="counter-body">
+                            <div class="counter-value" id="cnt-financiamentos">–</div>
+                            <div class="counter-label">Financiamentos</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Atalhos rápidos -->
+                <div class="shortcut-grid" style="margin-bottom: 28px;">
+                    <a href="/habitacao/novo" class="btn btn-primary">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Nova Ficha Habitacional
+                    </a>
+                    <a href="/proposta/nova" class="btn btn-secondary">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Nova Proposta
+                    </a>
+                    <a href="/financiamento/novo" class="btn btn-ghost">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Novo Financiamento
+                    </a>
+                    <a href="/clientes" class="btn btn-outline">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                        Ver Clientes
+                    </a>
+                </div>
+
+                <!-- Últimos cadastros -->
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Últimos Cadastros</span>
+                        <a href="/habitacao" class="btn btn-ghost btn-sm">Ver todos</a>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table class="recent-table" id="recentTable">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>CPF</th>
+                                    <th>Empreendimento</th>
+                                    <th>Data</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentBody">
+                                <tr>
+                                    <td colspan="5" class="recent-placeholder">Carregando...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast" role="alert" aria-live="polite"></div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/sidebar.js"></script>
+    <script src="/static/js/masks.js"></script>
+
+    <script>
+        (async function () {
+            /* ---- 1. Autenticação ---- */
+            let usuario;
+            try {
+                usuario = await api.requireAuth();
+            } catch (e) {
+                return; // requireAuth já redireciona
+            }
+
+            /* ---- 2. Sidebar ---- */
+            renderSidebar(
+                document.getElementById('sidebar'),
+                '/',
+                usuario
+            );
+
+            /* ---- 3. Mensagem de boas-vindas ---- */
+            const nome = usuario && (usuario.nome || usuario.email || '');
+            if (nome) {
+                document.getElementById('welcomeMsg').textContent = 'Olá, ' + nome.split(' ')[0] + '!';
+            }
+
+            /* ---- 4. Contadores ---- */
+            try {
+                const contadores = await api.get('/lookup/contadores');
+                _setCnt('clientes',       contadores.clientes);
+                _setCnt('habitacoes',     contadores.habitacao);
+                _setCnt('propostas',      contadores.propostas);
+                _setCnt('financiamentos', contadores.financiamentos);
+            } catch (e) {
+                // endpoint ainda não existe ou erro — mantém "–"
+                console.info('Dashboard: /lookup/contadores indisponível.', e.status || e.message);
+            }
+
+            /* ---- 5. Últimos cadastros ---- */
+            try {
+                const result = await api.get('/habitacao', { page: 1, per_page: 5, sort: 'created_at', order: 'desc' });
+                const items = Array.isArray(result) ? result : (result.items || result.data || []);
+                _renderRecent(items);
+            } catch (e) {
+                _renderRecent(null, e.status === 404 ? 'Módulo de habitação não disponível.' : 'Erro ao carregar dados.');
+            }
+        })();
+
+        function _setCnt(id, val) {
+            const el = document.getElementById('cnt-' + id);
+            if (el) el.textContent = (val != null) ? String(val) : '–';
+        }
+
+        function _renderRecent(items, errorMsg) {
+            const tbody = document.getElementById('recentBody');
+            if (!tbody) return;
+
+            if (!items || !items.length) {
+                tbody.innerHTML = '<tr><td colspan="5" class="recent-placeholder">' +
+                    _esc(errorMsg || 'Nenhum cadastro encontrado.') + '</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = items.map(function (r) {
+                const nome = _esc(r.cliente_nome || r.nome_completo || r.nome || '—');
+                const cpfRaw = r.cliente_cpf || r.cpf || '';
+                const cpf  = _esc(cpfRaw ? maskCPF(cpfRaw) : '—');
+                const emp  = _esc(r.empreendimento || '—');
+                const dataRaw = r.created_at || r.criado_em;
+                const data = dataRaw
+                    ? new Date(dataRaw).toLocaleDateString('pt-BR')
+                    : (r.data || '—');
+                const id   = r.id || '';
+                return '<tr>' +
+                    '<td><strong style="color:#065676">' + nome + '</strong></td>' +
+                    '<td style="font-family:monospace;font-size:12px;color:#7a8694">' + cpf + '</td>' +
+                    '<td>' + emp + '</td>' +
+                    '<td style="color:#9aa4b0;font-size:12px">' + data + '</td>' +
+                    '<td style="white-space:nowrap">' +
+                        (id ? '<a href="/habitacao/' + id + '/editar" class="btn btn-ghost btn-sm">Ver</a>' : '') +
+                    '</td>' +
+                '</tr>';
+            }).join('');
+        }
+
+        function _esc(s) {
+            return String(s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function showToast(msg, type, duration) {
+            type = type || 'success';
+            duration = duration || 3000;
+            const t = document.getElementById('toast');
+            if (!t) return;
+            t.textContent = msg;
+            t.className = 'toast ' + type;
+            t.classList.add('show');
+            setTimeout(function () { t.classList.remove('show'); }, duration);
+        }
+    </script>
+</body>
+</html>

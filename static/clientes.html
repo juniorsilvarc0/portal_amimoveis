@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clientes — AM Imoveis</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/layout.css">
+</head>
+<body>
+    <div class="app-layout">
+
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar" aria-label="Menu lateral"></aside>
+
+        <!-- Main Content -->
+        <div class="main-content" id="mainContent">
+
+            <!-- Topbar mobile -->
+            <header class="topbar">
+                <button class="topbar-hamburger" aria-label="Abrir menu">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="6" x2="21" y2="6"/>
+                        <line x1="3" y1="12" x2="21" y2="12"/>
+                        <line x1="3" y1="18" x2="21" y2="18"/>
+                    </svg>
+                </button>
+                <span class="topbar-title">Clientes</span>
+            </header>
+
+            <main class="page-area">
+
+                <!-- Page header -->
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Clientes</h1>
+                        <p class="page-subtitle">Cadastro de clientes do programa PMCMV</p>
+                    </div>
+                    <div class="page-actions">
+                        <a href="/cliente/novo" class="btn btn-primary" id="btnNovo">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2.5"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="12" y1="5" x2="12" y2="19"/>
+                                <line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                            Novo Cliente
+                        </a>
+                    </div>
+                </div>
+
+                <!-- DataGrid -->
+                <div class="card" style="padding: 0; overflow: hidden;">
+                    <div id="grid" style="padding: 0;"></div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast" role="alert" aria-live="polite"></div>
+
+    <!-- Scripts -->
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/sidebar.js"></script>
+    <script src="/static/js/masks.js"></script>
+    <script src="/static/js/modal.js"></script>
+    <script src="/static/js/datagrid.js"></script>
+
+    <script>
+        (async function () {
+            'use strict';
+
+            /* ---- 1. Auth ---- */
+            let usuario;
+            try {
+                usuario = await api.requireAuth();
+            } catch (e) {
+                return; // requireAuth já redireciona para /login
+            }
+
+            /* ---- 2. Permissões ---- */
+            if (!api.can('clientes', 'ver')) { window.location.href = '/'; return; }
+            var canWrite = api.can('clientes', 'criar') || api.can('clientes', 'editar');
+            var canDelete = api.can('clientes', 'excluir');
+
+            /* ---- 3. Sidebar ---- */
+            renderSidebar(document.getElementById('sidebar'), '/clientes', usuario);
+
+            /* ---- 4. Esconde botão Novo se não pode escrever ---- */
+            if (!canWrite) {
+                const btn = document.getElementById('btnNovo');
+                if (btn) btn.style.display = 'none';
+            }
+
+            /* ---- 4. DataGrid ---- */
+            const grid = new DataGrid(document.getElementById('grid'), {
+                endpoint: '/clientes',
+                searchable: true,
+                exportable: true,
+                perPage: 25,
+                emptyMessage: 'Nenhum cliente cadastrado.',
+                columns: [
+                    {
+                        key: 'id',
+                        label: '#',
+                        sortable: true,
+                        width: '60px',
+                        align: 'center',
+                    },
+                    {
+                        key: 'nome',
+                        label: 'Nome',
+                        sortable: true,
+                    },
+                    {
+                        key: 'cpf',
+                        label: 'CPF',
+                        width: '140px',
+                        format: function (v) {
+                            return v ? maskCPF(v) : '—';
+                        },
+                    },
+                    {
+                        key: 'whatsapp1',
+                        label: 'WhatsApp',
+                        width: '150px',
+                        format: function (v) {
+                            return v ? maskPhone(v) : '—';
+                        },
+                    },
+                    {
+                        key: 'email',
+                        label: 'E-mail',
+                        format: function (v) {
+                            return v || '—';
+                        },
+                    },
+                    {
+                        key: 'cidade_nome',
+                        label: 'Cidade',
+                        format: function (v, row) {
+                            if (!v) return '—';
+                            return v + (row.cidade_uf ? '/' + row.cidade_uf : '');
+                        },
+                    },
+                    {
+                        key: 'created_at',
+                        label: 'Criado em',
+                        width: '120px',
+                        align: 'center',
+                        format: function (v) {
+                            if (!v) return '—';
+                            return new Date(v).toLocaleDateString('pt-BR');
+                        },
+                    },
+                ],
+                rowActions: function (row) {
+                    // "Abrir" leva ao detalhe Salesforce-style (edição inline) —
+                    // não há mais botão "Editar": a edição acontece no próprio detalhe.
+                    var actions = [
+                        {
+                            label: 'Abrir',
+                            className: 'btn-ghost',
+                            onClick: function (r) {
+                                window.location.href = '/clientes/' + r.id;
+                            },
+                        },
+                    ];
+
+                    if (canDelete) {
+                        actions.push({
+                            label: 'Excluir',
+                            className: 'btn-danger',
+                            onClick: async function (r) {
+                                const ok = await Modal.confirm(
+                                    'Excluir o cliente <strong>' + _esc(r.nome) + '</strong>?<br>' +
+                                    '<small style="color:#9aa4b0">Esta ação não pode ser desfeita.</small>'
+                                );
+                                if (!ok) return;
+                                try {
+                                    await api.del('/clientes/' + r.id);
+                                    showToast('Cliente excluído.', 'success');
+                                    grid.refresh();
+                                } catch (e) {
+                                    showToast(e.message || 'Erro ao excluir cliente.', 'error');
+                                }
+                            },
+                        });
+                    }
+
+                    return actions;
+                },
+            });
+
+            /* ---- Helpers ---- */
+            function _esc(s) {
+                return String(s || '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
+            function showToast(msg, type, duration) {
+                type = type || 'success';
+                duration = duration || 3500;
+                const t = document.getElementById('toast');
+                if (!t) return;
+                t.textContent = msg;
+                t.className = 'toast ' + type;
+                t.classList.add('show');
+                setTimeout(function () { t.classList.remove('show'); }, duration);
+            }
+        })();
+    </script>
+</body>
+</html>

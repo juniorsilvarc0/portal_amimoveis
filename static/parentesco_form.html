@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Termo de Parentesco — AM Imoveis</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/layout.css">
+</head>
+<body>
+    <div class="app-layout">
+
+        <aside class="sidebar" id="sidebar" aria-label="Menu lateral"></aside>
+
+        <div class="main-content" id="mainContent">
+
+            <header class="topbar">
+                <button class="topbar-hamburger" aria-label="Abrir menu">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="6" x2="21" y2="6"/>
+                        <line x1="3" y1="12" x2="21" y2="12"/>
+                        <line x1="3" y1="18" x2="21" y2="18"/>
+                    </svg>
+                </button>
+                <span class="topbar-title" id="pageTitle">Novo Termo de Parentesco</span>
+            </header>
+
+            <main class="page-area">
+
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title" id="pageTitleMain">Novo Termo de Parentesco</h1>
+                        <p class="page-subtitle">Declaração CAIXA — parentesco, residência e ausência de rendimentos</p>
+                    </div>
+                    <div class="page-actions">
+                        <a href="/parentesco" class="btn btn-ghost">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="15 18 9 12 15 6"/>
+                            </svg>
+                            Voltar
+                        </a>
+                    </div>
+                </div>
+
+                <div class="alert-error" id="alertError"></div>
+
+                <form id="form" autocomplete="off" novalidate>
+
+                    <!-- 01. Proponente (cliente) -->
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible>
+                            <h3>01. Proponente</h3>
+                        </div>
+                        <div class="form-card-body">
+                            <div id="editClienteLinkHost" style="display:none;padding:0 0 12px;"></div>
+                            <div class="form-grid-auto">
+                                <div data-field="cpf" data-required></div>
+                                <div data-field="nome" data-required data-full-width></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 02. Parente declarante -->
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible>
+                            <h3>02. Parente declarante</h3>
+                        </div>
+                        <div class="form-card-body">
+                            <div class="form-grid-auto">
+                                <div class="form-group full-width">
+                                    <label for="parente_nome">Nome do parente *</label>
+                                    <input type="text" id="parente_nome" name="parente_nome" required>
+                                    <small class="field-error"></small>
+                                </div>
+                                <div data-field="cpf" data-name="parente_cpf" data-label="CPF do parente" data-required></div>
+                                <div data-field="estado_civil" data-name="parente_estado_civil" data-label="Estado civil"></div>
+                                <div class="form-group">
+                                    <label for="grau_parentesco">Grau de parentesco *</label>
+                                    <input type="text" id="grau_parentesco" name="grau_parentesco"
+                                           placeholder="Ex: mãe, pai, irmã, filho">
+                                    <small class="field-error"></small>
+                                </div>
+                                <div class="form-group full-width">
+                                    <label for="conjuge_parente_nome">Nome do cônjuge do parente (se houver)</label>
+                                    <input type="text" id="conjuge_parente_nome" name="conjuge_parente_nome">
+                                    <small class="field-error"></small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 03. Data -->
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible>
+                            <h3>03. Data da declaração</h3>
+                        </div>
+                        <div class="form-card-body">
+                            <div class="form-grid-auto">
+                                <div data-field="nascimento" data-name="data_declaracao" data-label="Data da declaração"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary" id="btnSalvar">
+                            <span id="btnSalvarLabel">Salvar Termo</span>
+                            <span id="btnSalvarSpinner" class="spinner" style="display:none;"></span>
+                        </button>
+                    </div>
+
+                </form>
+
+            </main>
+        </div>
+    </div>
+
+    <div class="toast" id="toast" role="alert" aria-live="polite"></div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/sidebar.js"></script>
+    <script src="/static/js/masks.js"></script>
+    <script src="/static/js/forms.js"></script>
+    <script src="/static/js/modal.js"></script>
+    <script src="/static/js/cpf_lookup.js"></script>
+
+    <script>
+        (async function () {
+            'use strict';
+
+            let usuario;
+            try {
+                usuario = await api.requireAuth();
+            } catch (e) { return; }
+
+            renderSidebar(document.getElementById('sidebar'), '/parentesco', usuario);
+
+            function getId() {
+                var m = window.location.pathname.match(/\/parentesco\/(\d+)\/editar/);
+                return m ? parseInt(m[1], 10) : null;
+            }
+
+            var editId = getId();
+
+            var podeEscrever = editId ? api.can('parentesco', 'editar') : api.can('parentesco', 'criar');
+            if (!podeEscrever) {
+                window.location.href = '/parentesco';
+                return;
+            }
+            var clienteId = null;
+
+            var form = document.getElementById('form');
+            forms.init(form);
+
+            var cpfInput = document.getElementById('cpf');
+            var camposCliente = ['nome'];
+
+            function _setVal(id, v) {
+                var el = document.getElementById(id);
+                if (el && v != null) el.value = v;
+            }
+
+            function _lockClienteFields() {
+                camposCliente.forEach(function (f) {
+                    var el = document.getElementById(f);
+                    if (el) el.setAttribute('readonly', true);
+                });
+                if (clienteId) {
+                    var host = document.getElementById('editClienteLinkHost');
+                    if (host) {
+                        host.innerHTML = '<a href="/cliente/' + clienteId + '/editar" class="btn btn-ghost btn-sm" target="_blank">Editar cadastro do cliente ↗</a>';
+                        host.style.display = '';
+                    }
+                }
+            }
+            function _unlockClienteFields() {
+                camposCliente.forEach(function (f) {
+                    var el = document.getElementById(f);
+                    if (el) el.removeAttribute('readonly');
+                });
+                var host = document.getElementById('editClienteLinkHost');
+                if (host) { host.innerHTML = ''; host.style.display = 'none'; }
+            }
+
+            if (editId) {
+                document.getElementById('pageTitleMain').textContent = 'Editar Termo de Parentesco';
+                document.getElementById('pageTitle').textContent = 'Editar Termo de Parentesco';
+                document.getElementById('btnSalvarLabel').textContent = 'Atualizar Termo';
+                await carregarTermo(editId);
+            }
+
+            if (!editId) {
+                attachCpfLookup(cpfInput, function onFound(cliente) {
+                    clienteId = cliente.id;
+                    _setVal('nome', cliente.nome);
+                    _lockClienteFields();
+                }, function onNotFound() {
+                    clienteId = null;
+                    _unlockClienteFields();
+                });
+            }
+
+            async function carregarTermo(id) {
+                try {
+                    var t = await api.get('/parentescos/' + id);
+                    clienteId = t.cliente_id;
+
+                    if (t.cliente_cpf) {
+                        cpfInput.value = typeof maskCPF === 'function' ? maskCPF(t.cliente_cpf) : t.cliente_cpf;
+                        cpfInput.setAttribute('readonly', true);
+                    }
+                    _setVal('nome', t.cliente_nome);
+                    _lockClienteFields();
+
+                    _setVal('parente_nome', t.parente_nome);
+                    _setVal('parente_cpf', t.parente_cpf ? (typeof maskCPF === 'function' ? maskCPF(t.parente_cpf) : t.parente_cpf) : '');
+                    _setVal('parente_estado_civil', t.parente_estado_civil);
+                    _setVal('grau_parentesco', t.grau_parentesco);
+                    _setVal('conjuge_parente_nome', t.conjuge_parente_nome);
+                    _setVal('data_declaracao', t.data_declaracao);
+                } catch (e) {
+                    showToast('Erro ao carregar termo: ' + e.message, 'error');
+                }
+            }
+
+            form.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                forms.alertClear();
+
+                if (!forms.validate(form)) {
+                    forms.alertError('Corrija os campos destacados antes de salvar.');
+                    return;
+                }
+
+                var btn = document.getElementById('btnSalvar');
+                var label = document.getElementById('btnSalvarLabel');
+                var spinner = document.getElementById('btnSalvarSpinner');
+                btn.disabled = true;
+                label.style.display = 'none';
+                spinner.style.display = 'inline-block';
+
+                try {
+                    var payload = montarPayload();
+                    if (editId) {
+                        await api.put('/parentescos/' + editId, payload);
+                    } else {
+                        await api.post('/parentescos', payload);
+                    }
+                    showToast('Termo salvo com sucesso!', 'success');
+                    setTimeout(function () { window.location.href = '/parentesco'; }, 1000);
+                } catch (err) {
+                    forms.alertError(err.message || 'Erro ao salvar termo.');
+                    btn.disabled = false;
+                    label.style.display = 'inline';
+                    spinner.style.display = 'none';
+                }
+            });
+
+            function montarPayload() {
+                var cpfRaw = cpfInput.value.replace(/\D/g, '');
+                var payload = {};
+
+                if (clienteId) {
+                    payload.cliente_id = clienteId;
+                } else {
+                    payload.cliente = {
+                        cpf: cpfRaw,
+                        nome: val('nome'),
+                    };
+                }
+
+                payload.parente_nome         = val('parente_nome') || null;
+                payload.parente_cpf          = (val('parente_cpf') || '').replace(/\D/g, '') || null;
+                payload.parente_estado_civil = val('parente_estado_civil') || null;
+                payload.grau_parentesco      = val('grau_parentesco') || null;
+                payload.conjuge_parente_nome = val('conjuge_parente_nome') || null;
+                payload.data_declaracao     = val('data_declaracao') || null;
+
+                return payload;
+            }
+
+            function val(id) {
+                var el = document.getElementById(id);
+                return el ? (el.value || '').trim() : '';
+            }
+
+            function showToast(msg, type, duration) {
+                type = type || 'success';
+                duration = duration || 3500;
+                var t = document.getElementById('toast');
+                if (!t) return;
+                t.textContent = msg;
+                t.className = 'toast ' + type;
+                t.classList.add('show');
+                setTimeout(function () { t.classList.remove('show'); }, duration);
+            }
+        })();
+    </script>
+</body>
+</html>

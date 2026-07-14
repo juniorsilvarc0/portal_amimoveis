@@ -1,0 +1,71 @@
+# Portal AM Imóveis — FastAPI + Playwright (PDF)
+# Multi-stage: builder instala deps e Playwright; runtime enxuto.
+
+ARG PYTHON_VERSION=3.12-slim
+
+# --------------------------------------------------------------------------
+# Stage 1 — builder: instala dependências Python em um venv isolado.
+# --------------------------------------------------------------------------
+FROM python:${PYTHON_VERSION} AS builder
+
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+WORKDIR /build
+
+COPY requirements.txt .
+RUN python -m venv /opt/venv && \
+    /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
+
+# --------------------------------------------------------------------------
+# Stage 2 — runtime: imagem final com só o necessário.
+# --------------------------------------------------------------------------
+FROM python:${PYTHON_VERSION} AS runtime
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PATH="/opt/venv/bin:$PATH" \
+    PLAYWRIGHT_BROWSERS_PATH=/opt/playwright
+
+# Dependências do sistema para Chromium headless
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 \
+        libcups2 libdrm2 libxkbcommon0 libxcomposite1 \
+        libxdamage1 libxfixes3 libxrandr2 libgbm1 libpango-1.0-0 \
+        libcairo2 libasound2t64 libatspi2.0-0 libwayland-client0 \
+        fonts-liberation fonts-dejavu-core curl tini \
+    && rm -rf /var/lib/apt/lists/*
+
+# Usuário não-root
+RUN useradd -m -s /bin/bash -u 10001 portal
+
+WORKDIR /app
+
+# Trazer venv pronto do builder
+COPY --from=builder /opt/venv /opt/venv
+
+# Instalar Chromium após copiar venv (playwright CLI está lá)
+RUN playwright install chromium && chmod -R 755 /opt/playwright
+
+# Código da aplicação
+COPY --chown=portal:portal app/       app/
+COPY --chown=portal:portal templates/ templates/
+COPY --chown=portal:portal static/    static/
+COPY --chown=portal:portal init_v2.sql .
+
+USER portal
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD curl -fsS http://localhost:8000/healthz || exit 1
+
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["gunicorn", \
+     "-k", "uvicorn.workers.UvicornWorker", \
+     "-w", "2", \
+     "-b", "0.0.0.0:8000", \
+     "--timeout", "90", \
+     "--access-logfile", "-", \
+     "app.main:app"]

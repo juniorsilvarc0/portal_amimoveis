@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --brand: #E5094B;
+    --brand-dark: #a60636;
+    --brand-tint: #FBF4F6;
+    --ink: #1A1A1A;
+    --ink-soft: #4A4A4A;
+    --muted: #8A8A8A;
+    --line: #D9D3D4;
+    --line-soft: #EFEAEB;
+    --bg: #FFFFFF;
+    --display: 'Fraunces', Georgia, serif;
+    --sans: 'Inter', -apple-system, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg);
+    font-family: var(--sans);
+    color: var(--ink);
+    font-size: 9pt;
+    line-height: 1.3;
+    -webkit-font-smoothing: antialiased;
+  }
+  .sheet { background: var(--bg); display: flex; flex-direction: column; }
+
+  /* ---------- HEADER ---------- */
+  header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: flex-start;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--brand);
+    margin-bottom: 8px;
+  }
+  .doc-title {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: 17pt;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    line-height: 1;
+  }
+  .doc-title em { font-style: italic; color: var(--brand); font-weight: 400; }
+  .doc-sub {
+    margin-top: 3px;
+    font-size: 7pt;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .brand-logo { text-align: right; }
+  .brand-logo img { height: 64px; width: auto; }
+
+  /* ---------- SECTION ---------- */
+  section { margin-bottom: 7px; }
+  .sec-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .sec-num {
+    font-family: var(--display);
+    font-style: italic;
+    font-size: 9.5pt;
+    color: var(--brand);
+    font-weight: 500;
+  }
+  .sec-title {
+    font-size: 7pt;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .sec-line { flex: 1; height: 1px; background: var(--line); }
+
+  /* ---------- FIELD GRID ---------- */
+  .grid { display: grid; gap: 5px 12px; }
+  .grid.c2 { grid-template-columns: 1fr 1fr; }
+  .grid.c3 { grid-template-columns: 1fr 1fr 1fr; }
+  .grid.c4 { grid-template-columns: 1.4fr 1fr 1fr 1fr; }
+  .field { display: flex; flex-direction: column; }
+  .field label {
+    font-size: 6pt;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+    margin-bottom: 1px;
+  }
+  .field .input {
+    border-bottom: 1px solid var(--line);
+    min-height: 15px;
+    font-family: var(--sans);
+    font-size: 9pt;
+    color: var(--ink);
+    padding: 0 2px 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .field.span-2 { grid-column: span 2; }
+  .field.span-3 { grid-column: span 3; }
+  .field.span-4 { grid-column: span 4; }
+
+  /* ---------- HIGHLIGHT BOX (imóvel) ---------- */
+  .highlight {
+    background: var(--brand-tint);
+    border-left: 3px solid var(--brand);
+    padding: 8px 12px;
+    margin: 4px 0 6px;
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1.2fr;
+    gap: 12px;
+  }
+  .highlight .field label { color: var(--brand-dark); }
+  .highlight .field .input { border-bottom-color: var(--brand); }
+
+  /* ---------- TABLE ---------- */
+  table { width: 100%; border-collapse: collapse; font-size: 8pt; }
+  thead th {
+    background: var(--ink);
+    color: #fff;
+    font-weight: 500;
+    font-size: 6.5pt;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 5px 6px;
+    text-align: left;
+  }
+  thead th:last-child { text-align: right; }
+  tbody td {
+    padding: 4px 6px;
+    border-bottom: 1px solid var(--line-soft);
+    font-size: 8.5pt;
+  }
+  tbody tr:nth-child(odd) td { background: #FAFAFA; }
+  tbody td:first-child {
+    font-weight: 600;
+    font-size: 7pt;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+
+  /* ---------- OBS ---------- */
+  .obs {
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 5px 8px;
+    min-height: 36px;
+  }
+  .obs label {
+    font-size: 6pt;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+    display: block;
+    margin-bottom: 2px;
+  }
+  .obs .val {
+    font-family: var(--sans);
+    font-size: 8.5pt;
+    color: var(--ink);
+    min-height: 22px;
+    white-space: pre-wrap;
+  }
+
+  /* ---------- CORRECTION INFO ---------- */
+  .correction {
+    background: var(--line-soft);
+    padding: 5px 10px;
+    font-size: 7pt;
+    color: var(--ink-soft);
+    border-radius: 3px;
+    margin-top: 5px;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .correction strong {
+    color: var(--brand-dark);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-size: 6.5pt;
+  }
+
+  /* ---------- DECLARATION + SIGNATURES ---------- */
+  .declaration {
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px dashed var(--line);
+    font-size: 7.5pt;
+    color: var(--ink-soft);
+    line-height: 1.4;
+    font-style: italic;
+    text-align: justify;
+  }
+  .city-date {
+    text-align: center;
+    margin: 8px 0 10px;
+    font-family: var(--display);
+    font-size: 9pt;
+    color: var(--ink);
+  }
+  .city-date .input {
+    display: inline-block;
+    border-bottom: 1px solid var(--ink);
+    min-width: 30px;
+    padding: 0 6px;
+    font-family: var(--sans);
+  }
+  .city-date .input.wide { min-width: 90px; }
+
+  .signatures {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 18px;
+    margin-top: 22px;
+  }
+  .sig {
+    text-align: center;
+    border-top: 1px solid var(--ink);
+    padding-top: 3px;
+    font-size: 6.8pt;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    font-weight: 600;
+  }
+  .sig em {
+    display: block;
+    font-style: normal;
+    font-size: 5.8pt;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    margin-top: 1px;
+    font-weight: 400;
+  }
+
+  footer {
+    margin-top: 10px;
+    padding-top: 6px;
+    border-top: 1px solid var(--line-soft);
+    display: flex;
+    justify-content: space-between;
+    font-size: 6.2pt;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+
+<article class="sheet" id="wrap">
+
+  <!-- ============ HEADER ============ -->
+  <header>
+    <div>
+      <div class="doc-title">Proposta de <em>Compra</em></div>
+      <div class="doc-sub">Ficha de Negociação Imobiliária</div>
+    </div>
+    <div class="brand-logo">
+      <img src="file://{{ logo_path }}" alt="Andreia Miranda Imóveis">
+    </div>
+  </header>
+
+  <!-- ============ 1. IMÓVEL ============ -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">01.</span>
+      <span class="sec-title">Imóvel &amp; Empreendimento</span>
+      <span class="sec-line"></span>
+    </div>
+    <div class="highlight">
+      <div class="field"><label>Empreendimento</label><div class="input">{{ empreendimento }}</div></div>
+      <div class="field"><label>Unidade / Bloco</label><div class="input">{{ unidade }}</div></div>
+      <div class="field"><label>Valor Total (R$)</label><div class="input">{{ valor_total }}</div></div>
+    </div>
+    <div class="correction">
+      <span><strong>Correção monetária:</strong> INCC até a entrega das chaves</span>
+      <span>IGPM + 1% após a entrega</span>
+    </div>
+  </section>
+
+  <!-- ============ 2. PROPONENTE ============ -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">02.</span>
+      <span class="sec-title">Proponente / Contratante</span>
+      <span class="sec-line"></span>
+    </div>
+    <div class="grid c4">
+      <div class="field span-4"><label>Nome completo</label><div class="input">{{ prop_nome }}</div></div>
+      <div class="field"><label>Nacionalidade</label><div class="input">{{ prop_nacionalidade }}</div></div>
+      <div class="field"><label>Estado civil</label><div class="input">{{ prop_estado_civil }}</div></div>
+      <div class="field"><label>Regime de bens</label><div class="input">{{ prop_regime }}</div></div>
+      <div class="field"><label>Data nasc.</label><div class="input">{{ prop_nasc }}</div></div>
+      <div class="field span-2"><label>Profissão</label><div class="input">{{ prop_profissao }}</div></div>
+      <div class="field"><label>RG</label><div class="input">{{ prop_rg }}</div></div>
+      <div class="field"><label>Órgão exp. / UF</label><div class="input">{{ prop_rg_orgao }}</div></div>
+      <div class="field span-4"><label>CPF</label><div class="input">{{ prop_cpf }}</div></div>
+      <div class="field span-3"><label>Endereço residencial</label><div class="input">{{ prop_endereco }}</div></div>
+      <div class="field"><label>Bairro</label><div class="input">{{ prop_bairro }}</div></div>
+      <div class="field"><label>CEP</label><div class="input">{{ prop_cep }}</div></div>
+      <div class="field span-2"><label>Cidade / UF</label><div class="input">{{ prop_cidade }}</div></div>
+      <div class="field"><label>Telefone fixo</label><div class="input">{{ prop_fixo }}</div></div>
+      <div class="field"><label>WhatsApp principal</label><div class="input">{{ prop_whats1 }}</div></div>
+      <div class="field"><label>WhatsApp secundário</label><div class="input">{{ prop_whats2 }}</div></div>
+      <div class="field span-2"><label>E-mail</label><div class="input">{{ prop_email }}</div></div>
+    </div>
+  </section>
+
+  <!-- ============ 3. CÔNJUGE ============ -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">03.</span>
+      <span class="sec-title">Cônjuge / 2º Proponente</span>
+      <span class="sec-line"></span>
+    </div>
+    <div class="grid c4">
+      <div class="field span-4"><label>Nome completo</label><div class="input">{{ conj_nome }}</div></div>
+      <div class="field"><label>Nacionalidade</label><div class="input">{{ conj_nacionalidade }}</div></div>
+      <div class="field"><label>Estado civil</label><div class="input">{{ conj_estado_civil }}</div></div>
+      <div class="field"><label>Data nasc.</label><div class="input">{{ conj_nasc }}</div></div>
+      <div class="field"><label>Profissão</label><div class="input">{{ conj_profissao }}</div></div>
+      <div class="field"><label>RG</label><div class="input">{{ conj_rg }}</div></div>
+      <div class="field"><label>Órgão exp. / UF</label><div class="input">{{ conj_rg_orgao }}</div></div>
+      <div class="field span-2"><label>CPF</label><div class="input">{{ conj_cpf }}</div></div>
+      <div class="field"><label>WhatsApp</label><div class="input">{{ conj_whats }}</div></div>
+      <div class="field"><label>Telefone fixo</label><div class="input">{{ conj_fixo }}</div></div>
+      <div class="field span-2"><label>E-mail</label><div class="input">{{ conj_email }}</div></div>
+    </div>
+  </section>
+
+  <!-- ============ 4. CONDIÇÕES DE PAGAMENTO ============ -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">04.</span>
+      <span class="sec-title">Condições de Pagamento</span>
+      <span class="sec-line"></span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:25%">Descrição</th>
+          <th style="width:10%">Qtd.</th>
+          <th style="width:18%">Valor parcela</th>
+          <th style="width:18%">Valor total</th>
+          <th style="width:14%">Forma</th>
+          <th style="width:15%">Vencimento</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Sinal</td><td>{{ pg_sinal_qtd }}</td><td>{{ pg_sinal_valor }}</td><td>{{ pg_sinal_total }}</td><td>{{ pg_sinal_forma }}</td><td>{{ pg_sinal_venc }}</td></tr>
+        <tr><td>Parcelamento do sinal</td><td>{{ pg_parcsinal_qtd }}</td><td>{{ pg_parcsinal_valor }}</td><td>{{ pg_parcsinal_total }}</td><td>{{ pg_parcsinal_forma }}</td><td>{{ pg_parcsinal_venc }}</td></tr>
+        <tr><td>Parcelas mensais</td><td>{{ pg_parcelas_qtd }}</td><td>{{ pg_parcelas_valor }}</td><td>{{ pg_parcelas_total }}</td><td>{{ pg_parcelas_forma }}</td><td>{{ pg_parcelas_venc }}</td></tr>
+        <tr><td>1ª Intercalada</td><td>{{ pg_inter1_qtd }}</td><td>{{ pg_inter1_valor }}</td><td>{{ pg_inter1_total }}</td><td>{{ pg_inter1_forma }}</td><td>{{ pg_inter1_venc }}</td></tr>
+        <tr><td>2ª Intercalada</td><td>{{ pg_inter2_qtd }}</td><td>{{ pg_inter2_valor }}</td><td>{{ pg_inter2_total }}</td><td>{{ pg_inter2_forma }}</td><td>{{ pg_inter2_venc }}</td></tr>
+        <tr><td>3ª Intercalada</td><td>{{ pg_inter3_qtd }}</td><td>{{ pg_inter3_valor }}</td><td>{{ pg_inter3_total }}</td><td>{{ pg_inter3_forma }}</td><td>{{ pg_inter3_venc }}</td></tr>
+        <tr><td>Subsídio</td><td>{{ pg_subsidio_qtd }}</td><td>{{ pg_subsidio_valor }}</td><td>{{ pg_subsidio_total }}</td><td>{{ pg_subsidio_forma }}</td><td>{{ pg_subsidio_venc }}</td></tr>
+        <tr><td>Financiamento</td><td>{{ pg_fin_qtd }}</td><td>{{ pg_fin_valor }}</td><td>{{ pg_fin_total }}</td><td>{{ pg_fin_forma }}</td><td>{{ pg_fin_venc }}</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ 5. OBSERVAÇÕES ============ -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">05.</span>
+      <span class="sec-title">Observações &amp; Condições Especiais</span>
+      <span class="sec-line"></span>
+    </div>
+    <div class="obs">
+      <label>Cláusulas, dependências ou acordos particulares</label>
+      <div class="val">{{ observacoes }}</div>
+    </div>
+    <div class="grid c3" style="margin-top:10px">
+      <div class="field"><label>Validade da proposta</label><div class="input">{{ validade }}</div></div>
+      <div class="field"><label>Corretor responsável</label><div class="input">{{ corretor_nome }}</div></div>
+      <div class="field"><label>CRECI</label><div class="input">{{ corretor_creci }}</div></div>
+    </div>
+  </section>
+
+  <!-- ============ DECLARAÇÃO ============ -->
+  <div class="declaration">
+    Declaro, para os devidos fins, que as informações aqui apresentadas são verdadeiras, responsabilizando-me
+    civil e criminalmente pela sua exatidão. Esta proposta está sujeita à análise e aprovação da construtora/vendedor
+    e somente vincula as partes após assinatura do contrato definitivo.
+  </div>
+
+  <div class="city-date">
+    Teresina, <span class="input">{{ data_dia }}</span> de <span class="input wide">{{ data_mes }}</span> de <span class="input">{{ data_ano }}</span>
+  </div>
+
+  <div class="signatures">
+    <div class="sig">Proponente<em>assinatura</em></div>
+    <div class="sig">Cônjuge / 2º Proponente<em>assinatura</em></div>
+    <div class="sig">Corretor<em>CRECI</em></div>
+  </div>
+
+  <footer>
+    <span>Andreia Miranda Imóveis</span>
+    <span>Proposta de Compra · v1.0</span>
+  </footer>
+
+</article>
+
+</body>
+</html>

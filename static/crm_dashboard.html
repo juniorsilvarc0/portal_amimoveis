@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM — AM Imoveis</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/layout.css">
+    <style>
+        .crm-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .crm-stat {
+            background: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            border: 1px solid #e5e7eb;
+        }
+        .crm-stat .label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #8896a6;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            margin-bottom: 8px;
+        }
+        .crm-stat .value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1a1a2e;
+        }
+        .crm-stat .sub {
+            font-size: 13px;
+            color: #8896a6;
+            margin-top: 4px;
+        }
+        .crm-stat.brand { border-left: 4px solid #E5094B; }
+        .crm-stat.success { border-left: 4px solid #22c55e; }
+        .crm-stat.warning { border-left: 4px solid #f59e0b; }
+        .crm-stat.info { border-left: 4px solid #065676; }
+        .actions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 12px;
+            margin-top: 16px;
+        }
+        .action-card {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 18px;
+            text-decoration: none;
+            color: #1a1a2e;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            transition: all .15s;
+        }
+        .action-card:hover {
+            box-shadow: 0 4px 16px rgba(0,0,0,.08);
+            transform: translateY(-2px);
+            border-color: #E5094B;
+        }
+        .action-icon {
+            width: 44px; height: 44px;
+            border-radius: 10px;
+            background: #fef3f2;
+            display: flex; align-items: center; justify-content: center;
+            color: #E5094B;
+            flex-shrink: 0;
+        }
+        .action-card h4 {
+            font-size: 15px;
+            font-weight: 600;
+            margin: 0 0 2px;
+        }
+        .action-card p {
+            font-size: 12px;
+            color: #8896a6;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-layout">
+        <aside class="sidebar" id="sidebar" aria-label="Menu lateral"></aside>
+        <div class="main-content" id="mainContent">
+            <header class="topbar">
+                <button class="topbar-hamburger" aria-label="Abrir menu">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                </button>
+                <span class="topbar-title">CRM</span>
+            </header>
+            <main class="page-area">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Dashboard CRM</h1>
+                        <p class="page-subtitle">Visão geral de leads, oportunidades e atividades</p>
+                    </div>
+                </div>
+
+                <!-- Leads -->
+                <h3 style="margin:8px 0 12px;font-size:14px;color:#8896a6;text-transform:uppercase;letter-spacing:.5px;">Leads</h3>
+                <div class="crm-grid" id="leadsGrid"></div>
+
+                <!-- Opportunities -->
+                <h3 style="margin:8px 0 12px;font-size:14px;color:#8896a6;text-transform:uppercase;letter-spacing:.5px;">Oportunidades</h3>
+                <div class="crm-grid" id="oppGrid"></div>
+
+                <!-- Quick actions -->
+                <h3 style="margin:24px 0 12px;font-size:14px;color:#8896a6;text-transform:uppercase;letter-spacing:.5px;">Ações Rápidas</h3>
+                <div class="actions-grid">
+                    <a href="/crm/leads/novo" class="action-card">
+                        <div class="action-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg></div>
+                        <div><h4>Novo Lead</h4><p>Cadastrar prospect</p></div>
+                    </a>
+                    <a href="/crm/opportunities/novo" class="action-card">
+                        <div class="action-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+                        <div><h4>Nova Oportunidade</h4><p>Iniciar negociação</p></div>
+                    </a>
+                    <a href="/crm/kanban" class="action-card">
+                        <div class="action-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></div>
+                        <div><h4>Kanban</h4><p>Pipeline visual</p></div>
+                    </a>
+                    <a href="/crm/activities/nova" class="action-card">
+                        <div class="action-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+                        <div><h4>Nova Atividade</h4><p>Tarefa / Ligação / Reunião</p></div>
+                    </a>
+                    <a href="/crm/import" class="action-card">
+                        <div class="action-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+                        <div><h4>Importar Leads</h4><p>CSV em massa</p></div>
+                    </a>
+                    <a href="/crm/webhooks" class="action-card">
+                        <div class="action-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+                        <div><h4>Webhooks</h4><p>Integrações de saída</p></div>
+                    </a>
+                </div>
+            </main>
+        </div>
+    </div>
+    <div class="toast" id="toast" role="alert" aria-live="polite"></div>
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/sidebar.js"></script>
+    <script>
+    (async function () {
+        'use strict';
+        let usuario;
+        try { usuario = await api.requireAuth(); } catch (e) { return; }
+        renderSidebar(document.getElementById('sidebar'), '/crm', usuario);
+
+        try {
+            const m = await api.get('/crm/dashboard');
+            const l = m.leads || {};
+            const o = m.opportunities || {};
+
+            document.getElementById('leadsGrid').innerHTML = [
+                _card('brand', 'Novos', l.novos || 0, 'aguardando primeiro contato'),
+                _card('warning', 'Contatados', l.contatados || 0, 'em qualificação'),
+                _card('info', 'Qualificados', l.qualificados || 0, 'prontos para venda'),
+                _card('success', 'Convertidos', l.convertidos || 0, 'viraram cliente'),
+                _card('', 'Total', l.total || 0, 'na base'),
+            ].join('');
+
+            const fmt = v => 'R$ ' + (Number(v) || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('oppGrid').innerHTML = [
+                _card('brand', 'Abertas', o.abertas || 0, fmt(o.valor_aberto) + ' em jogo'),
+                _card('success', 'Ganhas', o.ganhas || 0, fmt(o.valor_ganho) + ' fechados'),
+                _card('warning', 'Perdidas', o.perdidas || 0, ''),
+                _card('info', 'Ticket Médio', fmt(o.ticket_medio || 0), 'por venda ganha'),
+            ].join('');
+        } catch (e) {
+            document.getElementById('leadsGrid').innerHTML = '<p style="color:#8896a6;">Erro ao carregar.</p>';
+        }
+
+        function _card(cls, label, value, sub) {
+            return '<div class="crm-stat ' + cls + '">' +
+                '<div class="label">' + _esc(label) + '</div>' +
+                '<div class="value">' + _esc(value) + '</div>' +
+                (sub ? '<div class="sub">' + _esc(sub) + '</div>' : '') +
+                '</div>';
+        }
+        function _esc(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
+    })();
+    </script>
+</body>
+</html>

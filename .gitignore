@@ -1,0 +1,38 @@
+# ---- Segredos (NUNCA commitar) ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ---- Python ----
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ---- Backups / dumps de banco ----
+*.dump
+*.sql.gz
+backups/
+habitacao_*.sql
+
+# ---- Dados de cliente / PII (ficam só local, ver backups) ----
+Parentesco.pdf
+Parentesco.zip
+Recibo*.pdf
+Recibo*.zip
+*.docx.pdf
+
+# ---- Repo de terceiro (não versionar) ----
+Salesforce-CRM-Software/
+
+# ---- Ambiente / editor / SO ----
+.vscode/
+.idea/
+.DS_Store
+*.log
+*.swp

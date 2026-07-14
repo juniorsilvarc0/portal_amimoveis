@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pipeline Kanban — CRM</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/layout.css">
+    <style>
+        .kanban-toolbar {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .kanban-toolbar select {
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        .kanban-board {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            padding-bottom: 16px;
+            min-height: 70vh;
+            cursor: grab;
+            user-select: none;
+        }
+        .kanban-board.pan-dragging { cursor: grabbing; }
+        .kanban-board.pan-dragging * { cursor: grabbing !important; }
+        /* Cards continuam com cursor de move pq tem drag-drop próprio */
+        .kanban-card { cursor: grab; }
+        .kanban-card.dragging { cursor: grabbing; }
+        .kanban-column {
+            flex: 0 0 280px;
+            background: #f5f7fa;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            max-height: calc(100vh - 220px);
+        }
+        .kanban-col-header {
+            padding: 12px;
+            border-top: 4px solid;
+            border-radius: 8px 8px 0 0;
+            background: #fff;
+        }
+        .kanban-col-name {
+            font-weight: 700;
+            font-size: 13px;
+            color: #1a1a2e;
+            margin-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .kanban-col-count {
+            background: #f1f5f9;
+            color: #475569;
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+        .kanban-col-total {
+            font-size: 12px;
+            color: #8896a6;
+        }
+        .kanban-cards {
+            flex: 1;
+            padding: 8px;
+            overflow-y: auto;
+            min-height: 100px;
+        }
+        .kanban-card {
+            background: #fff;
+            border-radius: 6px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+            border: 1px solid #e5e7eb;
+            cursor: grab;
+            transition: all .15s;
+        }
+        .kanban-card:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,.08);
+            border-color: #cbd5e1;
+        }
+        .kanban-card.dragging {
+            opacity: 0.5;
+        }
+        .kanban-card-name {
+            font-weight: 600;
+            font-size: 13px;
+            color: #1a1a2e;
+            margin-bottom: 4px;
+        }
+        .kanban-card-meta {
+            font-size: 11px;
+            color: #8896a6;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .kanban-card-valor {
+            font-weight: 700;
+            color: #22c55e;
+            font-size: 13px;
+            margin-top: 6px;
+        }
+        .kanban-column.drag-over .kanban-cards {
+            background: #fef3f2;
+            border: 2px dashed #E5094B;
+            border-radius: 6px;
+        }
+        .empty-col {
+            padding: 24px 12px;
+            text-align: center;
+            color: #cbd5e1;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-layout">
+        <aside class="sidebar" id="sidebar" aria-label="Menu lateral"></aside>
+        <div class="main-content" id="mainContent">
+            <header class="topbar">
+                <button class="topbar-hamburger" aria-label="Abrir menu">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                </button>
+                <span class="topbar-title">Pipeline Kanban</span>
+            </header>
+            <main class="page-area">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Pipeline</h1>
+                        <p class="page-subtitle">Arraste oportunidades entre as etapas</p>
+                    </div>
+                    <div class="page-actions">
+                        <a href="/crm/opportunities/novo" class="btn btn-primary" id="btnNovo">Nova Oportunidade</a>
+                    </div>
+                </div>
+                <div class="kanban-toolbar">
+                    <label for="pipelineSelect" style="font-size:13px;font-weight:600;">Pipeline:</label>
+                    <select id="pipelineSelect"></select>
+                </div>
+                <div class="kanban-board" id="kanbanBoard"></div>
+            </main>
+        </div>
+    </div>
+    <div class="toast" id="toast" role="alert" aria-live="polite"></div>
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/sidebar.js"></script>
+    <script>
+    (async function () {
+        'use strict';
+        let usuario;
+        try { usuario = await api.requireAuth(); } catch (e) { return; }
+        if (!api.can('crm_opportunities', 'ver')) { window.location.href = '/'; return; }
+        var canWrite = api.can('crm_opportunities', 'criar') || api.can('crm_opportunities', 'editar');
+        renderSidebar(document.getElementById('sidebar'), '/crm/kanban', usuario);
+        if (!canWrite) { var _bn = document.getElementById('btnNovo'); if (_bn) _bn.style.display = 'none'; }
+
+        const fmt = v => 'R$ ' + (Number(v) || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        const select = document.getElementById('pipelineSelect');
+        const board = document.getElementById('kanbanBoard');
+
+        // Carregar pipelines
+        try {
+            const pipelines = await api.get('/crm/pipelines?ativo=true');
+            select.innerHTML = pipelines.map(p =>
+                '<option value="' + p.id + '"' + (p.is_default ? ' selected' : '') + '>' + _esc(p.nome) + '</option>'
+            ).join('');
+        } catch (e) {
+            board.innerHTML = '<p style="color:#8896a6;padding:20px;">Erro ao carregar pipelines.</p>';
+            return;
+        }
+
+        select.addEventListener('change', renderKanban);
+        attachPanScroll(board);
+        await renderKanban();
+
+        /* ---- Pan-to-scroll horizontal ----
+           Clicar e arrastar em qualquer área (exceto cards) faz scroll lateral.
+           Cards continuam com seu próprio drag-drop pra mudar de etapa. */
+        function attachPanScroll(boardEl) {
+            let isDown = false;
+            let startX = 0;
+            let scrollLeftStart = 0;
+            let movedDist = 0;
+
+            boardEl.addEventListener('mousedown', e => {
+                // Não inicia pan se o clique foi num card (que tem drag próprio)
+                if (e.target.closest('.kanban-card')) return;
+                // Só botão esquerdo
+                if (e.button !== 0) return;
+                isDown = true;
+                movedDist = 0;
+                startX = e.pageX;
+                scrollLeftStart = boardEl.scrollLeft;
+                boardEl.classList.add('pan-dragging');
+            });
+
+            window.addEventListener('mousemove', e => {
+                if (!isDown) return;
+                e.preventDefault();
+                const dx = e.pageX - startX;
+                movedDist = Math.abs(dx);
+                boardEl.scrollLeft = scrollLeftStart - dx;
+            });
+
+            window.addEventListener('mouseup', () => {
+                if (!isDown) return;
+                isDown = false;
+                boardEl.classList.remove('pan-dragging');
+            });
+
+            // Touch (mobile)
+            boardEl.addEventListener('touchstart', e => {
+                if (e.target.closest('.kanban-card')) return;
+                isDown = true;
+                startX = e.touches[0].pageX;
+                scrollLeftStart = boardEl.scrollLeft;
+            }, { passive: true });
+
+            window.addEventListener('touchmove', e => {
+                if (!isDown) return;
+                const dx = e.touches[0].pageX - startX;
+                boardEl.scrollLeft = scrollLeftStart - dx;
+            }, { passive: true });
+
+            window.addEventListener('touchend', () => { isDown = false; });
+
+            // Wheel horizontal: shift+wheel ou trackpad já funcionam,
+            // mas adicionar wheel vertical → scroll horizontal opcionalmente
+            boardEl.addEventListener('wheel', e => {
+                if (e.deltaY !== 0 && e.deltaX === 0 && !e.shiftKey) {
+                    boardEl.scrollLeft += e.deltaY;
+                    e.preventDefault();
+                }
+            }, { passive: false });
+        }
+
+        async function renderKanban() {
+            const pid = select.value;
+            board.innerHTML = '<p style="color:#8896a6;padding:20px;">Carregando…</p>';
+            try {
+                const data = await api.get('/crm/opportunities/kanban?pipeline_id=' + pid);
+                board.innerHTML = '';
+                (data.columns || []).forEach(col => {
+                    const st = col.stage;
+                    const colEl = document.createElement('div');
+                    colEl.className = 'kanban-column';
+                    colEl.dataset.stageId = st.id;
+                    colEl.dataset.prob = st.probabilidade || 0;
+                    colEl.innerHTML =
+                        '<div class="kanban-col-header" style="border-top-color:' + _esc(st.cor || '#065676') + ';">' +
+                            '<div class="kanban-col-name">' + _esc(st.nome) +
+                                '<span class="kanban-col-count">' + col.opportunities.length + '</span>' +
+                            '</div>' +
+                            '<div class="kanban-col-total">' + fmt(col.total_valor) + ' · ' + (st.probabilidade || 0) + '%</div>' +
+                        '</div>' +
+                        '<div class="kanban-cards"></div>';
+                    const cardsEl = colEl.querySelector('.kanban-cards');
+                    if (col.opportunities.length === 0) {
+                        cardsEl.innerHTML = '<div class="empty-col">Vazio</div>';
+                    } else {
+                        col.opportunities.forEach(opp => {
+                            const card = document.createElement('div');
+                            card.className = 'kanban-card';
+                            card.draggable = true;
+                            card.dataset.oppId = opp.id;
+                            card.dataset.valor = opp.valor || 0;
+                            card.innerHTML =
+                                '<div class="kanban-card-name">' + _esc(opp.nome) + '</div>' +
+                                '<div class="kanban-card-meta">' +
+                                    (opp.cliente_nome ? '<span>👤 ' + _esc(opp.cliente_nome) + '</span>' : '') +
+                                    (opp.imovel_nome ? '<span>🏠 ' + _esc(opp.imovel_nome) + '</span>' : '') +
+                                    (opp.data_previsao ? '<span>📅 ' + _esc(opp.data_previsao) + '</span>' : '') +
+                                '</div>' +
+                                (opp.valor ? '<div class="kanban-card-valor">' + fmt(opp.valor) + '</div>' : '');
+                            card.addEventListener('click', () => { window.location.href = '/crm/opportunities/' + opp.id; });
+                            attachDrag(card);
+                            cardsEl.appendChild(card);
+                        });
+                    }
+                    attachDrop(colEl);
+                    board.appendChild(colEl);
+                });
+                if (board.children.length === 0) {
+                    board.innerHTML = '<p style="color:#8896a6;padding:20px;">Pipeline sem stages.</p>';
+                }
+            } catch (e) {
+                board.innerHTML = '<p style="color:#ef4444;padding:20px;">Erro ao carregar oportunidades: ' + e.message + '</p>';
+            }
+        }
+
+        function attachDrag(el) {
+            el.addEventListener('dragstart', e => {
+                el.classList.add('dragging');
+                e.dataTransfer.setData('text/plain', el.dataset.oppId);
+                e.dataTransfer.effectAllowed = 'move';
+            });
+            el.addEventListener('dragend', () => el.classList.remove('dragging'));
+        }
+
+        function attachDrop(col) {
+            col.addEventListener('dragover', e => {
+                e.preventDefault();
+                col.classList.add('drag-over');
+            });
+            col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
+            col.addEventListener('drop', async e => {
+                e.preventDefault();
+                col.classList.remove('drag-over');
+                const oppId = e.dataTransfer.getData('text/plain');
+                const newStageId = col.dataset.stageId;
+                if (!oppId || !newStageId) return;
+                const card = board.querySelector('.kanban-card[data-opp-id="' + oppId + '"]');
+                if (!card) return;
+                const sourceCol = card.closest('.kanban-column');
+                if (sourceCol === col) return;   // soltou na mesma coluna → nada a fazer
+
+                // Move otimista no DOM (UI instantânea, sem re-render → preserva o scroll)
+                col.querySelector('.kanban-cards').appendChild(card);
+                refreshColumnStats(col);
+                if (sourceCol) refreshColumnStats(sourceCol);
+
+                try {
+                    await api.post('/crm/opportunities/' + oppId + '/stage', { stage_id: parseInt(newStageId, 10) });
+                    showToast('Oportunidade movida!', 'success');
+                } catch (err) {
+                    // Rollback: devolve o card pra coluna de origem
+                    if (sourceCol) {
+                        sourceCol.querySelector('.kanban-cards').appendChild(card);
+                        refreshColumnStats(sourceCol);
+                    }
+                    refreshColumnStats(col);
+                    showToast('Erro ao mover: ' + err.message, 'error');
+                }
+            });
+        }
+
+        // Recalcula contador + total (R$ · %) de uma coluna a partir dos cards nela,
+        // e alterna o placeholder "Vazio". Evita refetch do board inteiro.
+        function refreshColumnStats(colEl) {
+            const cardsEl = colEl.querySelector('.kanban-cards');
+            const cards = cardsEl.querySelectorAll('.kanban-card');
+            let total = 0;
+            cards.forEach(c => { total += Number(c.dataset.valor) || 0; });
+            const countEl = colEl.querySelector('.kanban-col-count');
+            if (countEl) countEl.textContent = cards.length;
+            const totalEl = colEl.querySelector('.kanban-col-total');
+            if (totalEl) totalEl.textContent = fmt(total) + ' · ' + (colEl.dataset.prob || 0) + '%';
+            const empty = cardsEl.querySelector('.empty-col');
+            if (cards.length === 0 && !empty) {
+                cardsEl.appendChild(Object.assign(document.createElement('div'),
+                    { className: 'empty-col', textContent: 'Vazio' }));
+            } else if (cards.length > 0 && empty) {
+                empty.remove();
+            }
+        }
+
+        function _esc(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
+        function showToast(msg, type) {
+            const t = document.getElementById('toast');
+            if (!t) return;
+            t.textContent = msg;
+            t.className = 'toast ' + (type || 'success');
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+    })();
+    </script>
+</body>
+</html>

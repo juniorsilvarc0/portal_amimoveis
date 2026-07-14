@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<!--
+  layout.html — AM Imoveis Portal
+  Template base: sidebar + topbar mobile + área de conteúdo.
+  USE COMO ESQUELETO: copie este arquivo para criar novas páginas,
+  substitua <title>, o <div id="page-content"> e o <script> de inicialização.
+
+  Ordem de scripts obrigatória:
+    1. api.js      — fetch wrapper + JWT
+    2. sidebar.js  — renderSidebar()
+    3. masks.js    — máscaras opcionais
+    4. [modal.js]  — opcional
+    5. [datagrid.js] — opcional
+    6. script da página
+-->
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal — AM Imoveis</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/layout.css">
+    <style>
+        /* Estilos específicos da página ficam aqui */
+    </style>
+</head>
+<body>
+    <div class="app-layout">
+
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar" aria-label="Menu lateral"></aside>
+
+        <!-- Main Content -->
+        <div class="main-content" id="mainContent">
+
+            <!-- Topbar (visível apenas em mobile) -->
+            <header class="topbar" id="topbar">
+                <button class="topbar-hamburger" aria-label="Abrir menu" id="hamburger">
+                    <!-- SVG hamburguer injetado pelo sidebar.js -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="6" x2="21" y2="6"/>
+                        <line x1="3" y1="12" x2="21" y2="12"/>
+                        <line x1="3" y1="18" x2="21" y2="18"/>
+                    </svg>
+                </button>
+                <span class="topbar-title" id="topbarTitle">AM Imoveis</span>
+            </header>
+
+            <!-- Conteúdo da Página -->
+            <main class="page-area" id="pageArea">
+
+                <!-- ============================================================
+                     SUBSTITUIR: conteúdo específico da página vai aqui
+                     ============================================================ -->
+                <div class="page-header">
+                    <div class="page-header-left">
+                        <h1 id="pageTitle">Página</h1>
+                        <nav class="breadcrumb" aria-label="Breadcrumb">
+                            <a href="/">Início</a>
+                            <span class="breadcrumb-sep">›</span>
+                            <span id="breadcrumbCurrent">Página</span>
+                        </nav>
+                    </div>
+                    <div class="page-header-actions" id="pageActions">
+                        <!-- Botões de ação -->
+                    </div>
+                </div>
+
+                <div id="page-content">
+                    <!-- Conteúdo dinâmico aqui -->
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- Toast global -->
+    <div class="toast" id="toast" role="alert" aria-live="polite"></div>
+
+    <!-- Scripts (ordem importa) -->
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/sidebar.js"></script>
+    <script src="/static/js/masks.js"></script>
+    <script src="/static/js/modal.js"></script>
+
+    <script>
+        /* ---- Inicialização do layout ---- */
+        (async function () {
+            // 1. Checa autenticação
+            let usuario;
+            try {
+                usuario = await api.requireAuth();
+            } catch (e) {
+                // requireAuth já redireciona para /login se necessário
+                return;
+            }
+
+            // 2. Renderiza sidebar
+            renderSidebar(
+                document.getElementById('sidebar'),
+                window.location.pathname,
+                usuario
+            );
+
+            // 3. Aplica margens do layout (desktop)
+
+            // 4. Inicializa máscaras automáticas
+            autoMask(document);
+
+            // 5. ── Inicialização específica da página ──
+            if (typeof initPage === 'function') initPage(usuario);
+        })();
+
+        /* ---- Toast utility ---- */
+        function showToast(msg, type, duration) {
+            type = type || 'success';
+            duration = duration || 3000;
+            const t = document.getElementById('toast');
+            if (!t) return;
+            t.textContent = msg;
+            t.className = 'toast ' + type;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), duration);
+        }
+
+        /* ---- Função a sobrescrever na página filha ---- */
+        // function initPage(usuario) { ... }
+    </script>
+
+    <!-- Script específico da página -->
+    <!-- <script src="/static/js/minha-pagina.js"></script> -->
+</body>
+</html>

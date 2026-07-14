@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Correspondentes — AM Imóveis</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/layout.css">
+</head>
+<body>
+    <div class="app-layout">
+
+        <aside class="sidebar" id="sidebar" aria-label="Menu lateral"></aside>
+
+        <div class="main-content" id="mainContent">
+
+            <header class="topbar">
+                <button class="topbar-hamburger" aria-label="Abrir menu">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="6" x2="21" y2="6"/>
+                        <line x1="3" y1="12" x2="21" y2="12"/>
+                        <line x1="3" y1="18" x2="21" y2="18"/>
+                    </svg>
+                </button>
+                <span class="topbar-title">Correspondentes</span>
+            </header>
+
+            <main class="page-area">
+
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Correspondentes</h1>
+                        <p class="page-subtitle">Cadastro de correspondentes bancários</p>
+                    </div>
+                    <div class="page-actions">
+                        <button class="btn btn-primary" id="btnNovo">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2.5"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="12" y1="5" x2="12" y2="19"/>
+                                <line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                            Novo Correspondente
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card" style="padding: 0; overflow: hidden;">
+                    <div id="grid" style="padding: 0;"></div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <div class="toast" id="toast" role="alert" aria-live="polite"></div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/sidebar.js"></script>
+    <script src="/static/js/masks.js"></script>
+    <script src="/static/js/forms.js"></script>
+    <script src="/static/js/modal.js"></script>
+    <script src="/static/js/datagrid.js"></script>
+
+    <script>
+        (async function () {
+            'use strict';
+
+            /* ---- 1. Auth ---- */
+            var usuario;
+            try {
+                usuario = await api.requireAuth();
+            } catch (e) {
+                return;
+            }
+
+            if (!api.can('cad_correspondentes', 'ver')) { window.location.href = '/'; return; }
+
+            /* ---- 2. Sidebar ---- */
+            renderSidebar(document.getElementById('sidebar'), '/cadastros/correspondentes', usuario);
+
+            /* ---- 3. Permissões ---- */
+            var canWrite = api.can('cad_correspondentes', 'criar') || api.can('cad_correspondentes', 'editar');
+            var canDelete = api.can('cad_correspondentes', 'excluir');
+            if (!canWrite) {
+                var btn = document.getElementById('btnNovo');
+                if (btn) btn.style.display = 'none';
+            }
+
+            /* ---- 4. DataGrid ---- */
+            var grid = new DataGrid(document.getElementById('grid'), {
+                endpoint: '/correspondentes',
+                searchable: true,
+                perPage: 25,
+                emptyMessage: 'Nenhum correspondente cadastrado.',
+                columns: [
+                    {
+                        key: 'id',
+                        label: '#',
+                        sortable: true,
+                        width: '60px',
+                        align: 'center',
+                    },
+                    {
+                        key: 'nome',
+                        label: 'Nome',
+                        sortable: true,
+                    },
+                    {
+                        key: 'cidade_nome',
+                        label: 'Cidade',
+                        format: function (v) { return v || '—'; },
+                    },
+                    {
+                        key: 'created_at',
+                        label: 'Criado em',
+                        width: '130px',
+                        align: 'center',
+                        format: function (v) {
+                            if (!v) return '—';
+                            return new Date(v).toLocaleDateString('pt-BR');
+                        },
+                    },
+                ],
+                rowActions: function (row) {
+                    var actions = [];
+                    if (canWrite) {
+                        actions.push({
+                            label: 'Editar',
+                            className: 'btn-ghost',
+                            onClick: function (r) { openEditModal(r); },
+                        });
+                    }
+                    if (canDelete) {
+                        actions.push({
+                            label: 'Excluir',
+                            className: 'btn-danger',
+                            onClick: function (r) { deletar(r); },
+                        });
+                    }
+                    return actions;
+                },
+            });
+
+            document.getElementById('btnNovo').addEventListener('click', function () {
+                openEditModal(null);
+            });
+
+            /* ---- 5. Modal de criar/editar ---- */
+            async function openEditModal(row) {
+                var isEdit = !!row;
+
+                var m = new Modal({
+                    title: isEdit ? 'Editar Correspondente' : 'Novo Correspondente',
+                    bodyHtml:
+                        '<form id="correspondenteForm" novalidate>' +
+                            '<div class="alert-error" id="alertError"></div>' +
+                            '<div class="form-grid-auto">' +
+                                '<div class="form-group full-width">' +
+                                    '<label for="m-nome">Nome <span class="required">*</span></label>' +
+                                    '<input type="text" id="m-nome" name="nome" placeholder="Ex: João Correspondente" required>' +
+                                    '<small class="field-error"></small>' +
+                                '</div>' +
+                                '<div class="form-group full-width">' +
+                                    '<label for="m-cidade_id">Cidade <span class="required">*</span></label>' +
+                                    '<select id="m-cidade_id" name="cidade_id" required>' +
+                                        '<option value="">Carregando...</option>' +
+                                    '</select>' +
+                                    '<small class="field-error"></small>' +
+                                '</div>' +
+                            '</div>' +
+                        '</form>',
+                    footerHtml:
+                        '<button class="btn btn-ghost" id="m-cancelar">Cancelar</button>' +
+                        '<button class="btn btn-primary" id="m-salvar">' + (isEdit ? 'Salvar' : 'Criar') + '</button>',
+                    width: '440px',
+                });
+                m.open();
+
+                var form      = document.getElementById('correspondenteForm');
+                var cidadeEl  = document.getElementById('m-cidade_id');
+                var salvarBtn = document.getElementById('m-salvar');
+
+                forms.init(form);
+
+                /* Carregar lookup de cidades */
+                try {
+                    var cidades = await api.get('/lookup/cidades');
+                    cidadeEl.innerHTML = '<option value="">— Selecione —</option>' +
+                        cidades.map(function (c) {
+                            return '<option value="' + c.id + '">' + c.nome + '</option>';
+                        }).join('');
+                } catch (e) {
+                    cidadeEl.innerHTML = '<option value="">Erro ao carregar cidades</option>';
+                }
+
+                if (row) forms.fillForm(form, row);
+
+                document.getElementById('m-cancelar').addEventListener('click', function () { m.close(); });
+
+                salvarBtn.addEventListener('click', async function () {
+                    forms.alertClear();
+                    if (!forms.validate(form)) return;
+
+                    var payload = forms.readForm(form);
+                    if (payload.cidade_id) payload.cidade_id = parseInt(payload.cidade_id, 10);
+
+                    salvarBtn.disabled = true;
+                    salvarBtn.textContent = 'Salvando...';
+
+                    try {
+                        if (isEdit) {
+                            await api.put('/correspondentes/' + row.id, payload);
+                            showToast('Correspondente atualizado.', 'success');
+                        } else {
+                            await api.post('/correspondentes', payload);
+                            showToast('Correspondente criado.', 'success');
+                        }
+                        m.close();
+                        grid.refresh();
+                    } catch (e) {
+                        forms.alertError('Erro ao salvar: ' + (e.message || 'Tente novamente.'));
+                        salvarBtn.disabled = false;
+                        salvarBtn.textContent = isEdit ? 'Salvar' : 'Criar';
+                    }
+                });
+            }
+
+            /* ---- 6. Excluir ---- */
+            async function deletar(row) {
+                var ok = await Modal.confirm('Excluir o correspondente <strong>' + _esc(row.nome) + '</strong>?<br><small style="color:#9aa4b0">Esta ação não pode ser desfeita.</small>');
+                if (!ok) return;
+                try {
+                    await api.del('/correspondentes/' + row.id);
+                    showToast('Correspondente excluído.', 'success');
+                    grid.refresh();
+                } catch (e) {
+                    showToast(e.message || 'Erro ao excluir.', 'error');
+                }
+            }
+
+            /* ---- Helpers ---- */
+            function _esc(s) {
+                return String(s || '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
+            function showToast(msg, type, duration) {
+                type = type || 'success';
+                duration = duration || 3500;
+                var t = document.getElementById('toast');
+                if (!t) return;
+                t.textContent = msg;
+                t.className = 'toast ' + type;
+                t.classList.add('show');
+                setTimeout(function () { t.classList.remove('show'); }, duration);
+            }
+        })();
+    </script>
+</body>
+</html>

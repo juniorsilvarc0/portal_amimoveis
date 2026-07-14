@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oportunidade — CRM</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/layout.css">
+    <style>
+        .timeline { padding: 12px; max-height: 400px; overflow-y: auto; }
+        .timeline-item { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
+        .timeline-item:last-child { border: none; }
+        .timeline-icon { width: 30px; height: 30px; border-radius: 50%; background: #f5f7fa; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .timeline-content h5 { margin: 0 0 4px; font-size: 13px; font-weight: 600; }
+        .timeline-content p { margin: 0; font-size: 12px; color: #8896a6; }
+        .timeline-content .date { font-size: 11px; color: #cbd5e1; margin-top: 2px; }
+    </style>
+</head>
+<body>
+    <div class="app-layout">
+        <aside class="sidebar" id="sidebar"></aside>
+        <div class="main-content" id="mainContent">
+            <header class="topbar">
+                <button class="topbar-hamburger" aria-label="Abrir menu"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+                <span class="topbar-title" id="pageTitle">Nova Oportunidade</span>
+            </header>
+            <main class="page-area">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title" id="pageTitleMain">Nova Oportunidade</h1>
+                        <p class="page-subtitle">Negociação no funil de vendas</p>
+                    </div>
+                    <div class="page-actions">
+                        <a href="/crm/opportunities" class="btn btn-ghost">Voltar</a>
+                    </div>
+                </div>
+                <div class="alert-error" id="alertError"></div>
+                <form id="form" autocomplete="off" novalidate>
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible><h3>01. Dados</h3></div>
+                        <div class="form-card-body">
+                            <div class="form-grid-auto">
+                                <div class="form-group full-width">
+                                    <label for="nome">Nome da oportunidade *</label>
+                                    <input type="text" id="nome" name="nome" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="cliente_id">Cliente *</label>
+                                    <select id="cliente_id" name="cliente_id" required><option value="">— Selecione —</option></select>
+                                    <small class="field-error"></small>
+                                    <small style="display:block;color:#8896a6;margin-top:4px;font-size:11px;">Cliente é obrigatório. Para converter um Lead, use a página de Leads → Converter.</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="imovel_id">Imóvel</label>
+                                    <select id="imovel_id" name="imovel_id"><option value="">—</option></select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="valor">Valor (R$)</label>
+                                    <input type="text" id="valor" name="valor" data-mask="money">
+                                </div>
+                                <div class="form-group">
+                                    <label for="data_previsao">Previsão de fechamento</label>
+                                    <input type="date" id="data_previsao" name="data_previsao">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible><h3>02. Funil</h3></div>
+                        <div class="form-card-body">
+                            <div class="form-grid-auto">
+                                <div class="form-group">
+                                    <label for="pipeline_id">Pipeline *</label>
+                                    <select id="pipeline_id" name="pipeline_id" required></select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="stage_id">Etapa *</label>
+                                    <select id="stage_id" name="stage_id" required></select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="proprietario_id">Responsável</label>
+                                    <select id="proprietario_id" name="proprietario_id"><option value="">—</option></select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="campaign_id">Campanha</label>
+                                    <select id="campaign_id" name="campaign_id"><option value="">—</option></select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible><h3>03. Descrição</h3></div>
+                        <div class="form-card-body">
+                            <div class="form-grid-auto">
+                                <div class="form-group full-width">
+                                    <label for="descricao">Descrição</label>
+                                    <textarea id="descricao" name="descricao" rows="3"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-card" id="cardTimeline" style="display:none;">
+                        <div class="form-card-header" data-collapsible><h3>04. Histórico de Atividades</h3></div>
+                        <div class="form-card-body">
+                            <div class="timeline" id="timeline"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <a href="/crm/opportunities" class="btn btn-ghost">Cancelar</a>
+                        <button type="submit" class="btn btn-primary" id="btnSalvar">
+                            <span id="btnSalvarLabel">Salvar Oportunidade</span>
+                        </button>
+                    </div>
+                </form>
+            </main>
+        </div>
+    </div>
+    <div class="toast" id="toast"></div>
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/sidebar.js"></script>
+    <script src="/static/js/masks.js"></script>
+    <script src="/static/js/forms.js"></script>
+    <script>
+    (async function () {
+        let usuario;
+        try { usuario = await api.requireAuth(); } catch (e) { return; }
+        renderSidebar(document.getElementById('sidebar'), '/crm/opportunities', usuario);
+
+        const form = document.getElementById('form');
+        forms.init(form);
+        if (typeof autoMask === 'function') autoMask(form);
+
+        const editId = getId();
+        if (!api.can('crm_opportunities', 'ver')) { window.location.href = '/'; return; }
+        var podeEscrever = editId ? api.can('crm_opportunities', 'editar') : api.can('crm_opportunities', 'criar');
+        if (!podeEscrever) { window.location.href = '/crm/opportunities'; return; }
+        if (editId) {
+            document.getElementById('pageTitleMain').textContent = 'Editar Oportunidade';
+            document.getElementById('btnSalvarLabel').textContent = 'Atualizar';
+            document.getElementById('cardTimeline').style.display = '';
+        }
+
+        await Promise.all([
+            loadPipelines(),
+            loadSelect('cliente_id', '/clientes?per_page=500', c => c.nome + (c.cpf ? ' (' + maskCPF(c.cpf) + ')' : ''), 'data'),
+            loadSelect('imovel_id', '/lookup/imoveis', i => i.nome),
+            loadCampanhas(),
+            loadCorretores(),
+        ]);
+
+        if (editId) await carregar(editId);
+        else await preencherCliente();
+
+        // Pré-preenche a oportunidade a partir do cliente (vindo de /clientes/{id} → "Criar").
+        async function preencherCliente() {
+            const cid = new URLSearchParams(window.location.search).get('cliente_id');
+            if (!cid) return;
+            const sel = document.getElementById('cliente_id');
+            sel.value = String(cid);
+            let nome = '';
+            if (sel.value === String(cid) && sel.selectedIndex >= 0) {
+                // Cliente já está na lista carregada — usa o texto da opção (sem o CPF entre parênteses)
+                nome = sel.options[sel.selectedIndex].textContent.replace(/\s*\(.*\)\s*$/, '').trim();
+            } else {
+                // Cliente fora dos 500 carregados — busca e injeta a opção
+                try {
+                    const c = await api.get('/clientes/' + cid);
+                    const o = document.createElement('option');
+                    o.value = c.id;
+                    o.textContent = c.nome + (c.cpf ? ' (' + maskCPF(c.cpf) + ')' : '');
+                    sel.appendChild(o);
+                    sel.value = String(c.id);
+                    nome = c.nome;
+                } catch (e) { return; }
+            }
+            const nomeEl = document.getElementById('nome');
+            if (nomeEl && !nomeEl.value.trim() && nome) nomeEl.value = 'Negociação ' + nome;
+            const sub = document.querySelector('.page-subtitle');
+            if (sub && nome) sub.textContent = 'Nova negociação para ' + nome;
+        }
+
+        async function loadPipelines() {
+            const list = await api.get('/crm/pipelines?ativo=true');
+            const sel = document.getElementById('pipeline_id');
+            sel.innerHTML = list.map(p => '<option value="'+p.id+'"'+(p.is_default?' selected':'')+'>'+p.nome+'</option>').join('');
+            sel.addEventListener('change', loadStages);
+            await loadStages();
+        }
+        async function loadStages() {
+            const pid = document.getElementById('pipeline_id').value;
+            if (!pid) return;
+            const stages = await api.get('/crm/stages?pipeline_id=' + pid);
+            const sel = document.getElementById('stage_id');
+            sel.innerHTML = stages.map(s => '<option value="'+s.id+'">'+s.nome+'</option>').join('');
+        }
+        async function loadSelect(id, url, label, key) {
+            try {
+                const resp = await api.get(url);
+                const list = key === 'data' ? (resp.data || resp) : resp;
+                const sel = document.getElementById(id);
+                (list || []).forEach(it => {
+                    const o = document.createElement('option');
+                    o.value = it.id; o.textContent = label(it); sel.appendChild(o);
+                });
+            } catch (e) {}
+        }
+        async function loadCampanhas() {
+            try {
+                const r = await api.get('/crm/campaigns?ativo=true&per_page=200');
+                const sel = document.getElementById('campaign_id');
+                (r.data||[]).forEach(c => { const o=document.createElement('option'); o.value=c.id; o.textContent=c.nome; sel.appendChild(o); });
+            } catch (e) {}
+        }
+        async function loadCorretores() {
+            try {
+                const r = await api.get('/usuarios');
+                const sel = document.getElementById('proprietario_id');
+                (r.data||r||[]).forEach(u => { const o=document.createElement('option'); o.value=u.id; o.textContent=u.email; sel.appendChild(o); });
+            } catch (e) {}
+        }
+
+        async function carregar(id) {
+            try {
+                const opp = await api.get('/crm/opportunities/' + id);
+                ['nome','cliente_id','imovel_id','valor','data_previsao','pipeline_id','stage_id','proprietario_id','campaign_id','descricao'].forEach(f => {
+                    const el = document.getElementById(f);
+                    if (el && opp[f] != null) el.value = opp[f];
+                });
+                await loadStages();
+                document.getElementById('stage_id').value = opp.stage_id;
+                renderTimeline(opp.activities || []);
+            } catch (e) { showToast('Erro: ' + e.message, 'error'); }
+        }
+
+        function renderTimeline(items) {
+            const tl = document.getElementById('timeline');
+            if (!items.length) { tl.innerHTML = '<p style="color:#cbd5e1;padding:8px;">Sem atividades registradas.</p>'; return; }
+            tl.innerHTML = items.map(a => {
+                const icon = ({tarefa:'✓',ligacao:'📞',reuniao:'👥',email:'✉️',whatsapp:'💬',nota:'📝'}[a.tipo] || '•');
+                const data = a.data_atividade || a.created_at;
+                return '<div class="timeline-item">' +
+                    '<div class="timeline-icon">' + icon + '</div>' +
+                    '<div class="timeline-content">' +
+                        '<h5>' + _esc(a.assunto) + '</h5>' +
+                        (a.descricao ? '<p>' + _esc(a.descricao) + '</p>' : '') +
+                        '<div class="date">' + (data ? new Date(data).toLocaleString('pt-BR') : '') + ' · ' + (a.status||'') + '</div>' +
+                    '</div></div>';
+            }).join('');
+        }
+
+        form.addEventListener('submit', async e => {
+            e.preventDefault();
+            forms.alertClear();
+            try {
+                const p = montar();
+                if (!p.cliente_id) {
+                    forms.alertError('Cliente é obrigatório. Selecione um cliente cadastrado.');
+                    return;
+                }
+                if (editId) await api.put('/crm/opportunities/' + editId, p);
+                else await api.post('/crm/opportunities', p);
+                showToast('Salvo!', 'success');
+                setTimeout(() => { window.location.href = '/crm/opportunities'; }, 800);
+            } catch (err) { forms.alertError(err.message); }
+        });
+
+        function montar() {
+            const v = id => { const el = document.getElementById(id); return el ? (el.value || '').trim() : ''; };
+            const intval = id => v(id) ? parseInt(v(id), 10) : null;
+            let val = v('valor'); if (val) val = parseFloat(val.replace(/[R$\s.]/g, '').replace(',', '.')) || null;
+            return {
+                nome: v('nome'),
+                cliente_id: intval('cliente_id'),
+                imovel_id: intval('imovel_id'),
+                valor: val,
+                data_previsao: v('data_previsao') || null,
+                pipeline_id: intval('pipeline_id'),
+                stage_id: intval('stage_id'),
+                proprietario_id: intval('proprietario_id'),
+                campaign_id: intval('campaign_id'),
+                descricao: v('descricao') || null,
+            };
+        }
+        function getId() { const m=window.location.pathname.match(/\/crm\/opportunities\/(\d+)\/editar/); return m?parseInt(m[1],10):null; }
+        function _esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+        function showToast(msg, type){const t=document.getElementById('toast');if(!t)return;t.textContent=msg;t.className='toast '+(type||'success');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+    })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cliente — AM Imoveis</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/layout.css">
+</head>
+<body>
+    <div class="app-layout">
+
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar" aria-label="Menu lateral"></aside>
+
+        <!-- Main Content -->
+        <div class="main-content" id="mainContent">
+
+            <!-- Topbar mobile -->
+            <header class="topbar">
+                <button class="topbar-hamburger" aria-label="Abrir menu">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="6" x2="21" y2="6"/>
+                        <line x1="3" y1="12" x2="21" y2="12"/>
+                        <line x1="3" y1="18" x2="21" y2="18"/>
+                    </svg>
+                </button>
+                <span class="topbar-title" id="topbarTitle">Novo Cliente</span>
+            </header>
+
+            <main class="page-area">
+
+                <!-- Page header -->
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title" id="pageTitle">Novo Cliente</h1>
+                        <p class="page-subtitle">Preencha os dados do cliente</p>
+                    </div>
+                    <div class="page-actions">
+                        <a href="/clientes" class="btn btn-ghost">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                                 fill="none" stroke="currentColor" stroke-width="2"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="15 18 9 12 15 6"/>
+                            </svg>
+                            Voltar
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Error banner -->
+                <div class="alert-error" id="alertError"></div>
+
+                <form id="clienteForm" novalidate>
+
+                    <!-- ========== Dados Pessoais ========== -->
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible data-section="pessoal">
+                            <span class="section-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="12" cy="7" r="4"/>
+                                </svg>
+                            </span>
+                            <h3>Dados Pessoais</h3>
+                            <span class="chevron-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2.5"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </span>
+                        </div>
+                        <div class="form-card-body" id="body-pessoal">
+                            <div class="form-grid">
+                                <div data-field="nome" data-required></div>
+                                <div data-field="cpf" data-required></div>
+                                <div data-field="nascimento"></div>
+                                <div data-field="nacionalidade"></div>
+                                <div data-field="estado_civil"></div>
+                                <div data-field="regime_bens"></div>
+                                <div data-field="profissao"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ========== Documentos ========== -->
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible data-section="documentos">
+                            <span class="section-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                    <polyline points="14 2 14 8 20 8"/>
+                                </svg>
+                            </span>
+                            <h3>Documentos</h3>
+                            <span class="chevron-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2.5"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </span>
+                        </div>
+                        <div class="form-card-body" id="body-documentos">
+                            <div class="form-grid">
+                                <div data-field="rg"></div>
+                                <div data-field="rg_orgao"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ========== Contato ========== -->
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible data-section="contato">
+                            <span class="section-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 9a16 16 0 0 0 6 6l1.27-.84a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                                </svg>
+                            </span>
+                            <h3>Contato</h3>
+                            <span class="chevron-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2.5"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </span>
+                        </div>
+                        <div class="form-card-body" id="body-contato">
+                            <div class="form-grid">
+                                <div data-field="whatsapp" data-name="whatsapp1" data-label="WhatsApp"></div>
+                                <div data-field="whatsapp" data-name="whatsapp2" data-label="WhatsApp secundário"></div>
+                                <div data-field="telefone_fixo"></div>
+                                <div data-field="email" data-full-width></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ========== Endereço ========== -->
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible data-section="endereco">
+                            <span class="section-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                                    <circle cx="12" cy="10" r="3"/>
+                                </svg>
+                            </span>
+                            <h3>Endereço</h3>
+                            <span class="chevron-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2.5"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </span>
+                        </div>
+                        <div class="form-card-body" id="body-endereco">
+                            <div class="form-grid">
+                                <div data-field="endereco"></div>
+                                <div data-field="bairro"></div>
+                                <div data-field="cep"></div>
+                                <div data-field="cidade_select" data-name="cidade_id" data-label="Cidade"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ========== Observações ========== -->
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible data-section="obs">
+                            <span class="section-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                    <polyline points="14 2 14 8 20 8"/>
+                                    <line x1="16" y1="13" x2="8" y2="13"/>
+                                    <line x1="16" y1="17" x2="8" y2="17"/>
+                                    <polyline points="10 9 9 9 8 9"/>
+                                </svg>
+                            </span>
+                            <h3>Observações</h3>
+                            <span class="chevron-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2.5"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </span>
+                        </div>
+                        <div class="form-card-body" id="body-obs">
+                            <div class="form-group">
+                                <label for="observacoes">Observações</label>
+                                <textarea id="observacoes" name="observacoes"
+                                          placeholder="Informações adicionais sobre o cliente..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ========== Cônjuge (collapsible) ========== -->
+                    <div class="form-card">
+                        <div class="form-card-header" data-collapsible data-section="conjuge">
+                            <span class="section-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="9" cy="7" r="4"/>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                </svg>
+                            </span>
+                            <h3>Cônjuge / Companheiro(a)</h3>
+                            <span class="chevron-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2.5"
+                                     stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </span>
+                        </div>
+                        <div class="form-card-body hidden" id="body-conjuge">
+                            <label class="conjuge-toggle">
+                                <input type="checkbox" id="temConjuge"> Incluir dados do cônjuge
+                            </label>
+                            <div id="conjuge-fields" style="display:none; margin-top: 16px;">
+                                <div class="form-grid">
+                                    <div data-field="nome" data-name="c_nome" data-label="Nome do cônjuge" data-full-width></div>
+                                    <div data-field="cpf" data-name="c_cpf"></div>
+                                    <div data-field="rg" data-name="c_rg"></div>
+                                    <div data-field="rg_orgao" data-name="c_rg_orgao"></div>
+                                    <div data-field="nascimento" data-name="c_nascimento"></div>
+                                    <div data-field="nacionalidade" data-name="c_nacionalidade"></div>
+                                    <div data-field="estado_civil" data-name="c_estado_civil"></div>
+                                    <div data-field="profissao" data-name="c_profissao"></div>
+                                    <div data-field="whatsapp" data-name="c_whatsapp"></div>
+                                    <div data-field="telefone_fixo" data-name="c_fixo"></div>
+                                    <div data-field="email" data-name="c_email" data-full-width></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ========== Ações ========== -->
+                    <div class="form-actions">
+                        <a href="/clientes" class="btn btn-ghost">Cancelar</a>
+                        <button type="submit" class="btn btn-primary" id="btnSalvar">
+                            <span id="btnSalvarLabel">Salvar Cliente</span>
+                            <span id="btnSalvarSpinner" class="spinner" style="display:none;"></span>
+                        </button>
+                    </div>
+
+                </form>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast" role="alert" aria-live="polite"></div>
+
+    <!-- Scripts -->
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/sidebar.js"></script>
+    <script src="/static/js/masks.js"></script>
+    <script src="/static/js/forms.js"></script>
+    <script src="/static/js/modal.js"></script>
+
+    <script>
+        (async function () {
+            'use strict';
+
+            /* ------------------------------------------------------------------ */
+            /* 1. Auth                                                             */
+            /* ------------------------------------------------------------------ */
+            let usuario;
+            try {
+                usuario = await api.requireAuth();
+            } catch (e) {
+                return;
+            }
+
+            /* ------------------------------------------------------------------ */
+            /* 2. Sidebar                                                          */
+            /* ------------------------------------------------------------------ */
+            renderSidebar(document.getElementById('sidebar'), '/clientes', usuario);
+
+            /* ------------------------------------------------------------------ */
+            /* 3. Detectar modo: novo vs. edição                                  */
+            /* ------------------------------------------------------------------ */
+            const pathParts = window.location.pathname.split('/');
+            // /cliente/{id}/editar → pathParts = ['', 'cliente', '{id}', 'editar']
+            const isEdit = pathParts.includes('editar');
+            const clienteId = isEdit ? parseInt(pathParts[pathParts.indexOf('editar') - 1], 10) : null;
+
+            if (isEdit) {
+                document.getElementById('pageTitle').textContent = 'Editar Cliente';
+                document.getElementById('topbarTitle').textContent = 'Editar Cliente';
+                document.querySelector('.page-subtitle').textContent = 'Atualize os dados do cliente';
+                document.getElementById('btnSalvarLabel').textContent = 'Atualizar Cliente';
+            }
+
+            /* Bloqueia quem não pode escrever */
+            var podeEscrever = isEdit ? api.can('clientes', 'editar') : api.can('clientes', 'criar');
+            if (!podeEscrever) {
+                document.getElementById('clienteForm').querySelectorAll('input,select,textarea,button[type=submit]')
+                    .forEach(function (el) { el.disabled = true; });
+                document.getElementById('btnSalvar').style.display = 'none';
+                showAlert('Você não tem permissão para editar clientes.');
+            }
+
+            /* ------------------------------------------------------------------ */
+            /* 4. Máscaras                                                         */
+            /* ------------------------------------------------------------------ */
+            /* Máscaras e collapsibles agora via forms.init */
+            forms.init(document.getElementById('clienteForm'));
+            /* CEP simples */
+            const cepInput = document.getElementById('cep');
+            cepInput.addEventListener('input', function () {
+                let v = unmask(cepInput.value).slice(0, 8);
+                if (v.length > 5) v = v.slice(0, 5) + '-' + v.slice(5);
+                cepInput.value = v;
+            });
+
+            /* ------------------------------------------------------------------ */
+            /* 5. Carregar cidades                                                 */
+            /* ------------------------------------------------------------------ */
+            const cidadeSelect = document.getElementById('cidade_id');
+            try {
+                const cidades = await api.get('/lookup/cidades');
+                cidadeSelect.innerHTML = '<option value="">Selecione a cidade</option>';
+                (cidades || []).forEach(function (c) {
+                    const opt = document.createElement('option');
+                    opt.value = c.id;
+                    opt.textContent = c.nome + (c.uf ? ' (' + c.uf + ')' : '');
+                    cidadeSelect.appendChild(opt);
+                });
+            } catch (e) {
+                cidadeSelect.innerHTML = '<option value="">Não foi possível carregar cidades</option>';
+            }
+
+            /* ------------------------------------------------------------------ */
+            /* 6. Seções colapsáveis                                               */
+            /* ------------------------------------------------------------------ */
+            /* Collapse sections: wired automaticamente pelo forms.init acima */
+            /* Cônjuge toggle */
+            const temConjugeChk = document.getElementById('temConjuge');
+            const conjugeFields = document.getElementById('conjuge-fields');
+            temConjugeChk.addEventListener('change', function () {
+                conjugeFields.style.display = this.checked ? 'block' : 'none';
+            });
+
+            /* ------------------------------------------------------------------ */
+            /* 7. Carregar dados para edição                                       */
+            /* ------------------------------------------------------------------ */
+            if (isEdit && clienteId) {
+                try {
+                    const cliente = await api.get('/clientes/' + clienteId);
+                    _fillForm(cliente);
+
+                    // Buscar cônjuge separadamente via por-cpf (obter já traz dados base)
+                    // Tentamos via obter_por_cpf interno — usa o mesmo endpoint que retorna conjuge
+                    if (cliente.cpf) {
+                        try {
+                            const comConjuge = await api.get('/clientes/por-cpf/' + cliente.cpf.replace(/\D/g, ''));
+                            if (comConjuge && comConjuge.conjuge && comConjuge.conjuge.nome) {
+                                _fillConjuge(comConjuge.conjuge);
+                            }
+                        } catch (_) { /* cônjuge não encontrado — ok */ }
+                    }
+                } catch (e) {
+                    showAlert('Erro ao carregar dados do cliente: ' + e.message);
+                }
+            }
+
+            /* ------------------------------------------------------------------ */
+            /* 8. Submit                                                           */
+            /* ------------------------------------------------------------------ */
+            document.getElementById('clienteForm').addEventListener('submit', async function (e) {
+                e.preventDefault();
+                hideAlert();
+
+                const nome = document.getElementById('nome').value.trim();
+                const cpf  = document.getElementById('cpf').value.trim();
+
+                if (!nome) { showAlert('O campo Nome é obrigatório.'); return; }
+                if (!cpf || unmask(cpf).length < 11) { showAlert('CPF inválido ou incompleto.'); return; }
+
+                /* Monta payload */
+                const payload = {
+                    nome:          nome,
+                    cpf:           unmask(cpf),
+                    rg:            _val('rg'),
+                    rg_orgao:      _val('rg_orgao'),
+                    nascimento:    _val('nascimento') || null,
+                    nacionalidade: _val('nacionalidade'),
+                    estado_civil:  _val('estado_civil'),
+                    regime_bens:   _val('regime_bens'),
+                    profissao:     _val('profissao'),
+                    email:         _val('email') || null,
+                    telefone_fixo: unmask(_val('telefone_fixo')) || null,
+                    whatsapp1:     unmask(_val('whatsapp1')) || null,
+                    whatsapp2:     unmask(_val('whatsapp2')) || null,
+                    endereco:      _val('endereco'),
+                    bairro:        _val('bairro'),
+                    cep:           unmask(_val('cep')) || null,
+                    cidade_id:     _val('cidade_id') ? parseInt(_val('cidade_id'), 10) : null,
+                    observacoes:   _val('observacoes'),
+                };
+
+                /* Cônjuge */
+                if (temConjugeChk.checked && _val('c_nome')) {
+                    payload.conjuge = {
+                        nome:          _val('c_nome'),
+                        cpf:           unmask(_val('c_cpf')) || null,
+                        rg:            _val('c_rg'),
+                        rg_orgao:      _val('c_rg_orgao'),
+                        nascimento:    _val('c_nascimento') || null,
+                        nacionalidade: _val('c_nacionalidade'),
+                        estado_civil:  _val('c_estado_civil'),
+                        profissao:     _val('c_profissao'),
+                        email:         _val('c_email') || null,
+                        whatsapp:      unmask(_val('c_whatsapp')) || null,
+                        fixo:          unmask(_val('c_fixo')) || null,
+                    };
+                }
+
+                /* Spinner on */
+                _setLoading(true);
+
+                try {
+                    if (isEdit) {
+                        await api.put('/clientes/' + clienteId, payload);
+                        showToast('Cliente atualizado com sucesso!', 'success');
+                    } else {
+                        await api.post('/clientes', payload);
+                        showToast('Cliente cadastrado com sucesso!', 'success');
+                    }
+                    setTimeout(function () {
+                        window.location.href = '/clientes';
+                    }, 1000);
+                } catch (err) {
+                    _setLoading(false);
+                    showAlert(err.message || 'Erro ao salvar cliente. Tente novamente.');
+                }
+            });
+
+            /* ------------------------------------------------------------------ */
+            /* Helpers                                                             */
+            /* ------------------------------------------------------------------ */
+            function _val(id) {
+                const el = document.getElementById(id);
+                return el ? el.value.trim() : '';
+            }
+
+            function _setVal(id, value) {
+                const el = document.getElementById(id);
+                if (el && value != null) el.value = String(value);
+            }
+
+            function _fillForm(c) {
+                _setVal('nome', c.nome);
+                _setVal('cpf', c.cpf ? maskCPF(c.cpf) : '');
+                _setVal('rg', c.rg);
+                _setVal('rg_orgao', c.rg_orgao);
+                _setVal('nascimento', c.nascimento ? c.nascimento.split('T')[0] : '');
+                _setVal('nacionalidade', c.nacionalidade || 'Brasileiro(a)');
+                _setVal('estado_civil', c.estado_civil);
+                _setVal('regime_bens', c.regime_bens);
+                _setVal('profissao', c.profissao);
+                _setVal('email', c.email);
+                _setVal('telefone_fixo', c.telefone_fixo ? maskPhone(c.telefone_fixo) : '');
+                _setVal('whatsapp1', c.whatsapp1 ? maskPhone(c.whatsapp1) : '');
+                _setVal('whatsapp2', c.whatsapp2 ? maskPhone(c.whatsapp2) : '');
+                _setVal('endereco', c.endereco);
+                _setVal('bairro', c.bairro);
+                _setVal('cep', c.cep ? (c.cep.slice(0, 5) + (c.cep.length > 5 ? '-' + c.cep.slice(5) : '')) : '');
+                _setVal('cidade_id', c.cidade_id);
+                _setVal('observacoes', c.observacoes);
+            }
+
+            function _fillConjuge(cj) {
+                // Abre o bloco cônjuge
+                const conjBody = document.getElementById('body-conjuge');
+                const conjHeader = conjBody && conjBody.previousElementSibling;
+                if (conjBody) {
+                    conjBody.classList.remove('hidden');
+                    if (conjHeader) conjHeader.classList.remove('collapsed');
+                }
+                temConjugeChk.checked = true;
+                conjugeFields.style.display = 'block';
+
+                _setVal('c_nome', cj.nome);
+                _setVal('c_cpf', cj.cpf ? maskCPF(cj.cpf) : '');
+                _setVal('c_rg', cj.rg);
+                _setVal('c_rg_orgao', cj.rg_orgao);
+                _setVal('c_nascimento', cj.nascimento ? cj.nascimento.split('T')[0] : '');
+                _setVal('c_nacionalidade', cj.nacionalidade || '');
+                _setVal('c_estado_civil', cj.estado_civil);
+                _setVal('c_profissao', cj.profissao);
+                _setVal('c_email', cj.email);
+                _setVal('c_whatsapp', cj.whatsapp ? maskPhone(cj.whatsapp) : '');
+                _setVal('c_fixo', cj.fixo ? maskPhone(cj.fixo) : '');
+            }
+
+            function _setLoading(on) {
+                const btn = document.getElementById('btnSalvar');
+                const label = document.getElementById('btnSalvarLabel');
+                const spinner = document.getElementById('btnSalvarSpinner');
+                btn.disabled = on;
+                label.style.display = on ? 'none' : 'inline';
+                spinner.style.display = on ? 'inline-block' : 'none';
+            }
+
+            function showAlert(msg) {
+                const el = document.getElementById('alertError');
+                el.innerHTML = msg;
+                el.classList.add('show');
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+
+            function hideAlert() {
+                document.getElementById('alertError').classList.remove('show');
+            }
+
+            function showToast(msg, type, duration) {
+                type = type || 'success';
+                duration = duration || 3500;
+                const t = document.getElementById('toast');
+                if (!t) return;
+                t.textContent = msg;
+                t.className = 'toast ' + type;
+                t.classList.add('show');
+                setTimeout(function () { t.classList.remove('show'); }, duration);
+            }
+
+        })();
+    </script>
+</body>
+</html>

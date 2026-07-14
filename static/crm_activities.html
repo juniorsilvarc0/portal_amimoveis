@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atividades — CRM</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/layout.css">
+</head>
+<body>
+    <div class="app-layout">
+        <aside class="sidebar" id="sidebar"></aside>
+        <div class="main-content" id="mainContent">
+            <header class="topbar">
+                <button class="topbar-hamburger" aria-label="Abrir menu"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+                <span class="topbar-title">Atividades</span>
+            </header>
+            <main class="page-area">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Atividades</h1>
+                        <p class="page-subtitle">Tarefas, ligações, reuniões, notas</p>
+                    </div>
+                    <div class="page-actions">
+                        <a href="/crm/activities/nova" class="btn btn-primary" id="btnNovo">Nova Atividade</a>
+                    </div>
+                </div>
+                <div class="card" style="padding:0;overflow:hidden;"><div id="grid" style="padding:0;"></div></div>
+            </main>
+        </div>
+    </div>
+    <div class="toast" id="toast"></div>
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/sidebar.js"></script>
+    <script src="/static/js/modal.js"></script>
+    <script src="/static/js/datagrid.js"></script>
+    <script>
+    (async function () {
+        let usuario;
+        try { usuario = await api.requireAuth(); } catch (e) { return; }
+        if (!api.can('crm_activities', 'ver')) { window.location.href = '/'; return; }
+        var canWrite = api.can('crm_activities', 'criar') || api.can('crm_activities', 'editar');
+        var canDelete = api.can('crm_activities', 'excluir');
+        renderSidebar(document.getElementById('sidebar'), '/crm/activities', usuario);
+        if (!canWrite) { var _bn = document.getElementById('btnNovo'); if (_bn) _bn.style.display = 'none'; }
+
+        const ICON = { tarefa:'✓', ligacao:'📞', reuniao:'👥', email:'✉️', whatsapp:'💬', nota:'📝' };
+        const grid = new DataGrid(document.getElementById('grid'), {
+            endpoint: '/crm/activities',
+            searchable: true,
+            perPage: 25,
+            emptyMessage: 'Nenhuma atividade.',
+            columns: [
+                { key: 'tipo', label: '', width: '50px', align: 'center', html: true,
+                  format: v => '<span title="'+(v||'')+'" style="font-size:18px;">'+(ICON[v]||'•')+'</span>' },
+                { key: 'assunto', label: 'Assunto', format: v => v || '—' },
+                { key: 'cliente_nome', label: 'Cliente / Lead',
+                  format: (v, r) => v || r.lead_nome || r.opportunity_nome || '—' },
+                { key: 'data_atividade', label: 'Data', width: '160px',
+                  format: v => v ? new Date(v).toLocaleString('pt-BR') : '—' },
+                { key: 'status', label: 'Status', width: '110px', align: 'center',
+                  format: v => v || 'pendente' },
+                { key: 'prioridade', label: 'Prio', width: '80px', align: 'center',
+                  format: v => v || '—' },
+            ],
+            rowActions: r => {
+                const actions = [];
+                if (canWrite) actions.push({ label: 'Editar', className: 'btn-ghost',
+                      onClick: x => { window.location.href = '/crm/activities/' + x.id + '/editar'; } });
+                if (canWrite && r.status !== 'concluida') actions.push({
+                    label: 'Concluir', className: 'btn-primary',
+                    onClick: async x => {
+                        try { await api.post('/crm/activities/' + x.id + '/concluir', {}); showToast('Concluída', 'success'); grid.refresh(); }
+                        catch (e) { showToast(e.message, 'error'); }
+                    },
+                });
+                if (canDelete) actions.push({
+                    label: 'Excluir', className: 'btn-danger',
+                    onClick: async x => {
+                        const ok = await Modal.confirm('Excluir atividade?');
+                        if (!ok) return;
+                        try { await api.del('/crm/activities/' + x.id); showToast('Excluída', 'success'); grid.refresh(); }
+                        catch (e) { showToast(e.message, 'error'); }
+                    },
+                });
+                return actions;
+            },
+        });
+        function showToast(msg, type){const t=document.getElementById('toast');if(!t)return;t.textContent=msg;t.className='toast '+(type||'success');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+    })();
+    </script>
+</body>
+</html>
