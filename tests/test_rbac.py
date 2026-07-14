@@ -16,11 +16,12 @@ from fastapi import HTTPException
 def test_recursos_catalogo():
     from app.auth.recursos import RECURSOS, RECURSO_KEYS, ACOES
 
-    assert len(RECURSOS) == 21
+    assert len(RECURSOS) == 23
     assert ACOES == ("ver", "criar", "editar", "excluir")
     # chaves representativas de cada grupo
     for key in ("clientes", "habitacao", "recibo", "financiamento",
-                "crm_leads", "crm_opportunities", "cad_cidades", "logos", "usuarios"):
+                "crm_leads", "crm_opportunities", "cad_cidades", "logos",
+                "chat", "chat_conexao", "usuarios"):
         assert key in RECURSO_KEYS
     # cada item tem key/label/grupo
     for r in RECURSOS:
@@ -180,7 +181,11 @@ def test_recursos_endpoint_lista_catalogo(app, client):
         r = client.get("/api/v1/perfis/recursos")
         assert r.status_code == 200
         body = r.json()
-        assert len(body["recursos"]) == 21
+        # Compara com o catálogo em vez de um número fixo: o endpoint tem que devolver
+        # o catálogo INTEIRO, e a contagem já é travada em test_recursos_catalogo.
+        # (Um segundo número mágico aqui só vira armadilha para quem adiciona recurso.)
+        from app.auth.recursos import RECURSOS
+        assert len(body["recursos"]) == len(RECURSOS)
         assert body["acoes"] == ["ver", "criar", "editar", "excluir"]
     finally:
         app.dependency_overrides.clear()

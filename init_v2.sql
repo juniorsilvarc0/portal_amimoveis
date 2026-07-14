@@ -747,3 +747,96 @@ CREATE TABLE IF NOT EXISTS crm_opp_notas (
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_crm_opp_notas_opp ON crm_opp_notas(opportunity_id);
+
+-- ============================================================================
+-- WhatsApp (uazapi) — integração, conversas e mensagens
+-- ============================================================================
+-- Single-tenant: UMA integração ativa por provider. O id é estável entre
+-- reconexões (o QR só revincula um celular à MESMA instância) — é isso que
+-- impede as conversas de duplicarem ao reconectar.
+
+CREATE TABLE IF NOT EXISTS chat_integracoes (
+    id              SERIAL PRIMARY KEY,
+    provider        TEXT NOT NULL DEFAULT 'uazapi',
+    nome            TEXT,
+    api_url         TEXT NOT NULL,             -- ex.: https://xxx.uazapi.com
+    token           TEXT NOT NULL,             -- vai no header `token:` (NÃO Bearer)
+    telefone_dono   TEXT,                      -- owner da instância (vem do /instance/status)
+    webhook_secret  TEXT NOT NULL,             -- viaja na query string ?s=<secret>
+    webhook_url     TEXT,                      -- última URL registrada na uazapi
+    conectado       BOOLEAN NOT NULL DEFAULT FALSE,
+    estado          TEXT NOT NULL DEFAULT 'unknown',   -- open | connecting | close | unknown
+    ativo           BOOLEAN NOT NULL DEFAULT TRUE,
+    ultimo_erro     TEXT,
+    criado_por_id   INT REFERENCES usuarios(id) ON DELETE SET NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS chat_integracoes_ativa_idx
+    ON chat_integracoes(provider) WHERE ativo = TRUE;
+
+-- Uma conversa por contato. external_id = dígitos do CHATID (o CONTRAPARTE).
+-- NUNCA derivar do sender_pn: em mensagens fromMe o sender é o DONO da instância,
+-- e chavear por ele criaria "uma conversa com você mesmo".
+CREATE TABLE IF NOT EXISTS chat_conversas (
+    id                     SERIAL PRIMARY KEY,
+    integracao_id          INT NOT NULL REFERENCES chat_integracoes(id) ON DELETE CASCADE,
+    external_id            TEXT NOT NULL,      -- só dígitos, extraído do chatid
+    chat_jid               TEXT,               -- 55...@s.whatsapp.net
+    contato_nome           TEXT,
+    contato_telefone       TEXT NOT NULL,
+    contato_avatar_url     TEXT,
+    lead_id                INT REFERENCES crm_leads(id) ON DELETE SET NULL,
+    cliente_id             INT REFERENCES clientes(id) ON DELETE SET NULL,
+    status                 TEXT NOT NULL DEFAULT 'aberta',   -- aberta | resolvida
+    nao_lidas              INT NOT NULL DEFAULT 0,
+    ultima_mensagem_em     TIMESTAMPTZ,
+    ultima_mensagem_previa TEXT,
+    created_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT chat_conversas_uniq UNIQUE (integracao_id, external_id)
+);
+CREATE INDEX IF NOT EXISTS idx_chat_conversas_ultima
+    ON chat_conversas(ultima_mensagem_em DESC NULLS LAST);
+CREATE INDEX IF NOT EXISTS idx_chat_conversas_lead ON chat_conversas(lead_id);
+
+-- Mensagens. v1 = só texto; media_url/media_mime_type são GANCHO (sempre NULL).
+CREATE TABLE IF NOT EXISTS chat_mensagens (
+    id              SERIAL PRIMARY KEY,
+    conversa_id     INT NOT NULL REFERENCES chat_conversas(id) ON DELETE CASCADE,
+    external_id     TEXT,                       -- messageid da uazapi; NULL enquanto 'pending'
+    direcao         TEXT NOT NULL,              -- entrada | saida
+    tipo            TEXT NOT NULL DEFAULT 'texto',
+    conteudo        TEXT,
+    media_url       TEXT,                       -- GANCHO (v1 não baixa mídia)
+    media_mime_type TEXT,                       -- GANCHO
+    delivery_status TEXT NOT NULL DEFAULT 'pending',  -- pending|sent|delivered|read|failed
+    erro            TEXT,
+    enviado_por_id  INT REFERENCES usuarios(id) ON DELETE SET NULL,
+    mensagem_em     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- Rede de segurança contra o ECHO: a mensagem que ENVIAMOS volta pelo webhook
+    -- como fromMe. Em Postgres NULLs não colidem numa UNIQUE, então várias
+    -- mensagens 'pending' (external_id NULL) coexistem sem problema.
+    CONSTRAINT chat_mensagens_dedup UNIQUE (conversa_id, external_id)
+);
+CREATE INDEX IF NOT EXISTS idx_chat_msg_conversa ON chat_mensagens(conversa_id, id);
+CREATE INDEX IF NOT EXISTS idx_chat_msg_external
+    ON chat_mensagens(external_id) WHERE external_id IS NOT NULL;
+
+-- Lead automático no inbound: o WhatsApp só traz número, e crm_leads até aqui só
+-- deduplicava por cpf_cnpj. Coluna GERADA (regexp_replace/COALESCE/NULLIF são
+-- IMMUTABLE) => backfill automático no ALTER e nenhuma mudança nos INSERTs do repo.
+-- Sem índice UNIQUE de propósito: leads legados podem já ter telefone repetido, e o
+-- EXCEPTION abaixo esconderia a falha. A dedup é serializada por advisory lock no repo.
+DO $$ BEGIN
+    ALTER TABLE crm_leads ADD COLUMN IF NOT EXISTS telefone_normalizado TEXT
+        GENERATED ALWAYS AS (
+            NULLIF(regexp_replace(
+                COALESCE(NULLIF(whatsapp, ''), NULLIF(telefone, ''), ''),
+                '\D', '', 'g'), '')
+        ) STORED;
+EXCEPTION WHEN others THEN NULL; END $$;
+CREATE INDEX IF NOT EXISTS idx_crm_leads_tel_norm
+    ON crm_leads(telefone_normalizado) WHERE telefone_normalizado IS NOT NULL;
