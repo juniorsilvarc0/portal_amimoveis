@@ -96,9 +96,12 @@ def criar(dados: dict) -> int:
     if "ativo" not in dados:
         dados["ativo"] = True
     cols = [f for f in _ALLOWED_FIELDS if f in dados or f in ("cpf", "cpf_pendente", "nome", "ativo")]
-    # Garante presença de cpf_pendente
-    if "cpf_pendente" not in dados:
-        dados["cpf_pendente"] = bool(dados.get("cpf_pendente", False))
+    # Garante cpf_pendente NÃO-NULO. Checar presença da chave não basta: ClienteCreate a declara
+    # como Optional[bool] = None, então model_dump() sempre a inclui — valendo None quando o
+    # cliente da API a omite. O INSERT nomeia a coluna, e aí o DEFAULT false do schema não se
+    # aplica (default só vale para coluna omitida), estourando o NOT NULL.
+    if dados.get("cpf_pendente") is None:
+        dados["cpf_pendente"] = False
     params = {c: dados.get(c) for c in cols}
     col_sql = ", ".join(cols)
     val_sql = ", ".join(f"%({c})s" for c in cols)

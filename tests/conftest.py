@@ -21,12 +21,12 @@ def app():
         pytest.skip(f"FastAPI app não pôde ser importado: {e}")
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def client(app):
     return TestClient(app)
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def admin_token(client):
     """Loga como admin e retorna o JWT.
 
@@ -47,6 +47,11 @@ def admin_token(client):
     return r.json()["access_token"]
 
 
-@pytest.fixture
+# scope="session" nos três fixtures acima é deliberado: o login tem rate limit (10/60s por IP).
+# Com escopo de função, cada teste autenticado logava de novo, o ~11º tomava 429 e o fixture
+# fazia pytest.skip() — sumindo com testes reais da suíte sem ninguém notar. Foi assim que um
+# bug de produção (cpf_pendente NULL no POST /clientes) passou despercebido: o teste que o
+# pegava era justamente o skipado. Uma sessão = um login.
+@pytest.fixture(scope="session")
 def auth_headers(admin_token):
     return {"Authorization": f"Bearer {admin_token}"}
