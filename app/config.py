@@ -17,6 +17,12 @@ class Settings(BaseSettings):
         "http://localhost:8000",
     ]
 
+    # URL pública do portal — usada para montar a URL do webhook registrada na uazapi.
+    # Em dev, a uazapi é REMOTA e não alcança localhost: aponte para um túnel (ngrok).
+    app_public_url: str = "http://localhost:8000"
+    # production => o guard de SSRF passa a EXIGIR https nas URLs externas.
+    app_env: str = "development"
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 

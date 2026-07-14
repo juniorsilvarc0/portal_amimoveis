@@ -30,6 +30,8 @@ RECURSOS: list[dict] = [
     {"key": "cad_correspondentes", "label": "Correspondentes",       "grupo": "Cadastros"},
     {"key": "cad_corretores",      "label": "Corretores",            "grupo": "Cadastros"},
     {"key": "logos",               "label": "Logos",                 "grupo": "Cadastros"},
+    {"key": "chat",                "label": "WhatsApp — Chat",       "grupo": "WhatsApp"},
+    {"key": "chat_conexao",        "label": "WhatsApp — Conexão",    "grupo": "WhatsApp"},
     {"key": "usuarios",            "label": "Usuários e Perfis",     "grupo": "Sistema"},
 ]
 
