@@ -27,37 +27,56 @@ Admin padrão: `admin@roper.com` — senha definida via `ADMIN_PASSWORD` no `.en
 | Docs API | Swagger UI em `/docs`, ReDoc em `/redoc`, OpenAPI em `/openapi.json` |
 | Deploy | Docker Swarm + Traefik (SSL Let's Encrypt) |
 
-## Comandos
+## Fluxo de trabalho (dev no Mac → deploy no servidor)
+
+Código é editado no **Mac**; a imagem é **sempre buildada no servidor (mordor)**. Motivo: o Mac é
+arm64 e o servidor é amd64 — imagem buildada no Mac dá `exec format error` em produção. O Swarm é
+**single-node**, então a imagem local funciona sem registry.
 
 ```bash
-# Dev local
-source venv/bin/activate
-pip install -r requirements.txt
-playwright install chromium
-pytest                                   # 15 passing, 14 DB-skipped sem TEST_DATABASE_URL
-uvicorn app.main:app --reload --port 8000
+# --- No Mac: programar ---
+git clone git@github.com:juniorsilvarc0/portal_amimoveis.git && cd portal_amimoveis
+python3.12 -m venv venv && source venv/bin/activate    # 3.12 OBRIGATÓRIO (3.13+ quebra psycopg2/greenlet)
+pip install -r requirements.txt && playwright install chromium   # NUNCA --with-deps (é apt/Linux)
+cp .env.example .env && chmod 600 .env                 # edite: DATABASE_URL aponta p/ localhost
+set -a; . ./.env; set +a                               # OBRIGATÓRIO (ver pegadinha #2)
+uvicorn app.main:app --reload --port 8000              # o lifespan cria todo o schema num banco vazio
+pytest
 
-# Build + deploy produção
-docker build -f Dockerfile.portal -t habitacao-portal:latest .
-docker stack deploy -c docker-compose.yml habitacao
-docker service update --force habitacao_portal   # puxa a nova imagem
+# --- Deploy (do Mac, 1 comando: push + build/deploy remoto + smoke-test) ---
+./scripts/remote-deploy.sh
+./scripts/remote-deploy.sh --skip-tests                # hotfix
 
-# Logs
+# --- Deploy (direto no servidor) ---
+ssh mordor 'cd ~/habitacao && ./scripts/deploy.sh'
+ssh mordor 'cd ~/habitacao && ./scripts/deploy.sh --rollback'   # volta pra imagem anterior
+
+# --- Logs / backup ---
 docker service logs habitacao_portal --tail 50
-docker service logs habitacao_db --tail 20
-
-# Backup
 docker exec $(docker ps -qf name=habitacao_db) pg_dump -U habitacao -Fc habitacao > ~/backups/habitacao_$(date +%Y%m%d_%H%M).dump
-
-# Smoke-test produção
-curl -sk https://portal.amimoveis.tec.br/healthz           # app rodando
-curl -sk https://portal.amimoveis.tec.br/readyz            # DB reachable
-curl -sk -X POST https://portal.amimoveis.tec.br/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d "{\"email\":\"$ADMIN_EMAIL\",\"senha\":\"$ADMIN_PASSWORD\"}"
 ```
 
-**IMPORTANTE:** `docker stack deploy` nem sempre recria o container com imagem `:latest` mesmo rebuilt. Sempre rode `docker service update --force habitacao_portal` após o deploy.
+`scripts/deploy.sh` (roda no servidor) faz: guarda contra working-tree sujo → `git pull --ff-only` →
+carrega `.env` → `pytest` → `docker build` (tag por SHA) → `stack deploy` + `service update --force` →
+smoke-test (readyz + login + GET autenticado) → **auto-rollback se falhar** → poda imagens antigas.
+
+### ⚠️ Pegadinhas que quebram deploy/dev (não descubra do jeito difícil)
+
+1. **`docker service update --force` é OBRIGATÓRIO.** O compose usa a tag `:latest` sem digest → o Swarm
+   não distingue a imagem nova da velha num `stack deploy`. Sem o `--force`, o container antigo continua.
+2. **`DATABASE_URL` precisa estar EXPORTADA no shell**, não só existir no `.env`. `app/db/connection.py`
+   lê `os.environ` direto no import; `Settings.database_url` do pydantic **não é usado por ninguém**.
+   Por isso `set -a; . ./.env; set +a`. Sem isso, em dev a app tenta `habitacao_db:5432` e todo endpoint dá 500.
+3. **`docker build` empacota o WORKING TREE, não o commit.** Nunca edite código direto no servidor — o
+   `deploy.sh` aborta se a árvore estiver suja.
+4. **`failure_action: rollback` do compose é rede de segurança FALSA** (spec antigo == spec novo, ambos
+   `:latest`). O rollback real é o do `deploy.sh` (retag do SHA anterior). **Nunca rode `docker image prune -a`** —
+   apaga a única cópia da versão anterior.
+5. **`/healthz` não prova que a app funciona.** O lifespan engole exceção do `init_v2.sql`, então a app sobe
+   mesmo com o banco quebrado. Use `/readyz` + um GET autenticado (é o que o smoke-test faz).
+6. **Em dev, sem `JWT_SECRET` fixo + `--reload` = 401 aleatório** (cada reload gera um segredo novo).
+7. **Segredos vêm do `.env`** (gitignored, ver `.env.example`). Nunca commitar. O `.env` só existe no servidor
+   e no seu Mac — não está no repo.
 
 ### Explorar a aplicação VIVA (API + banco)
 
