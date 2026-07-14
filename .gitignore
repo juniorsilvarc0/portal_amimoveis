@@ -30,6 +30,9 @@ Recibo*.zip
 # ---- Repo de terceiro (não versionar) ----
 Salesforce-CRM-Software/
 
+# ---- Estado local do deploy (por máquina, nunca versionar) ----
+.deploy_prev_tag
+
 # ---- Ambiente / editor / SO ----
 .vscode/
 .idea/
