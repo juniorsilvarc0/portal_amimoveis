@@ -195,6 +195,12 @@ router.get("/crm/pipelines")(        _page("crm_pipelines.html"))
 router.get("/crm/webhooks")(         _page("crm_webhooks.html"))
 router.get("/crm/import")(           _page("crm_import.html"))
 
+# ---------------------------------------------------------------------------
+# WhatsApp (uazapi)
+# ---------------------------------------------------------------------------
+router.get("/chat")(                 _page("whatsapp_chat.html"))
+router.get("/conexao")(              _page("whatsapp_conexao.html"))
+
 
 @router.get("/crm/leads/{lid}/editar")
 async def crm_lead_editar(lid: int):
