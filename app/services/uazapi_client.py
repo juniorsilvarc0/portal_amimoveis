@@ -34,12 +34,33 @@ def normalizar_numero(telefone: str) -> str:
     return re.sub(r"\D", "", telefone or "")
 
 
-def _primeiro_texto(d: dict, *chaves: str) -> str | None:
-    """Leitura DEFENSIVA: a uazapi muda o nome dos campos entre versões."""
-    for k in chaves:
-        v = d.get(k)
+def _pick(obj, path: str):
+    """Lê um caminho pontuado ('instance.qrcode') tolerando ausências."""
+    cur = obj
+    for parte in path.split("."):
+        if isinstance(cur, dict) and parte in cur:
+            cur = cur[parte]
+        else:
+            return None
+    return cur
+
+
+def _primeiro_texto(d: dict, *caminhos: str) -> str | None:
+    """Leitura DEFENSIVA: a uazapi muda o nome — e o NÍVEL — dos campos entre
+    versões. O QR real, por exemplo, chega aninhado em `instance.qrcode`, não no
+    topo. Aceita caminhos pontuados ('instance.owner')."""
+    for p in caminhos:
+        v = _pick(d, p)
         if isinstance(v, str) and v.strip():
             return v.strip()
+    return None
+
+
+def _primeiro_bool(d: dict, *caminhos: str) -> bool | None:
+    for p in caminhos:
+        v = _pick(d, p)
+        if isinstance(v, bool):
+            return v
     return None
 
 
@@ -97,25 +118,35 @@ async def conectar(api_url: str, token: str, phone: str | None = None) -> dict:
     """
     body = {"phone": normalizar_numero(phone)} if phone else {}
     d = await _post(api_url, token, "/instance/connect", body)
-    instancia = d.get("instance") if isinstance(d.get("instance"), dict) else {}
+    # O QR real chega em instance.qrcode/instance.base64 (não no topo) — validado
+    # contra a instância real spincode.uazapi.com. Ler só o topo devolvia null e a
+    # tela dizia "a uazapi não devolveu QR".
     return {
-        "connected": bool(d.get("connected") or instancia.get("status") == "connected"),
-        "qrcode": _como_data_uri(_primeiro_texto(d, "qrcode", "base64", "qr")),
-        "paircode": _primeiro_texto(d, "paircode", "pairCode", "code"),
+        "connected": _conectado(d),
+        "qrcode": _como_data_uri(_primeiro_texto(
+            d, "qrcode", "base64", "qr", "instance.qrcode", "instance.base64", "instance.qr")),
+        "paircode": _primeiro_texto(
+            d, "paircode", "pairCode", "code", "instance.paircode", "instance.pairingCode"),
     }
+
+
+def _conectado(d: dict) -> bool:
+    b = _primeiro_bool(d, "connected", "status.connected", "instance.connected")
+    if b is not None:
+        return b
+    s = _primeiro_texto(d, "instance.status", "status.status", "status", "state")
+    return s in ("connected", "open")
 
 
 async def status(api_url: str, token: str) -> dict:
     """GET /instance/status — estado da conexão + dono da instância."""
     d = await _get(api_url, token, "/instance/status")
-    st = d.get("status") if isinstance(d.get("status"), dict) else {}
-    instancia = d.get("instance") if isinstance(d.get("instance"), dict) else {}
-    estado = _primeiro_texto(instancia, "status") or _primeiro_texto(d, "status") or "unknown"
-    conectado = bool(st.get("connected") or d.get("connected") or estado in ("open", "connected"))
+    estado = _primeiro_texto(d, "instance.status", "status.status", "status", "state") or "unknown"
+    conectado = _conectado(d)
     return {
         "connected": conectado,
         "estado": estado if estado in ("open", "connecting", "close", "connected") else "unknown",
-        "owner": _primeiro_texto(instancia, "owner", "phone") or _primeiro_texto(d, "owner"),
+        "owner": _primeiro_texto(d, "instance.owner", "instance.wid", "instance.phone", "owner"),
     }
 
 
