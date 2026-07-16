@@ -7,48 +7,147 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/layout.css">
     <style>
-        .chat { display: grid; grid-template-columns: 320px 1fr; gap: 0; height: calc(100vh - 56px);
-                background: var(--card); border-top: 1px solid var(--border); }
-        /* -------- coluna esquerda: conversas -------- */
-        .conv-col { border-right: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; }
-        .conv-search { padding: 12px; border-bottom: 1px solid var(--border); }
-        .conv-search input { width: 100%; box-sizing: border-box; }
-        .conv-list { overflow-y: auto; flex: 1; min-height: 0; }
-        .conv-item { display: flex; gap: 10px; align-items: center; padding: 12px 14px; cursor: pointer;
-                     border-bottom: 1px solid var(--border-light); }
-        .conv-item:hover { background: var(--bg); }
-        .conv-item.ativa { background: var(--primary-light); }
-        .conv-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--secondary); color: #fff;
-                       display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; flex: none; }
-        .conv-main { flex: 1; min-width: 0; }
-        .conv-top { display: flex; justify-content: space-between; gap: 8px; }
-        .conv-nome { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .conv-hora { color: var(--text-muted); font-size: 11px; flex: none; }
-        .conv-prev { color: var(--text-muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
-        .conv-badge { background: var(--primary); color: #fff; font-size: 11px; font-weight: 700; border-radius: 10px;
-                      min-width: 18px; height: 18px; padding: 0 5px; display: inline-flex; align-items: center; justify-content: center; }
-        /* -------- coluna direita: mensagens -------- */
-        .msg-col { display: flex; flex-direction: column; min-height: 0; background: var(--bg); }
-        .msg-head { padding: 12px 18px; border-bottom: 1px solid var(--border); background: var(--card); display: flex; align-items: center; gap: 10px; }
-        .msg-head .conv-nome { font-size: 15px; }
-        .msg-head a { font-size: 12px; color: var(--secondary); text-decoration: none; margin-left: auto; }
-        .msg-list { flex: 1; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 6px; min-height: 0; }
-        .bubble { max-width: 68%; padding: 8px 12px; border-radius: 12px; font-size: 14px; line-height: 1.4; word-wrap: break-word; position: relative; }
-        .bubble.entrada { align-self: flex-start; background: #fff; border: 1px solid var(--border); border-bottom-left-radius: 3px; }
-        .bubble.saida   { align-self: flex-end;   background: #d9fdd3; border-bottom-right-radius: 3px; }
-        .bubble .meta { display: flex; gap: 4px; align-items: center; justify-content: flex-end; margin-top: 3px; }
-        .bubble .hora { color: var(--text-muted); font-size: 10px; }
-        .bubble .tick { font-size: 11px; color: #667781; }
-        .bubble .tick.read { color: #53bdeb; }
-        .bubble .tick.failed { color: var(--primary); }
-        .bubble .naotexto { font-style: italic; color: var(--text-muted); }
-        .msg-foot { padding: 12px; border-top: 1px solid var(--border); background: var(--card); display: flex; gap: 10px; }
-        .msg-foot input { flex: 1; }
-        .msg-vazio { margin: auto; color: var(--text-muted); text-align: center; padding: 40px; }
-        @media (max-width: 720px) {
-            .chat { grid-template-columns: 1fr; }
-            .chat.tem-ativa .conv-col { display: none; }
-            .chat:not(.tem-ativa) .msg-col { display: none; }
+        /* Tokens WhatsApp (do dash-gabriel-franco / globals.css .wa-surface) */
+        .wa {
+            --wa-bg:#efeae2; --wa-panel:#f0f2f5; --wa-panel-border:#e9edef;
+            --wa-out:#d9fdd3; --wa-out-text:#111b21; --wa-in:#fff; --wa-in-text:#111b21;
+            --wa-meta:#667781; --wa-tick:#53bdeb; --wa-green:#25d366; --wa-green-deep:#008069;
+            --wa-avatar:#8b2bcc;
+            font-family:"Segoe UI",-apple-system,system-ui,Roboto,"Helvetica Neue",Arial,sans-serif;
+        }
+        .wa *{ box-sizing:border-box; }
+
+        .wa { display:grid; grid-template-columns:360px 1fr; height:calc(100vh - 56px);
+              background:#fff; border-top:1px solid var(--wa-panel-border); overflow:hidden; }
+        @media (min-width:1280px){ .wa{ grid-template-columns:400px 1fr; } }
+
+        /* ---------- coluna esquerda: lista ---------- */
+        .wa-list-col{ display:flex; flex-direction:column; min-height:0; border-right:1px solid var(--wa-panel-border); background:#fff; }
+        .wa-list-head{ height:64px; flex:none; display:flex; align-items:center; justify-content:space-between;
+                       padding:0 16px; background:var(--wa-panel); border-bottom:1px solid var(--wa-panel-border); }
+        .wa-list-head h2{ margin:0; font-size:16px; font-weight:600; color:#111b21; }
+        .wa-conn-pill{ display:inline-flex; align-items:center; gap:5px; border-radius:999px; padding:4px 10px;
+                       font-size:11px; font-weight:500; background:rgba(37,211,102,.12); color:var(--wa-green-deep); }
+        .wa-conn-pill.off{ background:rgba(102,119,129,.12); color:var(--wa-meta); }
+        .wa-conn-pill svg{ width:14px; height:14px; }
+
+        .wa-search{ padding:8px 12px; position:relative; }
+        .wa-search svg{ position:absolute; left:22px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:var(--wa-meta); }
+        .wa-search input{ width:100%; height:36px; border:0; border-radius:8px; background:var(--wa-panel);
+                          padding:0 14px 0 38px; font-size:14px; color:#111b21; outline:none; font-family:inherit; }
+        .wa-search input::placeholder{ color:var(--wa-meta); }
+        .wa-search input:focus{ box-shadow:0 0 0 2px rgba(0,128,105,.25); }
+
+        .wa-chips{ display:flex; gap:6px; padding:0 12px 8px; }
+        .wa-chip{ border:0; cursor:pointer; border-radius:999px; padding:5px 12px; font-size:12px; font-weight:500;
+                  background:var(--wa-panel); color:var(--wa-meta); font-family:inherit; }
+        .wa-chip.on{ background:rgba(37,211,102,.15); color:var(--wa-green-deep); }
+
+        .wa-list{ flex:1; min-height:0; overflow-y:auto; }
+        .wa-item{ display:flex; align-items:center; gap:12px; padding:10px 12px; cursor:pointer; transition:background .12s; }
+        .wa-item:hover{ background:rgba(0,0,0,.03); }
+        .wa-item.on{ background:rgba(0,0,0,.05); }
+        .wa-av{ width:48px; height:48px; flex:none; border-radius:50%; position:relative;
+                display:flex; align-items:center; justify-content:center;
+                background:rgba(139,43,204,.10); color:var(--wa-avatar); font-weight:600; font-size:14px; }
+        .wa-av .wa-av-badge{ position:absolute; right:-2px; bottom:-2px; width:20px; height:20px; border-radius:50%;
+                             background:#fff; box-shadow:0 0 0 2px #fff; display:flex; align-items:center; justify-content:center; }
+        .wa-av .wa-av-badge svg{ width:15px; height:15px; }
+        .wa-item-body{ flex:1; min-width:0; border-bottom:1px solid var(--wa-panel-border); padding-bottom:10px; margin-bottom:-10px; }
+        .wa-item-row{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+        .wa-item-nome{ font-size:15px; color:#111b21; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .wa-item.unread .wa-item-nome{ font-weight:600; }
+        .wa-item-hora{ flex:none; font-size:11px; color:var(--wa-meta); font-variant-numeric:tabular-nums; }
+        .wa-item.unread .wa-item-hora{ color:var(--wa-green-deep); font-weight:600; }
+        .wa-item-row2{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:2px; }
+        .wa-item-prev{ font-size:13px; color:var(--wa-meta); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .wa-badge{ flex:none; min-width:20px; height:20px; padding:0 6px; border-radius:999px; background:var(--wa-green);
+                   color:#fff; font-size:11px; font-weight:700; display:inline-flex; align-items:center; justify-content:center; }
+
+        /* ---------- coluna direita: conversa ---------- */
+        .wa-chat-col{ display:flex; flex-direction:column; min-height:0; position:relative; background:var(--wa-bg); }
+        /* #msgArea é o único filho da coluna: precisa ser flex-column ocupando toda a
+           altura, senão o flex:1 de .wa-msgs não resolve e as mensagens colam no topo. */
+        #msgArea{ display:flex; flex-direction:column; flex:1; min-height:0; }
+        .wa-chat-head{ height:64px; flex:none; display:flex; align-items:center; gap:12px; padding:0 16px;
+                       background:var(--wa-panel); border-bottom:1px solid var(--wa-panel-border); z-index:2; }
+        .wa-back{ display:none; border:0; background:none; cursor:pointer; color:var(--wa-meta); padding:6px; border-radius:50%; }
+        .wa-back svg{ width:22px; height:22px; }
+        .wa-head-av{ width:40px; height:40px; }
+        .wa-head-info{ min-width:0; flex:1; }
+        .wa-head-nome{ font-size:15px; font-weight:500; color:#111b21; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .wa-head-sub{ font-size:12px; color:var(--wa-meta); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .wa-head-lead{ margin-left:auto; flex:none; font-size:12px; color:var(--wa-green-deep); text-decoration:none; font-weight:500; }
+
+        /* fundo com doodle (idêntico ao globals.css .wa-doodle) */
+        .wa-msgs{ flex:1; min-height:0; overflow-y:auto; position:relative;
+            background-color:var(--wa-bg);
+            background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cg fill='none' stroke='%23000' stroke-opacity='0.04' stroke-width='1.5'%3E%3Cpath d='M14 18h12v8l-4-3h-8z'/%3E%3Ccircle cx='58' cy='20' r='5'/%3E%3Cpath d='M52 56l4-4 4 4 4-4'/%3E%3Cpath d='M20 56h10v6l-3-2h-7z'/%3E%3Cpath d='M40 38l3 3 3-3'/%3E%3C/g%3E%3C/svg%3E"); }
+        .wa-msgs-inner{ max-width:1024px; margin:0 auto; min-height:100%; display:flex; flex-direction:column;
+                        justify-content:flex-end; padding:12px 20px; }
+        @media (min-width:1024px){ .wa-msgs-inner{ padding:12px 32px; } }
+
+        .wa-datesep{ position:sticky; top:8px; z-index:1; align-self:center; margin:8px 0;
+                     background:var(--wa-panel); color:var(--wa-meta); border-radius:6px; padding:4px 10px;
+                     font-size:11px; font-weight:500; text-transform:uppercase; box-shadow:0 1px 2px rgba(0,0,0,.08); }
+
+        .wa-row{ display:flex; width:100%; padding:0 4px; margin-top:2px; }
+        .wa-row.tail{ margin-top:6px; }
+        .wa-row.saida{ justify-content:flex-end; }
+        .wa-row.entrada{ justify-content:flex-start; }
+        .wa-bubble{ position:relative; max-width:84%; border-radius:6px; padding:6px 8px; font-size:14px;
+                    box-shadow:0 1px 1px rgba(0,0,0,.06); }
+        @media (min-width:640px){ .wa-bubble{ max-width:68%; } }
+        .wa-row.entrada .wa-bubble{ background:var(--wa-in); color:var(--wa-in-text); }
+        .wa-row.saida   .wa-bubble{ background:var(--wa-out); color:var(--wa-out-text); }
+        .wa-row.tail.entrada .wa-bubble{ border-top-left-radius:0; }
+        .wa-row.tail.saida   .wa-bubble{ border-top-right-radius:0; }
+        /* rabinho */
+        .wa-row.tail.entrada .wa-bubble::before{ content:""; position:absolute; top:0; left:-8px; width:8px; height:13px;
+            background:var(--wa-in); clip-path:polygon(100% 0, 100% 100%, 0 0); }
+        .wa-row.tail.saida .wa-bubble::before{ content:""; position:absolute; top:0; right:-8px; width:8px; height:13px;
+            background:var(--wa-out); clip-path:polygon(0 0, 0 100%, 100% 0); }
+        .wa-txt{ padding:0 4px; line-height:1.35rem; white-space:pre-wrap; word-wrap:break-word; }
+        .wa-nao-txt{ font-style:italic; opacity:.7; }
+        .wa-meta{ display:flex; align-items:center; justify-content:flex-end; gap:4px; margin-top:-2px; padding-left:40px; }
+        .wa-hora{ font-size:10.5px; opacity:.55; font-variant-numeric:tabular-nums; }
+        .wa-tick{ display:inline-flex; }
+        .wa-tick svg{ width:15px; height:15px; }
+        .wa-tick.sent, .wa-tick.delivered{ opacity:.55; }
+        .wa-tick.read{ color:var(--wa-tick); opacity:1; }
+        .wa-tick.failed{ color:#ef4444; opacity:1; }
+        .wa-tick.pending{ opacity:.5; }
+
+        /* composer */
+        .wa-foot{ flex:none; background:var(--wa-panel); border-top:1px solid var(--wa-panel-border);
+                  display:flex; align-items:flex-end; gap:8px; padding:10px 12px; z-index:2; }
+        .wa-ico-btn{ flex:none; width:40px; height:40px; border:0; background:none; cursor:pointer; border-radius:50%;
+                     color:var(--wa-meta); display:flex; align-items:center; justify-content:center; }
+        .wa-ico-btn:hover{ background:rgba(0,0,0,.05); }
+        .wa-ico-btn svg{ width:22px; height:22px; }
+        .wa-input{ flex:1; min-height:42px; max-height:120px; border:0; border-radius:16px; background:#fff;
+                   padding:10px 16px; font-size:14px; color:#111b21; outline:none; resize:none; font-family:inherit; line-height:1.4; }
+        .wa-input::placeholder{ color:rgba(102,119,129,.7); }
+        .wa-send{ flex:none; width:44px; height:44px; border:0; cursor:pointer; border-radius:50%;
+                  background:var(--wa-green-deep); color:#fff; display:flex; align-items:center; justify-content:center; }
+        .wa-send:hover{ opacity:.9; }
+        .wa-send:disabled{ opacity:.5; cursor:default; }
+        .wa-send svg{ width:20px; height:20px; }
+
+        /* estado vazio */
+        .wa-empty{ margin:auto; text-align:center; color:var(--wa-meta); padding:40px; display:flex; flex-direction:column; align-items:center; gap:14px; }
+        .wa-empty .circ{ width:96px; height:96px; border-radius:50%; background:rgba(37,211,102,.10);
+                         display:flex; align-items:center; justify-content:center; }
+        .wa-empty .circ svg{ width:48px; height:48px; color:var(--wa-green); }
+        .wa-empty h3{ margin:0; font-size:20px; font-weight:300; color:#111b21; }
+        .wa-empty p{ margin:0; font-size:14px; }
+        .wa-list-empty{ padding:40px 20px; text-align:center; color:var(--wa-meta); font-size:14px; }
+
+        @media (max-width:1023px){
+            .wa{ grid-template-columns:1fr; }
+            .wa.tem-ativa .wa-list-col{ display:none; }
+            .wa:not(.tem-ativa) .wa-chat-col{ display:none; }
+            .wa-back{ display:flex; }
         }
     </style>
 </head>
@@ -63,15 +162,34 @@
                 <span class="topbar-title">WhatsApp</span>
             </header>
 
-            <div class="chat" id="chat">
-                <div class="conv-col">
-                    <div class="conv-search">
+            <div class="wa" id="chat">
+                <div class="wa-list-col">
+                    <div class="wa-list-head">
+                        <h2>Conversas</h2>
+                        <span class="wa-conn-pill off" id="connPill">
+                            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38c1.45.79 3.08 1.21 4.79 1.21h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m0 1.67c2.2 0 4.27.86 5.82 2.42a8.18 8.18 0 0 1 2.41 5.82c0 4.54-3.7 8.24-8.25 8.24-1.48 0-2.93-.4-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.2 8.2 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.25-8.24"/></svg>
+                            <span id="connTxt">—</span>
+                        </span>
+                    </div>
+                    <div class="wa-search">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
                         <input type="search" id="busca" placeholder="Buscar contato…">
                     </div>
-                    <div class="conv-list" id="convList"><div class="msg-vazio">Carregando…</div></div>
+                    <div class="wa-chips">
+                        <button class="wa-chip on" data-status="" id="chipTudo">Tudo</button>
+                        <button class="wa-chip" data-status="resolvida" id="chipResolv">Resolvidos</button>
+                    </div>
+                    <div class="wa-list" id="convList"><div class="wa-list-empty">Carregando…</div></div>
                 </div>
-                <div class="msg-col">
-                    <div id="msgArea"><div class="msg-vazio">Selecione uma conversa para começar.</div></div>
+
+                <div class="wa-chat-col" id="chatCol">
+                    <div id="msgArea">
+                        <div class="wa-empty">
+                            <div class="circ"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38c1.45.79 3.08 1.21 4.79 1.21h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m0 1.67c2.2 0 4.27.86 5.82 2.42a8.18 8.18 0 0 1 2.41 5.82c0 4.54-3.7 8.24-8.25 8.24-1.48 0-2.93-.4-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.2 8.2 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.25-8.24m4.72 10.34c-.25-.13-1.47-.72-1.69-.81-.23-.08-.39-.13-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.13-1.05-.39-1.99-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.02-.39.11-.51.11-.11.25-.29.37-.43.13-.14.17-.25.25-.41.08-.17.04-.31-.02-.43-.06-.13-.56-1.34-.76-1.84-.2-.48-.41-.42-.56-.43-.14-.01-.31-.01-.48-.01-.17 0-.43.06-.66.31-.23.25-.87.85-.87 2.07 0 1.22.89 2.4 1.01 2.56.12.17 1.75 2.67 4.23 3.74.59.26 1.05.41 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.67-1.18.21-.58.21-1.07.14-1.18-.06-.11-.22-.17-.47-.29"/></svg></div>
+                            <h3>WhatsApp do Portal</h3>
+                            <p>Selecione uma conversa para começar a atender.</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -102,8 +220,33 @@
         var pollTimer = null, falhas = 0;
         var conversas = [];
         var ativaId = null;
-        var msgsRenderadas = {};   // id -> delivery_status já pintado (evita re-render total)
+        var msgsRenderadas = {};   // id -> delivery_status (evita re-render total)
         var termo = '';
+        var statusFiltro = '';
+
+        /* ---- SVGs (lucide) ---- */
+        var SVG = {
+            check:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+            checkcheck: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 7 17l-5-5"/><path d="m22 10-7.5 7.5L13 16"/></svg>',
+            clock:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+            fail:       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>',
+            send:       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg>',
+            mic:        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>',
+            smile:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/></svg>',
+            clip:       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>',
+            back:       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>',
+            waMark:     '<svg viewBox="0 0 24 24" fill="#25d366"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38c1.45.79 3.08 1.21 4.79 1.21h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2"/></svg>'
+        };
+
+        /* ---- estado da conexão (uma vez, não polla) ---- */
+        (async function pill() {
+            try {
+                var st = await api.get('/chat/conexao');
+                var el = document.getElementById('connPill'), t = document.getElementById('connTxt');
+                if (st && st.conectado) { el.classList.remove('off'); t.textContent = 'Conectado'; }
+                else { el.classList.add('off'); t.textContent = 'Desconectado'; }
+            } catch (e) {}
+        })();
 
         /* ---- polling encadeado, pausado em aba oculta ---- */
         function agendar() {
@@ -115,23 +258,18 @@
         async function tick() {
             if (document.hidden) { agendar(); return; }
             try {
-                // NÃO passar search vazio: URLSearchParams converte undefined no literal
-                // "undefined", e o backend filtraria por ILIKE %undefined% (zero resultados).
                 var params = { per_page: 100 };
                 if (termo) params.search = termo;
+                if (statusFiltro) params.status = statusFiltro;
                 var r = await api.get('/chat/conversas', params);
                 conversas = r.data || [];
                 renderConversas();
                 if (ativaId != null) {
-                    // Sempre as últimas 50 (não só as novas): assim os TICKS de mensagens já
-                    // na tela também evoluem. O merge decide o que re-renderiza.
                     var msgs = await api.get('/chat/conversas/' + ativaId + '/mensagens', { limit: 50 });
                     mergeMensagens(msgs);
                 }
                 falhas = 0;
-            } catch (e) {
-                falhas++;
-            }
+            } catch (e) { falhas++; }
             agendar();
         }
 
@@ -142,32 +280,35 @@
         /* ---- lista de conversas ---- */
         function renderConversas() {
             if (!conversas.length) {
-                convList.innerHTML = '<div class="msg-vazio">' +
+                convList.innerHTML = '<div class="wa-list-empty">' +
                     (termo ? 'Nenhum contato encontrado.' : 'Nenhuma conversa ainda.') + '</div>';
                 return;
             }
             convList.innerHTML = conversas.map(function (c) {
                 var nome = c.contato_nome || fmtFone(c.contato_telefone);
-                return '<div class="conv-item' + (c.id === ativaId ? ' ativa' : '') + '" data-id="' + c.id + '">' +
-                    '<div class="conv-avatar">' + _esc(inicial(nome)) + '</div>' +
-                    '<div class="conv-main">' +
-                        '<div class="conv-top">' +
-                            '<span class="conv-nome">' + _esc(nome) + '</span>' +
-                            '<span class="conv-hora">' + fmtHora(c.ultima_mensagem_em) + '</span>' +
+                var unread = c.nao_lidas > 0;
+                return '<div class="wa-item' + (c.id === ativaId ? ' on' : '') + (unread ? ' unread' : '') + '" data-id="' + c.id + '">' +
+                    '<div class="wa-av">' + _esc(inicial(nome)) +
+                        '<span class="wa-av-badge">' + SVG.waMark + '</span>' +
+                    '</div>' +
+                    '<div class="wa-item-body">' +
+                        '<div class="wa-item-row">' +
+                            '<span class="wa-item-nome">' + _esc(nome) + '</span>' +
+                            '<span class="wa-item-hora">' + fmtHoraLista(c.ultima_mensagem_em) + '</span>' +
                         '</div>' +
-                        '<div class="conv-top">' +
-                            '<span class="conv-prev">' + _esc(c.ultima_mensagem_previa || '') + '</span>' +
-                            (c.nao_lidas > 0 ? '<span class="conv-badge">' + c.nao_lidas + '</span>' : '') +
+                        '<div class="wa-item-row2">' +
+                            '<span class="wa-item-prev">' + _esc(c.ultima_mensagem_previa || '') + '</span>' +
+                            (unread ? '<span class="wa-badge">' + (c.nao_lidas > 99 ? '99+' : c.nao_lidas) + '</span>' : '') +
                         '</div>' +
                     '</div>' +
                 '</div>';
             }).join('');
-            Array.prototype.forEach.call(convList.querySelectorAll('.conv-item'), function (el) {
+            Array.prototype.forEach.call(convList.querySelectorAll('.wa-item'), function (el) {
                 el.addEventListener('click', function () { abrir(parseInt(el.getAttribute('data-id'), 10)); });
             });
         }
 
-        /* ---- abrir uma conversa ---- */
+        /* ---- abrir conversa ---- */
         async function abrir(id) {
             ativaId = id;
             msgsRenderadas = {};
@@ -189,122 +330,188 @@
         function renderCabecalhoEArea() {
             var c = convAtiva();
             var nome = c ? (c.contato_nome || fmtFone(c.contato_telefone)) : '';
-            var leadLink = (c && c.lead_id) ? '<a href="/crm/leads/' + c.lead_id + '/editar">Ver lead ↗</a>' : '';
+            var leadLink = (c && c.lead_id) ? '<a class="wa-head-lead" href="/crm/leads/' + c.lead_id + '/editar">Ver lead ↗</a>' : '';
             msgArea.innerHTML =
-                '<div class="msg-col" style="height:100%">' +
-                    '<div class="msg-head">' +
-                        '<button class="btn btn-ghost" id="btnVoltar" style="display:none">←</button>' +
-                        '<div><div class="conv-nome">' + _esc(nome) + '</div></div>' + leadLink +
-                    '</div>' +
-                    '<div class="msg-list" id="msgList"></div>' +
-                    (canEnviar
-                        ? '<div class="msg-foot">' +
-                              '<input type="text" id="msgInput" placeholder="Mensagem" autocomplete="off">' +
-                              '<button class="btn btn-primary" id="btnEnviar">Enviar</button>' +
-                          '</div>'
-                        : '') +
-                '</div>';
+                '<div class="wa-chat-head">' +
+                    '<button class="wa-back" id="btnVoltar" aria-label="Voltar">' + SVG.back + '</button>' +
+                    '<div class="wa-av wa-head-av">' + _esc(inicial(nome)) + '</div>' +
+                    '<div class="wa-head-info">' +
+                        '<div class="wa-head-nome">' + _esc(nome) + '</div>' +
+                        '<div class="wa-head-sub">' + _esc(c ? fmtFone(c.contato_telefone) : '') + '</div>' +
+                    '</div>' + leadLink +
+                '</div>' +
+                '<div class="wa-msgs" id="msgScroll"><div class="wa-msgs-inner" id="msgList"></div></div>' +
+                (canEnviar
+                    ? '<div class="wa-foot">' +
+                          '<button class="wa-ico-btn" id="btnEmoji" title="Emojis (em breve)">' + SVG.smile + '</button>' +
+                          '<button class="wa-ico-btn" id="btnAnexo" title="Anexos (em breve)">' + SVG.clip + '</button>' +
+                          '<textarea class="wa-input" id="msgInput" rows="1" placeholder="Digite uma mensagem"></textarea>' +
+                          '<button class="wa-send" id="btnEnviar" aria-label="Enviar">' + SVG.mic + '</button>' +
+                      '</div>'
+                    : '') +
+                '';
+
             var btnVoltar = document.getElementById('btnVoltar');
-            if (window.matchMedia('(max-width: 720px)').matches && btnVoltar) {
-                btnVoltar.style.display = '';
-                btnVoltar.addEventListener('click', function () {
-                    ativaId = null; chatEl.classList.remove('tem-ativa'); renderConversas();
-                    msgArea.innerHTML = '<div class="msg-vazio">Selecione uma conversa.</div>';
-                });
-            }
+            if (btnVoltar) btnVoltar.addEventListener('click', function () {
+                ativaId = null; msgsRenderadas = {}; chatEl.classList.remove('tem-ativa'); renderConversas();
+                msgArea.innerHTML = '<div class="wa-empty"><div class="circ">' + SVG.waMark +
+                    '</div><h3>WhatsApp do Portal</h3><p>Selecione uma conversa para começar.</p></div>';
+            });
+
             var input = document.getElementById('msgInput');
             var btn = document.getElementById('btnEnviar');
-            if (btn) {
-                btn.addEventListener('click', enviar);
-                input.addEventListener('keydown', function (e) { if (e.key === 'Enter') enviar(); });
+            var emoji = document.getElementById('btnEmoji');
+            var anexo = document.getElementById('btnAnexo');
+            if (emoji) emoji.addEventListener('click', function () { showToast('Emojis chegam numa próxima versão.', 'info'); });
+            if (anexo) anexo.addEventListener('click', function () { showToast('Envio de mídia chega numa próxima versão.', 'info'); });
+            if (btn && input) {
+                atualizaBotao();
+                input.addEventListener('input', function () { autoGrow(input); atualizaBotao(); });
+                input.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(); }
+                });
+                btn.addEventListener('click', function () {
+                    if (input.value.trim()) enviar();
+                    else showToast('Áudio chega numa próxima versão.', 'info');
+                });
                 input.focus();
             }
         }
 
-        /* ---- merge de mensagens (diff por id; só re-renderiza se mudou algo) ---- */
+        function atualizaBotao() {
+            var input = document.getElementById('msgInput'), btn = document.getElementById('btnEnviar');
+            if (!input || !btn) return;
+            btn.innerHTML = input.value.trim() ? SVG.send : SVG.mic;
+        }
+        function autoGrow(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px'; }
+
+        /* ---- merge (diff por id + status) ---- */
         function mergeMensagens(msgs, forcar) {
             var lista = document.getElementById('msgList');
-            if (!lista) return;
+            var scroll = document.getElementById('msgScroll');
+            if (!lista || !scroll) return;
             var precisa = forcar || false;
             for (var i = 0; i < msgs.length; i++) {
-                var m = msgs[i];
-                if (msgsRenderadas[m.id] !== m.delivery_status) { precisa = true; break; }
+                if (msgsRenderadas[msgs[i].id] !== msgs[i].delivery_status) { precisa = true; break; }
             }
             if (!precisa && msgs.length === Object.keys(msgsRenderadas).length) return;
 
-            var perto = lista.scrollHeight - lista.scrollTop - lista.clientHeight < 80;
-            lista.innerHTML = msgs.map(bubbleHtml).join('');
+            var perto = scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight < 80;
+            lista.innerHTML = buildMensagens(msgs);
             msgsRenderadas = {};
             msgs.forEach(function (m) { msgsRenderadas[m.id] = m.delivery_status; });
-            if (perto || forcar) lista.scrollTop = lista.scrollHeight;
+            if (perto || forcar) scroll.scrollTop = scroll.scrollHeight;
         }
 
-        function bubbleHtml(m) {
+        /* separadores de data + rabinho por grupo */
+        function buildMensagens(msgs) {
+            var out = '', ultimaData = null, ultimaDir = null;
+            for (var i = 0; i < msgs.length; i++) {
+                var m = msgs[i];
+                var d = m.mensagem_em ? new Date(m.mensagem_em) : null;
+                var chaveData = d && !isNaN(d) ? d.toDateString() : '';
+                var trocouData = chaveData !== ultimaData;
+                if (trocouData) { out += '<div class="wa-datesep">' + _esc(rotuloData(d)) + '</div>'; ultimaData = chaveData; ultimaDir = null; }
+                var tail = (m.direcao !== ultimaDir) || trocouData;
+                ultimaDir = m.direcao;
+                out += bubbleHtml(m, tail);
+            }
+            return out;
+        }
+
+        function bubbleHtml(m, tail) {
             var corpo = (m.tipo && m.tipo !== 'texto')
-                ? '<span class="naotexto">[' + _esc(m.tipo) + ']</span>'
+                ? '<span class="wa-nao-txt">[' + _esc(rotuloTipo(m.tipo)) + ']</span>'
                 : _esc(m.conteudo || '');
             var tick = '';
-            if (m.direcao === 'saida') tick = '<span class="tick ' + m.delivery_status + '">' + tickGlifo(m.delivery_status) + '</span>';
-            return '<div class="bubble ' + (m.direcao === 'saida' ? 'saida' : 'entrada') + '">' +
-                       corpo +
-                       '<span class="meta"><span class="hora">' + fmtHora(m.mensagem_em) + '</span>' + tick + '</span>' +
+            if (m.direcao === 'saida') {
+                var g = m.delivery_status === 'read' ? SVG.checkcheck
+                      : m.delivery_status === 'delivered' ? SVG.checkcheck
+                      : m.delivery_status === 'sent' ? SVG.check
+                      : m.delivery_status === 'failed' ? SVG.fail
+                      : SVG.clock;
+                tick = '<span class="wa-tick ' + m.delivery_status + '">' + g + '</span>';
+            }
+            return '<div class="wa-row ' + (m.direcao === 'saida' ? 'saida' : 'entrada') + (tail ? ' tail' : '') + '">' +
+                       '<div class="wa-bubble">' +
+                           '<span class="wa-txt">' + corpo + '</span>' +
+                           '<span class="wa-meta"><span class="wa-hora">' + fmtHoraMsg(m.mensagem_em) + '</span>' + tick + '</span>' +
+                       '</div>' +
                    '</div>';
-        }
-
-        function tickGlifo(s) {
-            if (s === 'read' || s === 'delivered') return '✓✓';
-            if (s === 'sent') return '✓';
-            if (s === 'failed') return '⚠';
-            return '🕗';
         }
 
         /* ---- enviar ---- */
         async function enviar() {
-            var input = document.getElementById('msgInput');
-            var btn = document.getElementById('btnEnviar');
+            var input = document.getElementById('msgInput'), btn = document.getElementById('btnEnviar');
             if (!input) return;
             var texto = input.value.trim();
             if (!texto) return;
-            input.value = ''; input.disabled = true; if (btn) btn.disabled = true;
+            input.value = ''; autoGrow(input); atualizaBotao(); input.disabled = true; if (btn) btn.disabled = true;
             try {
                 await api.post('/chat/conversas/' + ativaId + '/mensagens', { texto: texto });
-                await tickAgora();   // reflete a bolha nova imediatamente
+                var msgs = await api.get('/chat/conversas/' + ativaId + '/mensagens', { limit: 50 });
+                mergeMensagens(msgs, true);
             } catch (e) {
                 showToast(e.message || 'Falha ao enviar.', 'error');
-                input.value = texto;   // devolve o texto para não perder
+                input.value = texto; autoGrow(input); atualizaBotao();
             }
             input.disabled = false; if (btn) btn.disabled = false; input.focus();
         }
 
-        async function tickAgora() {
-            if (ativaId == null) return;
-            var msgs = await api.get('/chat/conversas/' + ativaId + '/mensagens', { limit: 50 });
-            mergeMensagens(msgs, true);
-        }
-
-        /* ---- busca (debounced) ---- */
+        /* ---- busca (debounced) + chips ---- */
         var buscaTimer = null;
         busca.addEventListener('input', function () {
             clearTimeout(buscaTimer);
             buscaTimer = setTimeout(function () { termo = busca.value.trim(); clearTimeout(pollTimer); tick(); }, 300);
         });
+        Array.prototype.forEach.call(document.querySelectorAll('.wa-chip'), function (chip) {
+            chip.addEventListener('click', function () {
+                document.querySelectorAll('.wa-chip').forEach(function (c) { c.classList.remove('on'); });
+                chip.classList.add('on');
+                statusFiltro = chip.getAttribute('data-status') || '';
+                clearTimeout(pollTimer); tick();
+            });
+        });
 
         /* ---- helpers ---- */
-        function inicial(nome) { return (String(nome || '?').trim()[0] || '?').toUpperCase(); }
+        function inicial(nome) {
+            var p = String(nome || '?').trim().split(/\s+/);
+            var s = (p[0] ? p[0][0] : '') + (p[1] ? p[1][0] : '');
+            return (s || '?').toUpperCase();
+        }
         function fmtFone(f) {
             if (!f) return '—';
             var d = String(f).replace(/\D/g, '');
-            if (d.length >= 12) return '+' + d.slice(0, 2) + ' (' + d.slice(2, 4) + ') ' + d.slice(4);
+            if (d.length === 13) return '+' + d.slice(0,2) + ' (' + d.slice(2,4) + ') ' + d.slice(4,9) + '-' + d.slice(9);
+            if (d.length === 12) return '+' + d.slice(0,2) + ' (' + d.slice(2,4) + ') ' + d.slice(4,8) + '-' + d.slice(8);
             return f;
         }
-        function fmtHora(iso) {
+        function fmtHoraMsg(iso) {
             if (!iso) return '';
-            var d = new Date(iso);
-            if (isNaN(d.getTime())) return '';
+            var d = new Date(iso); if (isNaN(d)) return '';
+            return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        }
+        function fmtHoraLista(iso) {
+            if (!iso) return '';
+            var d = new Date(iso); if (isNaN(d)) return '';
             var hoje = new Date();
             if (d.toDateString() === hoje.toDateString())
                 return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-            return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+            var ontem = new Date(hoje); ontem.setDate(hoje.getDate() - 1);
+            if (d.toDateString() === ontem.toDateString()) return 'Ontem';
+            if ((hoje - d) < 7 * 864e5) return d.toLocaleDateString('pt-BR', { weekday: 'short' });
+            return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+        }
+        function rotuloData(d) {
+            if (!d || isNaN(d)) return '';
+            var hoje = new Date();
+            if (d.toDateString() === hoje.toDateString()) return 'Hoje';
+            var ontem = new Date(hoje); ontem.setDate(hoje.getDate() - 1);
+            if (d.toDateString() === ontem.toDateString()) return 'Ontem';
+            return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+        }
+        function rotuloTipo(t) {
+            return ({ imagem: 'Imagem', audio: 'Áudio', video: 'Vídeo', documento: 'Documento', sticker: 'Figurinha', contato: 'Contato' })[t] || t;
         }
         function _esc(s) {
             return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
