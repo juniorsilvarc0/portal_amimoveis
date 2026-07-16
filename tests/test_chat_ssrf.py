@@ -6,7 +6,21 @@ escreve "2130706433".
 """
 import pytest
 
+from app.config import settings
 from app.services.ssrf_guard import assert_url_segura, base_url_segura
+
+
+@pytest.fixture(autouse=True)
+def _modo_dev(monkeypatch):
+    """Fixa o ambiente em 'development' por padrão para estes testes.
+
+    Sem isto, a suíte fica NÃO-DETERMINÍSTICA: no servidor de produção o gate roda
+    com APP_ENV=production carregado do .env, e os casos que verificam URL http
+    (só válida fora de produção) falhariam ali mas passariam no dev local — foi
+    exatamente o que abortou um deploy. O teste que exige produção sobrescreve
+    explicitamente.
+    """
+    monkeypatch.setattr(settings, "app_env", "development")
 
 
 @pytest.mark.parametrize("url", [
