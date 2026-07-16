@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conexão WhatsApp — AM Imóveis</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/layout.css">
+    <style>
+        .conn-wrap { max-width: 760px; }
+        .conn-status { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+        .conn-dot { width: 11px; height: 11px; border-radius: 50%; background: #9aa4b0; flex: none; }
+        .conn-dot.open       { background: #16a34a; box-shadow: 0 0 0 4px rgba(22,163,74,.14); }
+        .conn-dot.connecting { background: #eab308; box-shadow: 0 0 0 4px rgba(234,179,8,.14); }
+        .conn-dot.close      { background: var(--primary); }
+        .conn-status strong { font-size: 15px; }
+        .conn-meta { color: var(--text-muted); font-size: 13px; margin-top: 2px; word-break: break-all; }
+        .qr-box { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 22px 0 6px; }
+        .qr-box img { width: 248px; height: 248px; border: 1px solid var(--border); border-radius: 12px; background: #fff; image-rendering: pixelated; }
+        .qr-hint { color: var(--text-muted); font-size: 13px; text-align: center; max-width: 380px; line-height: 1.5; }
+        .paircode { font-size: 22px; font-weight: 700; letter-spacing: 4px; color: var(--secondary); background: var(--border-light); border-radius: 8px; padding: 8px 18px; }
+        .conn-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+        .conn-alert { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-top: 14px; }
+        .conn-owner { font-size: 26px; font-weight: 700; color: var(--secondary); letter-spacing: .5px; }
+        .skel { color: var(--text-muted); font-size: 14px; padding: 26px 0; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="app-layout">
+        <aside class="sidebar" id="sidebar" aria-label="Menu lateral"></aside>
+        <div class="main-content" id="mainContent">
+            <header class="topbar">
+                <button class="topbar-hamburger" aria-label="Abrir menu">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                </button>
+                <span class="topbar-title">Conexão WhatsApp</span>
+            </header>
+            <main class="page-area">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Conexão WhatsApp</h1>
+                        <p class="page-subtitle">Conecte a instância uazapi que atende o chat do portal</p>
+                    </div>
+                </div>
+                <div class="card conn-wrap" style="padding: 24px;">
+                    <div id="painel"><div class="skel">Carregando estado da conexão…</div></div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <div class="toast" id="toast" role="alert" aria-live="polite"></div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/sidebar.js"></script>
+    <script src="/static/js/masks.js"></script>
+    <script src="/static/js/forms.js"></script>
+    <script src="/static/js/modal.js"></script>
+
+    <script>
+    (async function () {
+        'use strict';
+
+        /* ---- 1. Auth + gate ---- */
+        var usuario;
+        try { usuario = await api.requireAuth(); } catch (e) { return; }
+        if (!api.can('chat_conexao', 'ver')) { window.location.href = '/'; return; }
+
+        renderSidebar(document.getElementById('sidebar'), '/conexao', usuario);
+
+        var canCriar   = api.can('chat_conexao', 'criar');
+        var canEditar  = api.can('chat_conexao', 'editar');
+        var canExcluir = api.can('chat_conexao', 'excluir');
+
+        var painel = document.getElementById('painel');
+
+        /* ---- 2. Estado + polling ----
+           Status: setTimeout ENCADEADO a cada 3s (nunca setInterval: requests lentas
+           empilhariam), pausado com a aba oculta.
+           QR: renovado a cada ~25s, e SÓ enquanto desconectado — cada POST /conexao/qr
+           REINICIA o socket de pareamento na uazapi; no ritmo do status (3s), o QR
+           trocaria antes de o celular conseguir lê-lo. */
+        var POLL_MS = 3000, QR_MS = 25000;
+        var pollTimer = null, qrTimer = null, falhas = 0;
+        var estadoAtual = null;   // último ConexaoRead
+        var qrVisivel = false;
+
+        function agendar() {
+            clearTimeout(pollTimer);
+            var espera = Math.min(POLL_MS * Math.pow(2, falhas), 30000);
+            pollTimer = setTimeout(tick, espera);
+        }
+
+        async function tick() {
+            if (document.hidden) { agendar(); return; }
+            try {
+                var novo = await api.get('/chat/conexao');
+                falhas = 0;
+                var mudou = !estadoAtual
+                    || novo.configurada !== estadoAtual.configurada
+                    || novo.conectado   !== estadoAtual.conectado
+                    || novo.estado      !== estadoAtual.estado
+                    || novo.ultimo_erro !== estadoAtual.ultimo_erro;
+                estadoAtual = novo;
+                if (mudou) render();
+            } catch (e) {
+                falhas++;
+            }
+            agendar();
+        }
+
+        document.addEventListener('visibilitychange', function () {
+            if (!document.hidden) { clearTimeout(pollTimer); tick(); }
+        });
+
+        /* ---- 3. Render dos 3 estados ---- */
+        function render() {
+            var st = estadoAtual;
+            qrVisivel = false;
+            clearTimeout(qrTimer);
+
+            if (!st || !st.configurada) { renderForm(); return; }
+            if (st.conectado)           { renderConectado(st); return; }
+            renderDesconectado(st);
+        }
+
+        /* Estado A: sem integração -> formulário de credenciais */
+        function renderForm() {
+            if (!canCriar) {
+                painel.innerHTML = '<div class="skel">Nenhuma instância configurada. Peça a um administrador para conectar.</div>';
+                return;
+            }
+            painel.innerHTML =
+                '<form id="connForm" novalidate>' +
+                    '<div class="alert-error" id="alertError"></div>' +
+                    '<div class="form-group">' +
+                        '<label for="f-url">URL do servidor uazapi <span class="required">*</span></label>' +
+                        '<input type="url" id="f-url" name="api_url" placeholder="https://sua-instancia.uazapi.com" required>' +
+                        '<small class="field-error"></small>' +
+                    '</div>' +
+                    '<div class="form-group">' +
+                        '<label for="f-token">Token da instância <span class="required">*</span></label>' +
+                        '<input type="password" id="f-token" name="token" placeholder="token fornecido pela uazapi" required autocomplete="off">' +
+                        '<small class="field-error"></small>' +
+                    '</div>' +
+                    '<div class="conn-actions">' +
+                        '<button type="button" class="btn btn-primary" id="btnConectar">Salvar e conectar</button>' +
+                    '</div>' +
+                '</form>';
+            var form = document.getElementById('connForm');
+            forms.init(form);
+            document.getElementById('btnConectar').addEventListener('click', async function () {
+                forms.alertClear();
+                if (!forms.validate(form)) return;
+                var btn = this;
+                btn.disabled = true; btn.textContent = 'Validando credenciais…';
+                try {
+                    estadoAtual = await api.post('/chat/conexao', forms.readForm(form));
+                    showToast('Instância cadastrada.', 'success');
+                    render();
+                } catch (e) {
+                    forms.alertError(e.message || 'Falha ao cadastrar.');
+                    btn.disabled = false; btn.textContent = 'Salvar e conectar';
+                }
+            });
+        }
+
+        /* Estado B: configurada mas desconectada -> QR / pareamento */
+        function renderDesconectado(st) {
+            painel.innerHTML =
+                statusHtml(st) +
+                '<div class="qr-box" id="qrBox">' +
+                    '<div class="skel" id="qrMsg">Clique em “Gerar QR Code” para vincular um celular.</div>' +
+                '</div>' +
+                '<div class="conn-actions">' +
+                    (canEditar ? '<button class="btn btn-primary" id="btnQr">Gerar QR Code</button>' : '') +
+                    (canEditar ? '<button class="btn btn-ghost" id="btnWebhook">Re-registrar webhook</button>' : '') +
+                    (canExcluir ? '<button class="btn btn-danger" id="btnExcluir">Excluir instância</button>' : '') +
+                '</div>' +
+                (st.ultimo_erro ? '<div class="conn-alert">' + _esc(st.ultimo_erro) + '</div>' : '');
+            bindComuns(st);
+            var btnQr = document.getElementById('btnQr');
+            if (btnQr) btnQr.addEventListener('click', function () { gerarQr(); });
+        }
+
+        async function gerarQr() {
+            var box = document.getElementById('qrBox');
+            if (!box) return;
+            box.innerHTML = '<div class="skel">Gerando QR…</div>';
+            try {
+                var qr = await api.post('/chat/conexao/qr', {});
+                if (qr.connected) { clearTimeout(qrTimer); tick(); return; }
+                var html = '';
+                if (qr.qrcode) {
+                    html += '<img src="' + qr.qrcode + '" alt="QR Code do WhatsApp">';
+                    html += '<div class="qr-hint">No celular: <strong>WhatsApp → Aparelhos conectados → Conectar aparelho</strong> e aponte a câmera. O código renova sozinho a cada 25s.</div>';
+                }
+                if (qr.paircode) {
+                    html += '<div class="paircode">' + _esc(qr.paircode) + '</div>' +
+                            '<div class="qr-hint">…ou use o código acima em “Conectar com número de telefone”.</div>';
+                }
+                box.innerHTML = html || '<div class="skel">A uazapi não devolveu QR. Tente novamente.</div>';
+                qrVisivel = true;
+                clearTimeout(qrTimer);
+                qrTimer = setTimeout(function () {
+                    // renova só se continua desconectado e o QR segue na tela
+                    if (qrVisivel && estadoAtual && !estadoAtual.conectado) gerarQr();
+                }, QR_MS);
+            } catch (e) {
+                box.innerHTML = '<div class="skel">Falha ao gerar QR: ' + _esc(e.message || '') + '</div>';
+            }
+        }
+
+        /* Estado C: conectado */
+        function renderConectado(st) {
+            painel.innerHTML =
+                statusHtml(st) +
+                '<div style="padding: 18px 0 6px;">' +
+                    '<div style="color:var(--text-muted);font-size:13px;margin-bottom:4px;">WhatsApp conectado</div>' +
+                    '<div class="conn-owner">' + _esc(fmtFone(st.telefone_dono)) + '</div>' +
+                    (st.webhook_url
+                        ? '<div class="conn-meta">Webhook: ' + _esc(st.webhook_url.split('?')[0]) + '</div>'
+                        : '<div class="conn-alert">Webhook NÃO registrado — mensagens não vão chegar. Use “Re-registrar webhook”.</div>') +
+                '</div>' +
+                '<div class="conn-actions">' +
+                    (canEditar ? '<button class="btn btn-ghost" id="btnWebhook">Re-registrar webhook</button>' : '') +
+                    (canEditar ? '<button class="btn btn-ghost" id="btnDesconectar">Desconectar</button>' : '') +
+                    (canExcluir ? '<button class="btn btn-danger" id="btnExcluir">Excluir instância</button>' : '') +
+                '</div>' +
+                (st.ultimo_erro ? '<div class="conn-alert">' + _esc(st.ultimo_erro) + '</div>' : '');
+            bindComuns(st);
+            var btnDesc = document.getElementById('btnDesconectar');
+            if (btnDesc) btnDesc.addEventListener('click', async function () {
+                var ok = await Modal.confirm(
+                    'Desconectar o WhatsApp?<br><small style="color:#9aa4b0">O histórico é mantido; para voltar, basta ler o QR de novo.</small>');
+                if (!ok) return;
+                try {
+                    await api.post('/chat/conexao/desconectar', {});
+                    showToast('Desconectado.', 'success');
+                    tick();
+                } catch (e) { showToast(e.message || 'Falha ao desconectar.', 'error'); }
+            });
+        }
+
+        /* Ações comuns aos estados B e C */
+        function bindComuns(st) {
+            var btnWh = document.getElementById('btnWebhook');
+            if (btnWh) btnWh.addEventListener('click', async function () {
+                btnWh.disabled = true;
+                try {
+                    var r = await api.post('/chat/conexao/webhook', {});
+                    showToast(r.mensagem || 'Webhook registrado.', 'success');
+                    tick();
+                } catch (e) { showToast(e.message || 'Falha ao registrar.', 'error'); }
+                btnWh.disabled = false;
+            });
+
+            var btnEx = document.getElementById('btnExcluir');
+            if (btnEx) btnEx.addEventListener('click', function () {
+                Modal.prompt(
+                    'Excluir instância',
+                    '<p style="font-size:14px;line-height:1.5">Isto apaga <strong>todas as conversas e mensagens</strong> do portal ' +
+                    '(os leads do CRM são preservados) e desvincula a instância uazapi.</p>' +
+                    '<div class="form-group" style="margin-top:12px">' +
+                        '<label>Digite <strong>excluir</strong> para confirmar</label>' +
+                        '<input type="text" id="confirmaExcluir" autocomplete="off">' +
+                    '</div>',
+                    async function () {
+                        var v = (document.getElementById('confirmaExcluir').value || '').trim().toLowerCase();
+                        if (v !== 'excluir') { showToast('Digite exatamente “excluir”.', 'error'); return false; }
+                        await api.del('/chat/conexao');
+                        showToast('Instância excluída. Leads preservados.', 'success');
+                        estadoAtual = null;
+                        tick();
+                    },
+                    { confirmLabel: 'Excluir', width: '460px' }
+                );
+            });
+        }
+
+        function statusHtml(st) {
+            var rotulos = { open: 'Conectado', connecting: 'Conectando…', close: 'Desconectado', connected: 'Conectado' };
+            var cls = st.conectado ? 'open' : (st.estado === 'connecting' ? 'connecting' : 'close');
+            return '<div class="conn-status">' +
+                       '<span class="conn-dot ' + cls + '"></span>' +
+                       '<div><strong>' + (rotulos[st.estado] || 'Indisponível') + '</strong>' +
+                       '<div class="conn-meta">' + _esc(st.api_url || '') + '</div></div>' +
+                   '</div>';
+        }
+
+        /* ---- Helpers ---- */
+        function fmtFone(f) {
+            if (!f) return '—';
+            var d = String(f).replace(/\D/g, '');
+            if (d.length === 13) return '+' + d.slice(0, 2) + ' (' + d.slice(2, 4) + ') ' + d.slice(4, 9) + '-' + d.slice(9);
+            if (d.length === 12) return '+' + d.slice(0, 2) + ' (' + d.slice(2, 4) + ') ' + d.slice(4, 8) + '-' + d.slice(8);
+            return f;
+        }
+        function _esc(s) {
+            return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                                  .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+        function showToast(msg, type, duration) {
+            var t = document.getElementById('toast');
+            if (!t) return;
+            t.textContent = msg;
+            t.className = 'toast ' + (type || 'success');
+            t.classList.add('show');
+            setTimeout(function () { t.classList.remove('show'); }, duration || 3500);
+        }
+
+        /* ---- Start ---- */
+        tick();
+    })();
+    </script>
+</body>
+</html>
