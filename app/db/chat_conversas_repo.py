@@ -120,6 +120,32 @@ def vincular_lead(id: int, lead_id: int) -> bool:
         return cur.rowcount > 0
 
 
+def deletar(id: int) -> bool:
+    """Apaga uma conversa. As mensagens vão junto (FK ON DELETE CASCADE).
+
+    NÃO toca no lead vinculado: chat_conversas.lead_id é só uma referência, e o lead
+    é dado de CRM — apagar o histórico de conversa não pode apagar a captação.
+    """
+    with cursor(dict_cursor=False) as cur:
+        cur.execute("DELETE FROM chat_conversas WHERE id = %s", (id,))
+        return cur.rowcount > 0
+
+
+def deletar_todas() -> dict:
+    """Limpa TODO o histórico: apaga todas as conversas (mensagens vão por CASCADE).
+
+    Preserva deliberadamente:
+      - `chat_integracoes` -> a instância do WhatsApp continua CONECTADA (não exige QR novo);
+      - `crm_leads`        -> os leads captados pelo chat permanecem no funil.
+    Devolve quantas linhas foram apagadas, para o chamador poder auditar.
+    """
+    with cursor() as cur:
+        cur.execute("SELECT count(*) AS n FROM chat_mensagens")
+        msgs = cur.fetchone()["n"]
+        cur.execute("DELETE FROM chat_conversas")
+        return {"conversas": cur.rowcount, "mensagens": msgs}
+
+
 def tocar_previa(id: int, previa: str, mensagem_em) -> bool:
     """Atualiza a prévia após um envio nosso (o outbound não passa pelo upsert)."""
     with cursor(dict_cursor=False) as cur:
