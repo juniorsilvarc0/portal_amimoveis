@@ -256,6 +256,28 @@ async def listar_conversas(
     }
 
 
+@router.delete("/conversas", response_model=MessageResponse)
+async def limpar_historico(
+    confirmar: bool = Query(False, description="Obrigatório: ?confirmar=true"),
+    user=Depends(require_permission("chat", "excluir")),
+):
+    """Apaga TODO o histórico do chat (conversas + mensagens).
+
+    Preserva a CONEXÃO do WhatsApp (a instância continua pareada, sem QR novo) e os
+    LEADS já captados. Exige `?confirmar=true` — sem a trava, um DELETE acidental na
+    coleção limparia o histórico inteiro sem querer.
+    """
+    if not confirmar:
+        raise HTTPException(
+            400, "Passe ?confirmar=true para apagar TODO o histórico de conversas e mensagens."
+        )
+    r = chat_conversas_repo.deletar_todas()
+    logger.warning("[chat] histórico limpo por usuario_id=%s: %s conversas, %s mensagens",
+                   user.get("id"), r["conversas"], r["mensagens"])
+    return {"mensagem": f"Histórico limpo: {r['conversas']} conversas e {r['mensagens']} mensagens "
+                        f"apagadas. Conexão do WhatsApp e leads preservados."}
+
+
 @router.get("/conversas/{conversa_id}", response_model=ConversaRead)
 async def obter_conversa(conversa_id: int, user=Depends(require_permission("chat", "ver"))):
     c = chat_conversas_repo.obter(conversa_id)
@@ -273,6 +295,14 @@ async def listar_mensagens(
     if not chat_conversas_repo.obter(conversa_id):
         raise HTTPException(404, "Conversa não encontrada")
     return chat_mensagens_repo.listar(conversa_id, limit=limit)
+
+
+@router.delete("/conversas/{conversa_id}", response_model=MessageResponse)
+async def deletar_conversa(conversa_id: int, user=Depends(require_permission("chat", "excluir"))):
+    """Apaga UMA conversa e suas mensagens. O lead vinculado é preservado."""
+    if not chat_conversas_repo.deletar(conversa_id):
+        raise HTTPException(404, "Conversa não encontrada")
+    return {"mensagem": "Conversa apagada. O lead vinculado foi preservado."}
 
 
 @router.post("/conversas/{conversa_id}/ler", response_model=MessageResponse)
