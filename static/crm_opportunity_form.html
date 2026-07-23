@@ -55,6 +55,13 @@
                                     <select id="imovel_id" name="imovel_id"><option value="">—</option></select>
                                 </div>
                                 <div class="form-group">
+                                    <label for="unidade_id">Unidade
+                                        <button type="button" id="btnNovaUnidade" style="border:0;background:none;color:#065676;cursor:pointer;font-size:12px;font-weight:600;padding:0 0 0 6px;display:none;">+ nova</button>
+                                    </label>
+                                    <select id="unidade_id" name="unidade_id" disabled><option value="">Selecione o imóvel primeiro</option></select>
+                                    <small style="display:block;color:#8896a6;margin-top:4px;font-size:11px;">Os dados do imóvel são copiados para a oportunidade ao salvar.</small>
+                                </div>
+                                <div class="form-group">
                                     <label for="valor">Valor (R$)</label>
                                     <input type="text" id="valor" name="valor" data-mask="money">
                                 </div>
@@ -150,8 +157,73 @@
             loadCorretores(),
         ]);
 
+        // Unidade em cascata: ao escolher o imóvel, lista as unidades (marcando as ocupadas).
+        document.getElementById('imovel_id').addEventListener('change', function () { carregarUnidades(); });
+        document.getElementById('btnNovaUnidade').addEventListener('click', novaUnidade);
+        await carregarUnidades();
+
         if (editId) await carregar(editId);
         else await preencherCliente();
+
+        async function carregarUnidades(selecionar) {
+            const imovelId = document.getElementById('imovel_id').value;
+            const sel = document.getElementById('unidade_id');
+            const btnNova = document.getElementById('btnNovaUnidade');
+            if (!imovelId) {
+                sel.innerHTML = '<option value="">Selecione o imóvel primeiro</option>';
+                sel.disabled = true; btnNova.style.display = 'none';
+                return;
+            }
+            btnNova.style.display = api.can('cad_imoveis', 'criar') ? '' : 'none';
+            sel.disabled = false;
+            let list = [];
+            try { list = await api.get('/lookup/unidades', { imovel_id: imovelId }); } catch (e) {}
+            sel.innerHTML = '<option value="">— Sem unidade —</option>' + list.map(u => {
+                const ocupada = u.ocupada;
+                const valor = u.valor != null ? ' · R$ ' + Number(u.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '';
+                return '<option value="' + u.id + '"' + (ocupada ? ' disabled' : '') + '>' +
+                    _esc(u.identificador) + valor + (ocupada ? ' (em negociação)' : '') + '</option>';
+            }).join('');
+            if (selecionar) sel.value = String(selecionar);
+            if (!list.length) {
+                sel.innerHTML = '<option value="">Nenhuma unidade — cadastre em "+ nova"</option>';
+            }
+        }
+
+        // Preenche o valor da oportunidade com o valor da unidade escolhida (se vazio).
+        document.getElementById('unidade_id').addEventListener('change', async function () {
+            const uid = this.value;
+            if (!uid) return;
+            const valorEl = document.getElementById('valor');
+            if (valorEl && !valorEl.value.trim()) {
+                try {
+                    const list = await api.get('/lookup/unidades', { imovel_id: document.getElementById('imovel_id').value });
+                    const u = (list || []).find(x => String(x.id) === String(uid));
+                    if (u && u.valor != null) {
+                        valorEl.value = Number(u.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                    }
+                } catch (e) {}
+            }
+        });
+
+        async function novaUnidade() {
+            const imovelId = document.getElementById('imovel_id').value;
+            if (!imovelId) { showToast('Selecione o imóvel primeiro.', 'error'); return; }
+            Modal.prompt('Nova unidade',
+                '<div class="form-group"><label>Identificador *</label><input type="text" id="nu-ident" placeholder="Ex: Apto 302"></div>' +
+                '<div class="form-group"><label>Valor (R$)</label><input type="text" id="nu-valor" data-mask="money"></div>',
+                async function () {
+                    const ident = document.getElementById('nu-ident').value.trim();
+                    if (!ident) { showToast('Informe o identificador.', 'error'); return false; }
+                    const val = document.getElementById('nu-valor').value;
+                    const num = val ? parseFloat(val.replace(/[R$\s.]/g, '').replace(',', '.')) : null;
+                    const nova = await api.post('/imoveis/' + imovelId + '/unidades', { identificador: ident, valor: isNaN(num) ? null : num });
+                    showToast('Unidade criada.');
+                    await carregarUnidades(nova.id);   // recarrega e já seleciona a nova
+                },
+                { confirmLabel: 'Criar', width: '420px' });
+            setTimeout(function () { const f = document.getElementById('nu-valor'); if (f && typeof autoMask === 'function') autoMask(f.closest('.modal') || document.body); }, 30);
+        }
 
         // Pré-preenche a oportunidade a partir do cliente (vindo de /clientes/{id} → "Criar").
         async function preencherCliente() {
@@ -274,6 +346,7 @@
                 nome: v('nome'),
                 cliente_id: intval('cliente_id'),
                 imovel_id: intval('imovel_id'),
+                unidade_id: intval('unidade_id'),
                 valor: val,
                 data_previsao: v('data_previsao') || null,
                 pipeline_id: intval('pipeline_id'),

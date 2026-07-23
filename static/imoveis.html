@@ -123,6 +123,11 @@
                     var actions = [];
                     if (canWrite) {
                         actions.push({
+                            label: 'Unidades',
+                            className: 'btn-ghost',
+                            onClick: function (r) { openUnidadesModal(r); },
+                        });
+                        actions.push({
                             label: 'Editar',
                             className: 'btn-ghost',
                             onClick: function (r) { openEditModal(r); },
@@ -172,6 +177,23 @@
                                     '</select>' +
                                     '<small class="field-error"></small>' +
                                 '</div>' +
+                                '<div class="form-group full-width">' +
+                                    '<label for="m-endereco">Endereço</label>' +
+                                    '<input type="text" id="m-endereco" name="endereco" placeholder="Rua, número">' +
+                                '</div>' +
+                                '<div class="form-group">' +
+                                    '<label for="m-bairro">Bairro</label>' +
+                                    '<input type="text" id="m-bairro" name="bairro">' +
+                                '</div>' +
+                                '<div class="form-group">' +
+                                    '<label for="m-cep">CEP</label>' +
+                                    '<input type="text" id="m-cep" name="cep" data-mask="cep" placeholder="00000-000">' +
+                                '</div>' +
+                                '<div class="form-group">' +
+                                    '<label for="m-tipo">Tipo de imóvel</label>' +
+                                    '<input type="text" id="m-tipo" name="tipo" list="tiposImovel" placeholder="Ex: Apartamento">' +
+                                    '<datalist id="tiposImovel"><option>Casa</option><option>Apartamento</option><option>Terreno</option><option>Comercial</option></datalist>' +
+                                '</div>' +
                             '</div>' +
                         '</form>',
                     footerHtml:
@@ -187,6 +209,7 @@
                 var salvarBtn     = document.getElementById('m-salvar');
 
                 forms.init(form);
+                if (typeof autoMask === 'function') autoMask(form);   // máscara do CEP
 
                 /* Carregar lookups em paralelo */
                 try {
@@ -243,6 +266,120 @@
                         salvarBtn.textContent = isEdit ? 'Salvar' : 'Criar';
                     }
                 });
+            }
+
+            /* ---- 5b. Gestão de UNIDADES do imóvel ---- */
+            async function openUnidadesModal(imovel) {
+                var m = new Modal({
+                    title: 'Unidades — ' + _esc(imovel.nome),
+                    bodyHtml:
+                        '<div style="margin-bottom:14px;padding:12px;background:#f8fafc;border-radius:8px;">' +
+                            '<div class="form-grid-auto" style="align-items:end;">' +
+                                '<div class="form-group" style="margin:0;"><label for="u-ident">Identificador</label>' +
+                                    '<input type="text" id="u-ident" placeholder="Ex: Apto 302"></div>' +
+                                '<div class="form-group" style="margin:0;"><label for="u-valor">Valor (R$)</label>' +
+                                    '<input type="text" id="u-valor" data-mask="money"></div>' +
+                                '<div class="form-group" style="margin:0;"><label for="u-status">Status</label>' +
+                                    '<select id="u-status"><option value="disponivel">Disponível</option>' +
+                                    '<option value="reservada">Reservada</option><option value="vendida">Vendida</option></select></div>' +
+                                '<div class="form-group" style="margin:0;">' +
+                                    '<button class="btn btn-primary" id="u-add" style="width:100%;">Adicionar</button></div>' +
+                            '</div>' +
+                            '<div class="alert-error" id="u-erro" style="margin-top:8px;"></div>' +
+                        '</div>' +
+                        '<div id="u-lista">Carregando…</div>',
+                    footerHtml: '<button class="btn btn-ghost" id="u-fechar">Fechar</button>',
+                    width: '680px',
+                });
+                m.open();
+                if (typeof autoMask === 'function') autoMask(document.getElementById('u-valor').closest('.form-grid-auto'));
+                document.getElementById('u-fechar').addEventListener('click', function () { m.close(); });
+
+                function moneyToNum(s) {
+                    if (!s) return null;
+                    var n = parseFloat(String(s).replace(/[R$\s.]/g, '').replace(',', '.'));
+                    return isNaN(n) ? null : n;
+                }
+                function fmtMoney(v) {
+                    return v == null ? '—' : 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                }
+                var STATUS_LABEL = { disponivel: 'Disponível', reservada: 'Reservada', vendida: 'Vendida' };
+
+                async function refresh() {
+                    var box = document.getElementById('u-lista');
+                    var list = [];
+                    try { list = await api.get('/imoveis/' + imovel.id + '/unidades'); } catch (e) {}
+                    if (!list.length) { box.innerHTML = '<div style="color:#8896a6;padding:16px;text-align:center;">Nenhuma unidade cadastrada.</div>'; return; }
+                    box.innerHTML =
+                        '<table style="width:100%;border-collapse:collapse;font-size:13px;">' +
+                        '<thead><tr style="text-align:left;color:#8896a6;font-size:11px;text-transform:uppercase;">' +
+                            '<th style="padding:6px 8px;">Unidade</th><th style="padding:6px 8px;">Valor</th>' +
+                            '<th style="padding:6px 8px;">Status</th><th style="padding:6px 8px;"></th></tr></thead><tbody>' +
+                        list.map(function (u) {
+                            return '<tr style="border-top:1px solid #f1f5f9;">' +
+                                '<td style="padding:8px;font-weight:600;">' + _esc(u.identificador) +
+                                    (u.ocupada ? ' <span style="color:#e5094b;font-size:11px;">• em negociação</span>' : '') + '</td>' +
+                                '<td style="padding:8px;">' + fmtMoney(u.valor) + '</td>' +
+                                '<td style="padding:8px;">' + (STATUS_LABEL[u.status] || u.status) + '</td>' +
+                                '<td style="padding:8px;text-align:right;white-space:nowrap;">' +
+                                    '<button class="btn btn-ghost" data-edit="' + u.id + '" style="padding:4px 8px;">Editar</button> ' +
+                                    '<button class="btn btn-danger" data-del="' + u.id + '" style="padding:4px 8px;">Excluir</button></td>' +
+                            '</tr>';
+                        }).join('') + '</tbody></table>';
+
+                    box.querySelectorAll('[data-del]').forEach(function (b) {
+                        b.addEventListener('click', async function () {
+                            var u = list.find(function (x) { return x.id == b.dataset.del; });
+                            var aviso = u && u.ocupada ? '<br><small style="color:#e5094b;">Esta unidade tem uma oportunidade ativa; ela ficará sem unidade vinculada.</small>' : '';
+                            if (!await Modal.confirm('Excluir a unidade <strong>' + _esc(u.identificador) + '</strong>?' + aviso)) return;
+                            try { await api.del('/imoveis/unidades/' + b.dataset.del); showToast('Unidade excluída.'); refresh(); }
+                            catch (e) { showToast(e.message || 'Erro ao excluir.', 'error'); }
+                        });
+                    });
+                    box.querySelectorAll('[data-edit]').forEach(function (b) {
+                        b.addEventListener('click', function () {
+                            var u = list.find(function (x) { return x.id == b.dataset.edit; });
+                            editarUnidade(u, refresh);
+                        });
+                    });
+                }
+
+                document.getElementById('u-add').addEventListener('click', async function () {
+                    var erro = document.getElementById('u-erro'); erro.classList.remove('show'); erro.textContent = '';
+                    var ident = document.getElementById('u-ident').value.trim();
+                    if (!ident) { erro.textContent = 'Informe o identificador da unidade.'; erro.classList.add('show'); return; }
+                    var payload = { identificador: ident, valor: moneyToNum(document.getElementById('u-valor').value),
+                                    status: document.getElementById('u-status').value };
+                    this.disabled = true;
+                    try {
+                        await api.post('/imoveis/' + imovel.id + '/unidades', payload);
+                        document.getElementById('u-ident').value = ''; document.getElementById('u-valor').value = '';
+                        showToast('Unidade adicionada.'); refresh();
+                    } catch (e) { erro.textContent = e.message || 'Erro ao adicionar.'; erro.classList.add('show'); }
+                    this.disabled = false;
+                });
+
+                await refresh();
+            }
+
+            function editarUnidade(u, onSaved) {
+                Modal.prompt('Editar unidade',
+                    '<div class="form-group"><label>Identificador</label><input type="text" id="eu-ident" value="' + _esc(u.identificador) + '"></div>' +
+                    '<div class="form-group"><label>Valor (R$)</label><input type="text" id="eu-valor" data-mask="money" value="' + (u.valor != null ? Number(u.valor).toLocaleString('pt-BR', {minimumFractionDigits: 2}) : '') + '"></div>' +
+                    '<div class="form-group"><label>Status</label><select id="eu-status">' +
+                        ['disponivel','reservada','vendida'].map(function (s) {
+                            return '<option value="' + s + '"' + (u.status === s ? ' selected' : '') + '>' + ({disponivel:'Disponível',reservada:'Reservada',vendida:'Vendida'}[s]) + '</option>';
+                        }).join('') + '</select></div>',
+                    async function () {
+                        var ident = document.getElementById('eu-ident').value.trim();
+                        if (!ident) { showToast('Informe o identificador.', 'error'); return false; }
+                        var val = document.getElementById('eu-valor').value;
+                        var num = val ? parseFloat(val.replace(/[R$\s.]/g, '').replace(',', '.')) : null;
+                        await api.put('/imoveis/unidades/' + u.id, { identificador: ident, valor: isNaN(num) ? null : num, status: document.getElementById('eu-status').value });
+                        showToast('Unidade atualizada.'); if (onSaved) onSaved();
+                    },
+                    { confirmLabel: 'Salvar', width: '420px' });
+                setTimeout(function () { var f = document.getElementById('eu-valor'); if (f && typeof autoMask === 'function') autoMask(f.closest('.modal') || document.body); }, 30);
             }
 
             /* ---- 6. Excluir ---- */
