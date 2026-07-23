@@ -886,3 +886,23 @@ EXCEPTION WHEN others THEN NULL; END $$;
 CREATE UNIQUE INDEX IF NOT EXISTS crm_opp_unidade_ativa_uniq
     ON crm_opportunities(unidade_id)
     WHERE unidade_id IS NOT NULL AND status <> 'perdida';
+
+-- ============================================================================
+-- Oportunidade: campos de Simulação/Financiamento, Entrada Facilitada e Venda
+-- ============================================================================
+-- Cards do detalhe reorganizados (card 6 vira "Simulação e Financiamento", card 7
+-- "Entrada Facilitada"). Colunas NOVAS abaixo; as demais já existiam
+-- (renda_mensal, valor_sinal, valor_fgts, valor_total_financiamento, valor_entrada,
+--  valor_imovel, data_contrato, numero_contrato, venda_forma_entrada,
+--  venda_valor_parcela_entrada, venda_data_primeira_parcela). Snapshot TEXT/livre.
+DO $$ BEGIN
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS valor_simulacao NUMERIC(15,2);
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS valor_subsidio NUMERIC(15,2);
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS modalidade_amortizacao TEXT;      -- PRICE | SAC
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS correspondente_id INTEGER          -- CCA (Correspondente Caixa) → cadastro correspondentes
+        REFERENCES correspondentes(id) ON DELETE SET NULL;
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS situacao_analise_credito TEXT;    -- PENDENTE|APROVADO|CONFORMIDADE|REPROVADO
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS porcentagem_financiada NUMERIC(5,2);
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS ef_tipo_pagamento TEXT;           -- BOLETO|PIX|DEBITO|CREDITO|DINHEIRO
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS condicao_entrada TEXT;            -- texto livre
+EXCEPTION WHEN others THEN NULL; END $$;
