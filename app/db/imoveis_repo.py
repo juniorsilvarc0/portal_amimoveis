@@ -61,14 +61,19 @@ def criar(dados: dict) -> int:
     with cursor() as cur:
         cur.execute(
             """
-            INSERT INTO imoveis (nome, construtora_id, cidade_id)
-            VALUES (%(nome)s, %(construtora_id)s, %(cidade_id)s)
+            INSERT INTO imoveis (nome, construtora_id, cidade_id, endereco, bairro, cep, tipo)
+            VALUES (%(nome)s, %(construtora_id)s, %(cidade_id)s,
+                    %(endereco)s, %(bairro)s, %(cep)s, %(tipo)s)
             RETURNING id
             """,
             {
                 "nome": dados["nome"],
                 "construtora_id": dados.get("construtora_id"),
                 "cidade_id": dados["cidade_id"],
+                "endereco": dados.get("endereco"),
+                "bairro": dados.get("bairro"),
+                "cep": dados.get("cep"),
+                "tipo": dados.get("tipo"),
             },
         )
         return cur.fetchone()["id"]
@@ -79,10 +84,12 @@ def atualizar(id: int, dados: dict) -> bool:
         cur.execute(
             """
             UPDATE imoveis SET
-                nome = %s, construtora_id = %s, cidade_id = %s, updated_at = NOW()
+                nome = %s, construtora_id = %s, cidade_id = %s,
+                endereco = %s, bairro = %s, cep = %s, tipo = %s, updated_at = NOW()
             WHERE id = %s
             """,
-            (dados["nome"], dados.get("construtora_id"), dados["cidade_id"], id),
+            (dados["nome"], dados.get("construtora_id"), dados["cidade_id"],
+             dados.get("endereco"), dados.get("bairro"), dados.get("cep"), dados.get("tipo"), id),
         )
         return cur.rowcount > 0
 

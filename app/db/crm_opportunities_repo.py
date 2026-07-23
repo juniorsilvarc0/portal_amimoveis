@@ -57,7 +57,7 @@ SELECT o.*,
 _CAMPOS = [
     # Core
     "nome", "cliente_id", "lead_id", "pipeline_id", "stage_id",
-    "imovel_id", "valor", "probabilidade", "data_previsao", "data_fechamento",
+    "imovel_id", "unidade_id", "valor", "probabilidade", "data_previsao", "data_fechamento",
     "proprietario_id", "campaign_id", "status", "motivo_perda",
     "proposta_id", "descricao",
     # Identificação / status
@@ -184,6 +184,26 @@ def listar_kanban(pipeline_id: int = None, por_pos_venda: bool = False):
 def obter(id: int):
     with cursor() as cur:
         cur.execute(f"{_SELECT_FULL} WHERE o.id = %s", (id,))
+        row = cur.fetchone()
+        return dict(row) if row else None
+
+
+def oportunidade_ativa_da_unidade(unidade_id: int, excluir_id: int | None = None) -> dict | None:
+    """Oportunidade NÃO-perdida que já ocupa a unidade (para o 409 amigável).
+
+    Espelha a regra do índice único parcial `crm_opp_unidade_ativa_uniq`. `excluir_id`
+    permite ignorar a própria oportunidade numa eventual revalidação de update."""
+    with cursor() as cur:
+        sql = (
+            "SELECT o.id, o.nome, o.status, s.nome AS stage_nome "
+            "FROM crm_opportunities o LEFT JOIN crm_stages s ON s.id = o.stage_id "
+            "WHERE o.unidade_id = %s AND o.status <> 'perdida'"
+        )
+        params: list = [unidade_id]
+        if excluir_id:
+            sql += " AND o.id <> %s"
+            params.append(excluir_id)
+        cur.execute(sql + " LIMIT 1", params)
         row = cur.fetchone()
         return dict(row) if row else None
 

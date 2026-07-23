@@ -34,6 +34,8 @@ from app.db import (
     crm_webhooks_repo,
     clientes_repo,
     propostas_repo,
+    imoveis_repo,
+    imovel_unidades_repo,
 )
 from app.db.connection import cursor as db_cursor
 from app.services import webhook_dispatcher, crm_importer
@@ -415,20 +417,75 @@ async def obter_opportunity(id: int, user: dict = Depends(require_permission("cr
     return opp
 
 
+def _preencher_snapshot_imovel(body: dict, imovel: dict | None, unidade: dict | None) -> None:
+    """Copia dados do imóvel/unidade para os campos snapshot da oportunidade (Card 2).
+
+    Só preenche o que o body NÃO trouxe — o usuário sempre pode sobrepor. A oportunidade
+    guarda a CÓPIA (preserva histórico), não um espelho ao vivo do imóvel.
+    """
+    def preenche(chave, valor):
+        if valor is not None and valor != "" and not body.get(chave):
+            body[chave] = valor
+
+    if imovel:
+        preenche("empreendimento_nome", imovel.get("nome"))
+        preenche("imovel_endereco", imovel.get("endereco"))
+        preenche("imovel_bairro", imovel.get("bairro"))
+        cidade = imovel.get("cidade_nome")
+        if cidade and imovel.get("cidade_uf"):
+            cidade = f"{cidade}/{imovel['cidade_uf']}"
+        preenche("imovel_cidade_uf", cidade)
+        preenche("imovel_cep", imovel.get("cep"))
+        preenche("imovel_tipo", imovel.get("tipo"))
+    if unidade:
+        preenche("unidade", unidade.get("identificador"))
+        preenche("valor_imovel", unidade.get("valor"))
+        preenche("valor", unidade.get("valor"))
+
+
 @router.post("/opportunities", status_code=201)
 async def criar_opportunity(body: dict, user: dict = Depends(require_permission("crm_opportunities", "criar"))):
     """Cria opportunity. Cliente é obrigatório (novo modelo: Cliente é central).
 
     ``lead_id`` é opcional — usado pra registrar de qual Lead a opportunity
     se originou (atribuição de origem/campanha).
+
+    Se vier ``unidade_id``: recusa duplicação (uma opp não-perdida por unidade),
+    deriva o ``imovel_id`` e AUTO-PREENCHE o snapshot do Card 2 a partir do imóvel/unidade.
     """
     if not body.get("nome") or not body.get("pipeline_id") or not body.get("stage_id"):
         raise HTTPException(422, "nome, pipeline_id e stage_id são obrigatórios")
     if not body.get("cliente_id"):
         raise HTTPException(422, "cliente_id é obrigatório (Cliente é central no novo modelo).")
+
+    unidade_id = body.get("unidade_id")
+    if unidade_id:
+        ocupada = crm_opportunities_repo.oportunidade_ativa_da_unidade(unidade_id)
+        if ocupada:
+            raise HTTPException(
+                409,
+                f"A unidade já tem uma oportunidade ativa: “{ocupada['nome']}” "
+                f"(etapa {ocupada.get('stage_nome') or '—'}). Conclua-a ou marque como "
+                f"perdida antes de criar outra para a mesma unidade.",
+            )
+        unidade = imovel_unidades_repo.obter(unidade_id)
+        if not unidade:
+            raise HTTPException(422, "Unidade informada não existe.")
+        if not body.get("imovel_id"):
+            body["imovel_id"] = unidade["imovel_id"]
+        _preencher_snapshot_imovel(body, imoveis_repo.obter(unidade["imovel_id"]), unidade)
+
     body["criado_por_id"] = user.get("id")
     body["modificado_por_id"] = user.get("id")
-    oid = crm_opportunities_repo.criar(body)
+    try:
+        oid = crm_opportunities_repo.criar(body)
+    except Exception as e:
+        # Rede de segurança do banco (índice único parcial), caso duas criações corram juntas.
+        if "crm_opp_unidade_ativa_uniq" in str(e) or "unique" in str(e).lower():
+            raise HTTPException(409, "A unidade acabou de receber uma oportunidade ativa. Recarregue e tente outra unidade.")
+        raise
+    if unidade_id:
+        imovel_unidades_repo.definir_status(unidade_id, "reservada")
     crm_opportunities_repo.aplicar_automacao_etapa_atual(oid)  # tarefa automática da etapa inicial
     opp = crm_opportunities_repo.obter(oid)
     webhook_dispatcher.disparar("opportunity.created", opp)
@@ -459,6 +516,11 @@ async def mudar_stage(id: int, body: dict, user: dict = Depends(require_permissi
     if not result:
         raise HTTPException(404, "Oportunidade ou stage não encontrada.")
     opp = crm_opportunities_repo.obter(id)
+    # Sincroniza o status da unidade com o ciclo da oportunidade: ganha -> vendida,
+    # perdida -> disponivel (liberada), demais -> reservada.
+    if opp.get("unidade_id"):
+        novo_status_unidade = {"ganha": "vendida", "perdida": "disponivel"}.get(opp.get("status"), "reservada")
+        imovel_unidades_repo.definir_status(opp["unidade_id"], novo_status_unidade)
     webhook_dispatcher.disparar("opportunity.stage_changed", opp)
     if opp.get("status") == "ganha":
         webhook_dispatcher.disparar("opportunity.won", opp)
