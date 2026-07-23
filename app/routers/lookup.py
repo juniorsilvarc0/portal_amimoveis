@@ -8,6 +8,7 @@ from app.db import (
     gerentes_repo,
     parceiros_repo,
     imoveis_repo,
+    imovel_unidades_repo,
     correspondentes_repo,
     corretores_repo,
 )
@@ -53,6 +54,19 @@ async def lookup_imoveis(
 ):
     rows, _ = imoveis_repo.listar(per_page=1000, construtora_id=construtora_id, cidade_id=cidade_id)
     return [{"id": r["id"], "nome": r["nome"]} for r in rows]
+
+
+@router.get("/unidades")
+async def lookup_unidades(imovel_id: int, user=Depends(get_current_user)):
+    """Unidades de um imóvel, com `ocupada` (já tem oportunidade não-perdida).
+
+    O front usa isto no cascateamento da criação de oportunidade: lista as unidades do
+    imóvel selecionado e marca as ocupadas (que a criação recusaria com 409)."""
+    return [
+        {"id": u["id"], "identificador": u["identificador"], "valor": u["valor"],
+         "status": u["status"], "ocupada": u["ocupada"]}
+        for u in imovel_unidades_repo.listar_por_imovel(imovel_id)
+    ]
 
 
 @router.get("/correspondentes")

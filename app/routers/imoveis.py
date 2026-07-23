@@ -3,8 +3,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.auth.dependencies import get_current_user
 from app.auth.permissions import require_permission
-from app.db import imoveis_repo
-from app.schemas.imovel import ImovelCreate, ImovelUpdate, ImovelRead
+from app.db import imoveis_repo, imovel_unidades_repo
+from app.schemas.imovel import (
+    ImovelCreate, ImovelUpdate, ImovelRead,
+    UnidadeCreate, UnidadeUpdate, UnidadeRead,
+)
 from app.schemas.common import PagedResponse, MessageResponse
 
 router = APIRouter(prefix="/api/v1/imoveis", tags=["Imóveis"])
@@ -32,6 +35,53 @@ async def listar(
             "total_pages": (total + per_page - 1) // per_page if per_page else 1,
         },
     }
+
+
+# ---------------------------------------------------------------------------
+# Unidades de um imóvel (Apto 302, Casa 15...). Sob a mesma permissão cad_imoveis.
+# Declaradas ANTES de /{imovel_id} para "unidades" não ser capturado como id.
+# ---------------------------------------------------------------------------
+
+@router.get("/{imovel_id}/unidades", response_model=list[UnidadeRead])
+async def listar_unidades(imovel_id: int, user=Depends(require_permission("cad_imoveis", "ver"))):
+    if not imoveis_repo.obter(imovel_id):
+        raise HTTPException(404, "Imóvel não encontrado")
+    return imovel_unidades_repo.listar_por_imovel(imovel_id)
+
+
+@router.post("/{imovel_id}/unidades", response_model=UnidadeRead, status_code=201)
+async def criar_unidade(imovel_id: int, body: UnidadeCreate,
+                        user=Depends(require_permission("cad_imoveis", "criar"))):
+    if not imoveis_repo.obter(imovel_id):
+        raise HTTPException(404, "Imóvel não encontrado")
+    try:
+        new_id = imovel_unidades_repo.criar(imovel_id, body.model_dump())
+    except Exception as e:
+        if "unique" in str(e).lower() or "duplicate" in str(e).lower():
+            raise HTTPException(409, "Já existe uma unidade com esse identificador neste imóvel.")
+        raise HTTPException(500, f"Erro ao criar unidade: {e}")
+    return imovel_unidades_repo.obter(new_id)
+
+
+@router.put("/unidades/{unidade_id}", response_model=UnidadeRead)
+async def atualizar_unidade(unidade_id: int, body: UnidadeUpdate,
+                            user=Depends(require_permission("cad_imoveis", "editar"))):
+    try:
+        ok = imovel_unidades_repo.atualizar(unidade_id, body.model_dump(exclude_unset=True))
+    except Exception as e:
+        if "unique" in str(e).lower() or "duplicate" in str(e).lower():
+            raise HTTPException(409, "Já existe uma unidade com esse identificador neste imóvel.")
+        raise
+    if not ok:
+        raise HTTPException(404, "Unidade não encontrada")
+    return imovel_unidades_repo.obter(unidade_id)
+
+
+@router.delete("/unidades/{unidade_id}", response_model=MessageResponse)
+async def deletar_unidade(unidade_id: int, user=Depends(require_permission("cad_imoveis", "excluir"))):
+    if not imovel_unidades_repo.deletar(unidade_id):
+        raise HTTPException(404, "Unidade não encontrada")
+    return {"mensagem": "Unidade removida"}
 
 
 @router.get("/{imovel_id}", response_model=ImovelRead)
