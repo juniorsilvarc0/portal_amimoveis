@@ -18,6 +18,12 @@ SELECT o.*,
        cl.nascimento    AS cliente_nascimento,
        l.nome   AS lead_nome,
        im.nome  AS imovel_nome,
+       im.endereco AS imovel_cad_endereco,
+       im.bairro   AS imovel_cad_bairro,
+       im.cep      AS imovel_cad_cep,
+       im.tipo     AS imovel_cad_tipo,
+       CASE WHEN imc.id IS NOT NULL THEN imc.nome || '/' || imc.uf END AS imovel_cad_cidade_uf,
+       cor.nome AS correspondente_nome,
        u.email  AS proprietario_email,
        uc.email AS corretor_imobiliaria_email,
        ua.email AS aprovador_email,
@@ -43,6 +49,8 @@ SELECT o.*,
   LEFT JOIN clientes  cl ON cl.id = o.cliente_id
   LEFT JOIN crm_leads l  ON l.id  = o.lead_id
   LEFT JOIN imoveis   im ON im.id = o.imovel_id
+  LEFT JOIN cidades   imc ON imc.id = im.cidade_id
+  LEFT JOIN correspondentes cor ON cor.id = o.correspondente_id
   LEFT JOIN usuarios  u   ON u.id   = o.proprietario_id
   LEFT JOIN usuarios  uc  ON uc.id  = o.corretor_imobiliaria_id
   LEFT JOIN usuarios  ua  ON ua.id  = o.aprovador_id
@@ -108,8 +116,12 @@ _CAMPOS = [
     # Card 6: PAC (complemento)
     "pac_valor_avaliacao", "pac_probabilidade", "pac_prazo_meses",
     "pac_valor_parcela", "pac_tipo_analise",
+    # Card 6: Simulação e Financiamento (campos novos)
+    "valor_simulacao", "valor_subsidio", "modalidade_amortizacao",
+    "correspondente_id", "situacao_analise_credito", "porcentagem_financiada",
     # Card 7: Entrada Facilitada (complemento)
     "ef_construtora", "ef_qtd_parcelas", "ef_valor_parcela", "ef_valor_total", "ef_observacao",
+    "ef_tipo_pagamento", "condicao_entrada",
     # Card 9: Equipe
     "construtora_nome",
     # Card 12/13: Resumo Financeiro + Contábil
