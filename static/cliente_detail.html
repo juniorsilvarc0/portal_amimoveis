@@ -58,10 +58,16 @@
             background: none; border: none; cursor: pointer; color: #94a3b8; transition: opacity .15s; }
         .field-edit:hover { color: #065676; }
         .field-edit svg { width: 14px; height: 14px; }
-        .field input.editing, .field select.editing, .field textarea.editing {
+        .field input.editing, .field select.editing, .field textarea.editing,
+        .field .field-input {
             font-family: inherit; font-size: 13px; padding: 4px 8px;
-            border: 1px solid #065676; border-radius: 4px; width: 100%;
-            box-sizing: border-box; background: #fff; }
+            border: 1px solid #cbd5e1; border-radius: 4px; width: 100%;
+            box-sizing: border-box; background: #fff; color: #1a1a2e; }
+        /* Modo NOVO: campos sempre editáveis. Foco destaca a borda (feedback do Tab). */
+        .field .field-input:focus { outline: none; border-color: #065676;
+            box-shadow: 0 0 0 2px rgba(6,86,118,.15); }
+        .field.field-new:hover { background: transparent; }
+        .field-label .req { color: #ef4444; }
         .check-true { color: #22c55e; font-weight: 600; }
         .check-false { color: #cbd5e1; }
 
@@ -159,6 +165,7 @@
         // Em modo novo, cli é um rascunho local (buffered) — não persiste no servidor até "Criar".
         let cli = isNew ? { tipo_pessoa: 'Fisica', ativo: true, cpf_pendente: false } : null;
         let activeTab = 'detalhes';
+        let focoInicialFeito = false;   // no modo novo, foca o 1º campo uma única vez
 
         await render();
 
@@ -319,6 +326,7 @@
         }
 
         function fld(key, label, value, type, options) {
+            if (isNew && key) return fldNew(key, label, type || 'text', options);
             const display = (value == null || value === '') ? '<span class="empty">—</span>' : _esc(String(value));
             const dataOpts = options ? ' data-options=\'' + _attr(JSON.stringify(options)) + '\'' : '';
             return '<div class="field" data-key="' + _esc(key) + '" data-type="' + _esc(type || 'text') + '"' + dataOpts + '>' +
@@ -332,6 +340,7 @@
             return '<div class="field"><span class="field-label">' + _esc(label) + '</span><span class="field-value">' + value + '</span></div>';
         }
         function fldBool(key, label, value) {
+            if (isNew && key) return fldNew(key, label, 'bool');
             const v = value ? '<span class="check-true">✓ Ativo</span>' : '<span class="check-false">✗ Inativo</span>';
             return '<div class="field" data-key="' + _esc(key) + '" data-type="bool">' +
                 '<span class="field-label">' + _esc(label) + '</span>' +
@@ -346,12 +355,100 @@
             '</div>';
         }
         function fldYesNo(key, label, value) {
+            if (isNew && key) return fldNew(key, label, 'yesno');
             const v = value ? '<span class="check-true">Sim</span>' : '<span class="check-false">Não</span>';
             return '<div class="field" data-key="' + _esc(key) + '" data-type="yesno">' +
                 '<span class="field-label">' + _esc(label) + '</span>' +
                 '<span class="field-value">' + v + '</span>' +
                 '<button class="field-edit" title="Editar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' +
             '</div>';
+        }
+
+        // Modo NOVO: campo já editável (input persistente), sem lápis. O valor sai de `cli`
+        // (rascunho local). A navegação por Tab é nativa (são inputs reais na ordem do DOM).
+        function fldNew(key, label, type, options) {
+            const req = (key === 'nome' || key === 'cpf');
+            const v = cli[key];
+            const attrs = 'class="field-input" data-fieldkey="' + _esc(key) + '" data-fieldtype="' + _esc(type) + '"';
+            let control;
+            if (type === 'bool') {
+                control = '<select ' + attrs + '>' +
+                    '<option value="true"'  + (v !== false ? ' selected' : '') + '>Ativo</option>' +
+                    '<option value="false"' + (v === false ? ' selected' : '') + '>Inativo</option></select>';
+            } else if (type === 'yesno') {
+                control = '<select ' + attrs + '>' +
+                    '<option value="false"' + (!v ? ' selected' : '') + '>Não</option>' +
+                    '<option value="true"'  + (v ? ' selected' : '')  + '>Sim</option></select>';
+            } else if (type === 'cidade') {
+                control = '<select ' + attrs + '><option value="">—</option>' +
+                    cidadesCache.map(c => '<option value="' + c.id + '"' + (String(v) === String(c.id) ? ' selected' : '') +
+                        '>' + _esc(c.nome + (c.uf ? ' (' + c.uf + ')' : '')) + '</option>').join('') + '</select>';
+            } else if (type === 'select') {
+                const opts = options || [];
+                control = '<select ' + attrs + '>' + opts.map(o =>
+                    '<option value="' + _attr(o[0]) + '"' +
+                    ((v === o[0] || (v == null && o[0] === '')) ? ' selected' : '') + '>' + _esc(o[1]) + '</option>'
+                ).join('') + '</select>';
+            } else if (type === 'date') {
+                control = '<input type="date" ' + attrs + ' value="' + _attr(v ? String(v).slice(0, 10) : '') + '">';
+            } else if (type === 'textarea') {
+                control = '<textarea ' + attrs + ' rows="3">' + _esc(v || '') + '</textarea>';
+            } else {
+                let disp = v != null ? String(v) : '';
+                if (type === 'phone' && v && typeof maskPhone === 'function') disp = maskPhone(v);
+                if (key === 'cpf' && v && typeof maskCPF === 'function') disp = maskCPF(v);
+                control = '<input type="' + (type === 'email' ? 'email' : 'text') + '" ' + attrs +
+                    ' value="' + _attr(disp) + '" autocomplete="off">';
+            }
+            return '<div class="field field-new" data-key="' + _esc(key) + '">' +
+                '<span class="field-label">' + _esc(label) + (req ? ' <span class="req">*</span>' : '') + '</span>' +
+                '<span class="field-value">' + control + '</span>' +
+            '</div>';
+        }
+
+        // Modo NOVO: liga os inputs persistentes ao rascunho `cli` (sem re-render, para não
+        // perder o foco), aplica máscaras e faz o Enter pular para o próximo campo.
+        function wireNovoForm() {
+            const inputs = Array.from(document.querySelectorAll('.field-input'));
+            inputs.forEach((el, idx) => {
+                const key = el.dataset.fieldkey, type = el.dataset.fieldtype;
+                if (type === 'phone' && typeof attachMask === 'function' && typeof maskPhone === 'function') attachMask(el, maskPhone);
+                if (key === 'cpf' && typeof attachMask === 'function' && typeof maskCPF === 'function') attachMask(el, maskCPF);
+
+                const buffer = () => {
+                    let val = el.value;
+                    if (type === 'bool' || type === 'yesno') val = (val === 'true');
+                    else if (type === 'cidade') {
+                        val = val ? parseInt(val, 10) : null;
+                        const c = cidadesCache.find(x => x.id === val);
+                        cli.cidade_nome = c ? c.nome : null;
+                        cli.cidade_uf = c ? c.uf : null;
+                    }
+                    else if (type === 'phone') val = el.value.replace(/\D/g, '') || null;
+                    else if (key === 'cpf') val = el.value; // criarCliente já normaliza
+                    else val = (val === '' ? null : val);
+                    cli[key] = val;
+                    // Título do cabeçalho acompanha o nome digitado.
+                    if (key === 'nome') {
+                        const h = document.querySelector('.cli-head-title h1');
+                        if (h) h.textContent = el.value.trim() || 'Novo Cliente';
+                    }
+                };
+                el.addEventListener('input', buffer);
+                el.addEventListener('change', buffer);
+
+                if (type !== 'textarea') {
+                    el.addEventListener('keydown', e => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const next = inputs[idx + 1];
+                            if (next) next.focus();
+                            else { const b = document.querySelector('[data-act="criar-cliente"]'); if (b) b.focus(); }
+                        }
+                    });
+                }
+            });
+            if (!focoInicialFeito && inputs[0]) { inputs[0].focus(); focoInicialFeito = true; }
         }
 
         function renderChatter() {
@@ -485,7 +582,11 @@
                 h.parentElement.classList.toggle('collapsed');
             }));
 
-            if (canEdit) {
+            // Modo NOVO: campos já são inputs (sem lápis) — liga o formulário editável.
+            // Modo detalhe: mantém a edição inline pelo lápis.
+            if (isNew) {
+                wireNovoForm();
+            } else if (canEdit) {
                 document.querySelectorAll('.field-edit').forEach(btn => btn.addEventListener('click', e => {
                     e.stopPropagation();
                     inlineEdit(btn.closest('.field'));
