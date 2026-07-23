@@ -840,3 +840,49 @@ DO $$ BEGIN
 EXCEPTION WHEN others THEN NULL; END $$;
 CREATE INDEX IF NOT EXISTS idx_crm_leads_tel_norm
     ON crm_leads(telefone_normalizado) WHERE telefone_normalizado IS NOT NULL;
+
+-- ============================================================================
+-- Imóveis: dados de empreendimento + Unidades (fonte da verdade p/ o CRM)
+-- ============================================================================
+-- O "imóvel" é o EMPREENDIMENTO (nome + construtora + cidade já existiam). Agora
+-- carrega também endereço/bairro/CEP/tipo — dados que a oportunidade HERDA (copia)
+-- ao selecionar o imóvel, em vez de o usuário digitar tudo à mão no Card 2.
+DO $$ BEGIN
+    ALTER TABLE imoveis ADD COLUMN IF NOT EXISTS endereco TEXT;
+    ALTER TABLE imoveis ADD COLUMN IF NOT EXISTS bairro   TEXT;
+    ALTER TABLE imoveis ADD COLUMN IF NOT EXISTS cep      TEXT;
+    ALTER TABLE imoveis ADD COLUMN IF NOT EXISTS tipo     TEXT;   -- Casa|Apartamento|Terreno|Comercial (texto livre)
+EXCEPTION WHEN others THEN NULL; END $$;
+
+-- Unidades de um imóvel (Apto 302, Casa 15, Lote 7...). Cada unidade é vendida uma
+-- vez — é a granularidade da regra de não-duplicação e do "Valor do imóvel".
+CREATE TABLE IF NOT EXISTS imovel_unidades (
+    id            SERIAL PRIMARY KEY,
+    imovel_id     INT NOT NULL REFERENCES imoveis(id) ON DELETE CASCADE,
+    identificador TEXT NOT NULL,                       -- "Apto 302", "Casa 15"
+    valor         NUMERIC(15,2),                       -- valor do imóvel desta unidade
+    status        TEXT NOT NULL DEFAULT 'disponivel',  -- disponivel | reservada | vendida
+    observacao    TEXT,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- Não repete o mesmo identificador dentro do mesmo empreendimento.
+    CONSTRAINT imovel_unidades_uniq UNIQUE (imovel_id, identificador)
+);
+CREATE INDEX IF NOT EXISTS idx_imovel_unidades_imovel ON imovel_unidades(imovel_id);
+
+-- A oportunidade referencia a UNIDADE (além do imovel_id que já existia). Os 7 campos
+-- do Card 2 continuam como snapshot TEXT na própria oportunidade (cópia editável).
+DO $$ BEGIN
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS unidade_id INT
+        REFERENCES imovel_unidades(id) ON DELETE SET NULL;
+EXCEPTION WHEN others THEN NULL; END $$;
+
+-- ┌─ NÃO-DUPLICAÇÃO POR UNIDADE ─────────────────────────────────────────────┐
+-- Índice único PARCIAL: no máximo UMA oportunidade não-perdida por unidade.
+-- Como o predicado exclui `status = 'perdida'`, uma oportunidade que vira perdida
+-- SAI do índice e a unidade fica livre para uma nova oportunidade. `unidade_id` NULL
+-- (oportunidade sem unidade) nunca colide. É a rede de segurança no banco; o router
+-- ainda faz a checagem para devolver um 409 amigável.
+CREATE UNIQUE INDEX IF NOT EXISTS crm_opp_unidade_ativa_uniq
+    ON crm_opportunities(unidade_id)
+    WHERE unidade_id IS NOT NULL AND status <> 'perdida';
