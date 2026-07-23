@@ -187,7 +187,7 @@ router.get("/crm/kanban")(           _page("crm_kanban.html"))
 router.get("/crm/leads")(            _page("crm_leads.html"))
 router.get("/crm/leads/novo")(       _page("crm_lead_form.html"))
 router.get("/crm/opportunities")(    _page("crm_opportunities.html"))
-router.get("/crm/opportunities/novo")( _page("crm_opportunity_form.html"))
+router.get("/crm/opportunities/novo")( _page("crm_opportunity_detail.html"))   # modo novo: todos os campos editáveis
 router.get("/crm/activities")(       _page("crm_activities.html"))
 router.get("/crm/activities/nova")(  _page("crm_activity_form.html"))
 router.get("/crm/campaigns")(        _page("crm_campaigns.html"))

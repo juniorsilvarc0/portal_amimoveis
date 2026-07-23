@@ -96,6 +96,18 @@
         .field-edit:hover { color: #065676; }
         .field-edit svg { width: 13px; height: 13px; }
         .field input.editing, .field select.editing, .field textarea.editing { font-family: inherit; font-size: 13px; padding: 4px 8px; border: 1px solid #065676; border-radius: 4px; width: 100%; box-sizing: border-box; background: #fff; }
+        /* Modo NOVO: inputs persistentes */
+        .field .n-input { font-family: inherit; font-size: 13px; padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 4px; width: 100%; box-sizing: border-box; background: #fff; color: #1a1a2e; }
+        .field .n-input:focus { outline: none; border-color: #065676; box-shadow: 0 0 0 2px rgba(6,86,118,.15); }
+        .field.field-new:hover { background: transparent; }
+        .novo-secao { background: #fff; border: 1px solid #e8ecf0; border-radius: 12px; padding: 16px 18px; margin-bottom: 16px; }
+        .novo-secao > h3 { margin: 0 0 12px; font-size: 14px; color: #1a1a2e; }
+        .novo-secao .field-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px 18px; }
+        @media (max-width: 900px) { .novo-secao .field-grid { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 600px) { .novo-secao .field-grid { grid-template-columns: 1fr; } }
+        .novo-bar { position: sticky; bottom: 0; display: flex; gap: 12px; align-items: center; background: #fff; border-top: 1px solid #e8ecf0; padding: 14px 18px; margin: 0 -18px -18px; border-radius: 0 0 12px 12px; }
+        .novo-bar .hint { margin-right: auto; color: #8896a6; font-size: 13px; }
+        .novo-cli-preview { font-size: 12px; color: #64748b; }
         .check-true { color: #16a34a; font-weight: 600; }
         .check-false { color: #cbd5e1; }
 
@@ -222,12 +234,18 @@
         try { usuario = await api.requireAuth(); } catch (e) { return; }
         renderSidebar(document.getElementById('sidebar'), '/crm/opportunities', usuario);
 
-        const oppId = (() => { const m = location.pathname.match(/\/crm\/opportunities\/(\d+)/); return m ? parseInt(m[1], 10) : null; })();
-        if (!oppId) { document.getElementById('page').innerHTML = '<p>ID inválido.</p>'; return; }
-        const canEdit = api.can('crm_opportunities', 'editar');
+        // Modo NOVO: /crm/opportunities/novo -> criação com TODOS os campos editáveis
+        // (mesma tela do detalhe). Senão, detalhe por id.
+        const isNew = location.pathname.endsWith('/crm/opportunities/novo');
+        const oppId = isNew ? null : (() => { const m = location.pathname.match(/\/crm\/opportunities\/(\d+)/); return m ? parseInt(m[1], 10) : null; })();
+        if (!isNew && !oppId) { document.getElementById('page').innerHTML = '<p>ID inválido.</p>'; return; }
+        if (isNew && !api.can('crm_opportunities', 'criar')) { window.location.href = '/crm/opportunities'; return; }
+        const canEdit = isNew ? true : api.can('crm_opportunities', 'editar');
 
-        let opp = null;
+        let opp = isNew ? { status: 'aberta' } : null;   // rascunho local no modo novo
         let activeTab = 'visao';
+        let novoFocado = false;
+        const LK = { clientes: [], pipelines: [], stages: [], imoveis: [], unidades: [], usuarios: [], campanhas: [] };
 
         // Constantes de Documentos — declaradas ANTES de render() (evita TDZ:
         // card10Documentos roda na render inicial e referencia estas consts)
@@ -242,6 +260,7 @@
         await render();
 
         async function render() {
+            if (isNew) { await renderNovo(); return; }
             try {
                 opp = await api.get('/crm/opportunities/' + oppId + '/full');
             } catch (e) {
@@ -251,6 +270,302 @@
             document.getElementById('page').innerHTML = renderHead() + renderBody();
             attachHeadHandlers();
             attachBodyHandlers();
+        }
+
+        // ======================================================= MODO NOVO (criação)
+        async function renderNovo() {
+            try {
+                const [clientes, pipelines, imoveis, usuarios, campanhas] = await Promise.all([
+                    api.get('/clientes?per_page=500'),
+                    api.get('/crm/pipelines?ativo=true'),
+                    api.get('/lookup/imoveis'),
+                    api.get('/usuarios').catch(() => ({ data: [] })),
+                    api.get('/crm/campaigns?ativo=true&per_page=200').catch(() => ({ data: [] })),
+                ]);
+                LK.clientes = (clientes && clientes.data) || [];
+                LK.pipelines = pipelines || [];
+                LK.imoveis = imoveis || [];
+                LK.usuarios = (usuarios && usuarios.data) ? usuarios.data : (Array.isArray(usuarios) ? usuarios : []);
+                LK.campanhas = (campanhas && campanhas.data) || [];
+            } catch (e) {}
+
+            const qcli = new URLSearchParams(location.search).get('cliente_id');
+            if (qcli && !opp.cliente_id) opp.cliente_id = parseInt(qcli, 10);
+            if (!opp.pipeline_id) { const def = LK.pipelines.find(p => p.is_default) || LK.pipelines[0]; if (def) opp.pipeline_id = def.id; }
+            await carregarStagesNovo();
+            if (opp.cliente_id) { const c = LK.clientes.find(x => x.id === opp.cliente_id); if (c && !opp.nome) opp.nome = 'Negociação ' + c.nome; }
+
+            document.getElementById('page').innerHTML =
+                '<div class="opp-head"><div class="opp-head-top"><div class="opp-head-title">' +
+                    '<div class="opp-icon">📂</div><div><div class="subtitle">Nova oportunidade</div>' +
+                    '<h1 id="novoTitulo">' + _esc(opp.nome || 'Nova Oportunidade') + '</h1></div></div></div></div>' +
+                novoBody();
+            atualizarPreviewCliente();
+            attachNovoHandlers();
+            if (!novoFocado) { const f = document.querySelector('[data-fieldkey="nome"]'); if (f) f.focus(); novoFocado = true; }
+        }
+
+        function secaoNovo(titulo, campos) {
+            return '<div class="novo-secao"><h3>' + _esc(titulo) + '</h3><div class="field-grid">' + campos + '</div></div>';
+        }
+        function sel(key, label, options, opts) {
+            return fldInput(key, label, 'select', Object.assign({ options: options }, opts || {}));
+        }
+
+        function novoBody() {
+            const clientesOpt = LK.clientes.map(c => [c.id, c.nome + (c.cpf ? ' (' + (typeof maskCPF === 'function' ? maskCPF(c.cpf) : c.cpf) + ')' : '')]);
+            const funil =
+                fldInput('nome', 'Nome da oportunidade', 'text', { required: true }) +
+                sel('cliente_id', 'Cliente', clientesOpt, { required: true, placeholder: '— Selecione —' }) +
+                sel('pipeline_id', 'Pipeline', LK.pipelines.map(p => [p.id, p.nome]), { required: true, placeholder: '— Selecione —' }) +
+                sel('stage_id', 'Etapa', LK.stages.map(s => [s.id, s.nome]), { required: true, placeholder: '— Selecione —' }) +
+                sel('proprietario_id', 'Responsável', LK.usuarios.map(u => [u.id, u.nome || u.email])) +
+                sel('campaign_id', 'Campanha', LK.campanhas.map(c => [c.id, c.nome])) +
+                fldInput('valor', 'Valor da oportunidade (R$)', 'money') +
+                fldInput('data_previsao', 'Previsão de fechamento', 'date') +
+                fldInput('descricao', 'Descrição', 'textarea');
+
+            return '<div style="padding:4px 0 24px;">' +
+                secaoNovo('Dados da oportunidade', funil) +
+                '<div class="vg-grid vg-3">' + novoCard1Cliente() + novoCard2Imovel() + card3Venda() + '</div>' +
+                '<div class="vg-grid">' + card6PAC() + '</div>' +
+                '<div class="vg-grid vg-2">' + card7EntradaFacilitada() + card8SimulacaoBanco() + '</div>' +
+                '<div class="vg-grid vg-2">' + novoCard9Equipe() + card12ResumoFinanceiro() + '</div>' +
+                '<div class="vg-grid">' + novoCard13Contabil() + '</div>' +
+                novoBar() +
+            '</div>';
+        }
+
+        function novoBar() {
+            return '<div class="novo-secao" style="padding:0;"><div class="novo-bar">' +
+                '<span class="hint">Preencha os campos e clique em Criar. Os obrigatórios estão marcados com *.</span>' +
+                '<a href="/crm/opportunities" class="btn btn-ghost">Cancelar</a>' +
+                '<button class="btn btn-primary" data-act="criar-opp">Criar oportunidade</button>' +
+            '</div></div>';
+        }
+
+        // Card 1 (novo): dados do cliente vêm do CADASTRO (read-only) + possui_dependentes.
+        function novoCard1Cliente() {
+            return cardOpen(1, '👤', 'Dados do Cliente',
+                '<span style="font-size:11px;color:#8896a6;">do cadastro</span>') +
+                '<div id="cliPreview" class="novo-cli-preview">Selecione o cliente acima.</div>' +
+                fldBool('possui_dependentes', 'Possui dependentes?', opp.possui_dependentes) +
+                cardClose();
+        }
+
+        // Card 2 (novo): imóvel + unidade em cascata; os campos do snapshot herdam do imóvel/unidade.
+        function novoCard2Imovel() {
+            return cardOpen(2, '🏠', 'Dados do Imóvel') +
+                sel('imovel_id', 'Imóvel (empreendimento)', LK.imoveis.map(i => [i.id, i.nome]), { placeholder: '— Selecione —' }) +
+                unidadeSelectNovo() +
+                fld('empreendimento_nome', 'Empreendimento', null, 'text') +
+                fld('imovel_endereco', 'Endereço do imóvel', null, 'text') +
+                fld('imovel_bairro', 'Bairro', null, 'text') +
+                fld('imovel_cidade_uf', 'Cidade / Estado', null, 'text') +
+                fld('imovel_cep', 'CEP', null, 'text') +
+                fld('imovel_tipo', 'Tipo de imóvel', null, 'text') +
+                cardClose();
+        }
+        function unidadeSelectNovo() {
+            const opts = LK.unidades.map(u => {
+                const val = u.valor != null ? ' · R$ ' + numToBr(u.valor) : '';
+                return [u.id, u.identificador + val + (u.ocupada ? ' (em negociação)' : ''), u.ocupada];
+            });
+            const disabled = !opp.imovel_id;
+            let control = '<select class="n-input" data-fieldkey="unidade_id" data-fieldtype="unidade" id="n_unidade"' + (disabled ? ' disabled' : '') + '>' +
+                '<option value="">' + (disabled ? 'Selecione o imóvel' : '— Sem unidade —') + '</option>' +
+                opts.map(o => '<option value="' + o[0] + '"' + (o[2] ? ' disabled' : '') + (String(opp.unidade_id) === String(o[0]) ? ' selected' : '') + '>' + _esc(o[1]) + '</option>').join('') +
+                '</select>';
+            const btnNova = (opp.imovel_id && api.can('cad_imoveis', 'criar'))
+                ? ' <button type="button" id="n_nova_unid" style="border:0;background:none;color:#065676;cursor:pointer;font-size:11px;font-weight:600;">+ nova</button>' : '';
+            return '<div class="field field-new"><span class="field-label">Unidade' + btnNova + '</span>' +
+                '<span class="field-value">' + control + '</span></div>';
+        }
+
+        // Card 9 (novo): só os campos editáveis (o responsável está no funil acima).
+        function novoCard9Equipe() {
+            return cardOpen(9, '👥', 'Equipe e Responsáveis') +
+                fld('imobiliaria', 'Imobiliária', null, 'text') +
+                fld('construtora_nome', 'Construtora', null, 'text') +
+                cardClose();
+        }
+
+        // Card 13 (novo): só os campos de dados (anexos/relatório exigem opp salva).
+        function novoCard13Contabil() {
+            return cardHead(13, '🧾', 'Documentação Contábil / Fechamento') +
+                '<div class="vgcard-body two">' +
+                    fld('contabil_mes_fechamento', 'Mês de fechamento', null, 'text') +
+                    fld('contabil_data_fechamento', 'Data de fechamento', null, 'date') +
+                    fld('comissao_forma_recebimento', 'Forma de recebimento', null, 'text') +
+                    fld('comissao_total', 'Valor da comissão – Total', null, 'money') +
+                '</div></div>';
+        }
+
+        async function carregarStagesNovo() {
+            if (!opp.pipeline_id) { LK.stages = []; return; }
+            try { LK.stages = await api.get('/crm/stages?pipeline_id=' + opp.pipeline_id); } catch (e) { LK.stages = []; }
+            // etapa default = primeira aberta (senão a primeira)
+            if (!opp.stage_id || !LK.stages.some(s => s.id === opp.stage_id)) {
+                const aberta = LK.stages.find(s => s.tipo === 'aberto') || LK.stages[0];
+                opp.stage_id = aberta ? aberta.id : null;
+            }
+        }
+        async function carregarUnidadesNovo() {
+            if (!opp.imovel_id) { LK.unidades = []; return; }
+            try { LK.unidades = await api.get('/lookup/unidades', { imovel_id: opp.imovel_id }); } catch (e) { LK.unidades = []; }
+        }
+
+        function atualizarPreviewCliente() {
+            const box = document.getElementById('cliPreview');
+            if (!box) return;
+            const c = LK.clientes.find(x => x.id === opp.cliente_id);
+            if (!c) { box.innerHTML = 'Selecione o cliente acima.'; return; }
+            const tel = c.whatsapp1 || c.telefone_fixo;
+            box.innerHTML = [
+                c.cpf ? 'CPF: ' + (typeof maskCPF === 'function' ? maskCPF(c.cpf) : c.cpf) : null,
+                tel ? 'Tel: ' + (typeof maskPhone === 'function' ? maskPhone(tel) : tel) : null,
+                c.email ? 'E-mail: ' + c.email : null,
+                c.estado_civil ? 'Estado civil: ' + c.estado_civil : null,
+            ].filter(Boolean).map(_esc).join(' &nbsp;·&nbsp; ') || '—';
+        }
+
+        function preencherSnapshotUnidade() {
+            const u = LK.unidades.find(x => String(x.id) === String(opp.unidade_id));
+            const im = LK.imoveis.find(x => x.id === opp.imovel_id);
+            // Busca dados completos do imóvel (o lookup só traz id/nome) — usa o /imoveis/{id}.
+            return (async () => {
+                let imv = null;
+                if (opp.imovel_id) { try { imv = await api.get('/imoveis/' + opp.imovel_id); } catch (e) {} }
+                function set(key, val) {
+                    if (val == null || val === '') return;
+                    opp[key] = val;
+                    const el = document.querySelector('[data-fieldkey="' + key + '"]');
+                    if (el && !el.value) el.value = String(val);
+                }
+                if (imv) {
+                    set('empreendimento_nome', imv.nome);
+                    set('imovel_endereco', imv.endereco);
+                    set('imovel_bairro', imv.bairro);
+                    set('imovel_cep', imv.cep);
+                    set('imovel_tipo', imv.tipo);
+                    if (imv.cidade_nome) set('imovel_cidade_uf', imv.cidade_nome + (imv.cidade_uf ? '/' + imv.cidade_uf : ''));
+                }
+                if (u) {
+                    set('unidade', u.identificador);
+                    if (u.valor != null) {
+                        set('valor_imovel', u.valor);
+                        const vi = document.querySelector('[data-fieldkey="valor_imovel"]'); if (vi) vi.value = numToBr(u.valor);
+                        const vg = document.querySelector('[data-fieldkey="valor"]'); if (vg && !vg.value) { opp.valor = u.valor; vg.value = numToBr(u.valor); }
+                    }
+                }
+            })();
+        }
+
+        function attachNovoHandlers() {
+            if (typeof autoMask === 'function') autoMask(document.getElementById('page'));
+            const page = document.getElementById('page');
+
+            // Buffer de cada input persistente -> opp (rascunho), sem re-render (mantém foco).
+            page.querySelectorAll('.n-input').forEach(el => {
+                const key = el.dataset.fieldkey, type = el.dataset.fieldtype;
+                const buffer = () => {
+                    let val = el.value;
+                    if (type === 'bool') val = (val === 'true');
+                    else if (type === 'money') val = brToNum(el.value);
+                    else if (type === 'number') val = val ? parseInt(val, 10) : null;
+                    else if (type === 'select' || type === 'unidade') val = val ? parseInt(val, 10) : null;
+                    else val = (val === '' ? null : val);
+                    opp[key] = val;
+                    if (key === 'nome') { const h = document.getElementById('novoTitulo'); if (h) h.textContent = el.value.trim() || 'Nova Oportunidade'; }
+                };
+                el.addEventListener('input', buffer);
+                el.addEventListener('change', buffer);
+            });
+
+            // Cascatas / relacionamentos
+            const selCliente = page.querySelector('[data-fieldkey="cliente_id"]');
+            if (selCliente) selCliente.addEventListener('change', function () {
+                opp.cliente_id = this.value ? parseInt(this.value, 10) : null;
+                atualizarPreviewCliente();
+            });
+            const selPipe = page.querySelector('[data-fieldkey="pipeline_id"]');
+            if (selPipe) selPipe.addEventListener('change', async function () {
+                opp.pipeline_id = this.value ? parseInt(this.value, 10) : null;
+                opp.stage_id = null;
+                await carregarStagesNovo();
+                const st = page.querySelector('[data-fieldkey="stage_id"]');
+                if (st) st.innerHTML = '<option value="">— Selecione —</option>' +
+                    LK.stages.map(s => '<option value="' + s.id + '"' + (opp.stage_id === s.id ? ' selected' : '') + '>' + _esc(s.nome) + '</option>').join('');
+            });
+            const selImovel = page.querySelector('[data-fieldkey="imovel_id"]');
+            if (selImovel) selImovel.addEventListener('change', async function () {
+                opp.imovel_id = this.value ? parseInt(this.value, 10) : null;
+                opp.unidade_id = null;
+                await carregarUnidadesNovo();
+                atualizarUnidadeSelect();
+            });
+            const btnNovaUnid = document.getElementById('n_nova_unid');
+            if (btnNovaUnid) btnNovaUnid.addEventListener('click', novaUnidadeNovo);
+            page.querySelector('[data-act="criar-opp"]').addEventListener('click', criarOpp);
+            // wire da própria unidade (buffer + autofill) — feito via re-render abaixo
+            wireUnidadeChange();
+        }
+
+        function wireUnidadeChange() {
+            const selU = document.getElementById('n_unidade');
+            if (!selU) return;
+            selU.addEventListener('change', async function () {
+                opp.unidade_id = this.value ? parseInt(this.value, 10) : null;
+                if (opp.unidade_id) await preencherSnapshotUnidade();
+            });
+        }
+        function atualizarUnidadeSelect() {
+            const wrap = document.getElementById('n_unidade');
+            if (!wrap) return;
+            wrap.closest('.field').outerHTML = unidadeSelectNovo();
+            // re-liga o botão "+ nova" e o change
+            const btn = document.getElementById('n_nova_unid');
+            if (btn) btn.addEventListener('click', novaUnidadeNovo);
+            wireUnidadeChange();
+        }
+
+        function novaUnidadeNovo() {
+            if (!opp.imovel_id) { showToast('Selecione o imóvel primeiro.', 'error'); return; }
+            Modal.prompt('Nova unidade',
+                '<div class="form-group"><label>Identificador *</label><input type="text" id="nu-ident" placeholder="Ex: Apto 302"></div>' +
+                '<div class="form-group"><label>Valor (R$)</label><input type="text" id="nu-valor" data-mask="money"></div>',
+                async function () {
+                    const ident = document.getElementById('nu-ident').value.trim();
+                    if (!ident) { showToast('Informe o identificador.', 'error'); return false; }
+                    const num = brToNum(document.getElementById('nu-valor').value);
+                    const nova = await api.post('/imoveis/' + opp.imovel_id + '/unidades', { identificador: ident, valor: num });
+                    showToast('Unidade criada.');
+                    await carregarUnidadesNovo();
+                    opp.unidade_id = nova.id;
+                    atualizarUnidadeSelect();
+                    await preencherSnapshotUnidade();
+                },
+                { confirmLabel: 'Criar', width: '420px' });
+            setTimeout(function () { const f = document.getElementById('nu-valor'); if (f && typeof autoMask === 'function') autoMask(f.closest('.modal') || document.body); }, 30);
+        }
+
+        async function criarOpp() {
+            if (!opp.nome || !String(opp.nome).trim()) { showToast('Informe o nome da oportunidade.', 'error'); return; }
+            if (!opp.cliente_id) { showToast('Selecione o cliente.', 'error'); return; }
+            if (!opp.pipeline_id || !opp.stage_id) { showToast('Selecione pipeline e etapa.', 'error'); return; }
+            const btn = document.querySelector('[data-act="criar-opp"]');
+            if (btn) { btn.disabled = true; btn.textContent = 'Criando…'; }
+            // monta o payload só com o que tem valor (o back preenche o snapshot do imóvel/unidade)
+            const payload = {};
+            Object.keys(opp).forEach(k => { if (opp[k] !== undefined && opp[k] !== null && opp[k] !== '') payload[k] = opp[k]; });
+            try {
+                const nova = await api.post('/crm/opportunities', payload);
+                showToast('Oportunidade criada!');
+                setTimeout(() => { window.location.href = '/crm/opportunities/' + nova.id; }, 600);
+            } catch (e) {
+                showToast(e.message || 'Erro ao criar oportunidade.', 'error');
+                if (btn) { btn.disabled = false; btn.textContent = 'Criar oportunidade'; }
+            }
         }
 
         // ============================================================ HEADER
@@ -757,16 +1072,48 @@
         }
         // editable field
         function fld(key, label, value, type) {
+            if (isNew && key) return fldInput(key, label, type || 'text');
             const display = (value == null || value === '') ? '<span class="empty">—</span>' : _esc(String(value));
             return '<div class="field" data-key="' + _esc(key) + '" data-type="' + _esc(type || 'text') + '">' +
                 '<span class="field-label">' + _esc(label) + '</span>' +
                 '<span class="field-value">' + display + '</span>' + editBtn() + '</div>';
         }
         function fldBool(key, label, value) {
+            if (isNew && key) return fldInput(key, label, 'bool');
             const v = value ? '<span class="check-true">✓ Sim</span>' : '<span class="check-false">✗ Não</span>';
             return '<div class="field" data-key="' + _esc(key) + '" data-type="bool">' +
                 '<span class="field-label">' + _esc(label) + '</span>' +
                 '<span class="field-value">' + v + '</span>' + editBtn() + '</div>';
+        }
+
+        // Modo NOVO: campo já editável (input persistente). O valor sai de `opp` (rascunho).
+        function fldInput(key, label, type, opts) {
+            opts = opts || {};
+            const v = opp[key];
+            const req = opts.required ? ' <span style="color:#ef4444;">*</span>' : '';
+            const attrs = 'class="n-input" data-fieldkey="' + _esc(key) + '" data-fieldtype="' + _esc(type) + '"' + (opts.id ? ' id="' + opts.id + '"' : '');
+            let control;
+            if (type === 'bool') {
+                control = '<select ' + attrs + '><option value="false"' + (!v ? ' selected' : '') + '>Não</option>' +
+                    '<option value="true"' + (v ? ' selected' : '') + '>Sim</option></select>';
+            } else if (type === 'date') {
+                control = '<input type="date" ' + attrs + ' value="' + _attr(v ? String(v).slice(0, 10) : '') + '">';
+            } else if (type === 'money') {
+                control = '<input type="text" ' + attrs + ' data-mask="money" inputmode="decimal" value="' + _attr(v != null ? numToBr(v) : '') + '">';
+            } else if (type === 'number') {
+                control = '<input type="number" ' + attrs + ' value="' + _attr(v != null ? v : '') + '">';
+            } else if (type === 'select') {
+                control = '<select ' + attrs + '><option value="">' + (opts.placeholder || '—') + '</option>' +
+                    (opts.options || []).map(o => '<option value="' + _attr(o[0]) + '"' +
+                        (String(v) === String(o[0]) ? ' selected' : '') + '>' + _esc(o[1]) + '</option>').join('') + '</select>';
+            } else if (type === 'textarea') {
+                control = '<textarea ' + attrs + ' rows="3">' + _esc(v || '') + '</textarea>';
+            } else {
+                control = '<input type="text" ' + attrs + ' value="' + _attr(v != null ? v : '') + '" autocomplete="off">';
+            }
+            return '<div class="field field-new" data-key="' + _esc(key) + '">' +
+                '<span class="field-label">' + _esc(label) + req + '</span>' +
+                '<span class="field-value">' + control + '</span></div>';
         }
         function fldStatic(label, value) {
             return ro(label, value);
@@ -964,6 +1311,9 @@
         function daysBetween(a, b) { if (!a || !b) return null; return Math.floor((new Date(b) - new Date(a)) / 86400000); }
         function addDays(v, n) { const d = new Date(v); d.setDate(d.getDate() + n); return d; }
         function _esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+        function _attr(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+        function numToBr(v) { return Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+        function brToNum(s) { if (s == null || s === '') return null; const n = parseFloat(String(s).replace(/[R$\s.]/g, '').replace(',', '.')); return isNaN(n) ? null : n; }
         function showToast(msg, type) { const t = document.getElementById('toast'); if (!t) return; t.textContent = msg; t.className = 'toast ' + (type || 'success'); t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
     })();
     </script>
