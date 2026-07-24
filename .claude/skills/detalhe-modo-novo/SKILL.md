@@ -72,9 +72,16 @@ page.querySelectorAll('.n-input').forEach(el => {
         let v = el.value;
         if (type === 'bool') v = (v === 'true');
         else if (type === 'money') v = brToNum(el.value);          // "1.234,50" -> 1234.5
-        else if (type === 'number' || type === 'select') v = v ? parseInt(v,10) : null;
+        else if (type === 'number') v = v ? parseInt(v,10) : null;
+        else if (type === 'decimal') v = v ? parseFloat(v) : null; // % / taxa: NÃO trunca
+        // select: FK numérica -> int; enum textual (PRICE, PIX, ...) -> string
+        else if (type === 'select') v = (v === '' ? null : (/^\d+$/.test(v) ? parseInt(v,10) : v));
         else v = (v === '' ? null : v);
         obj[key] = v;
+        // MESMA coluna em +de 1 card (ex.: valor_entrada em 3/6/7): sincroniza os irmãos.
+        page.querySelectorAll('.n-input[data-fieldkey="' + key + '"]').forEach(sib => {
+            if (sib !== el && sib.value !== el.value) sib.value = el.value;
+        });
     };
     el.addEventListener('input', buffer);
     el.addEventListener('change', buffer);
@@ -84,6 +91,10 @@ page.querySelectorAll('.n-input').forEach(el => {
 Chame `autoMask(document.getElementById('page'))` (masks.js) para ativar máscaras de
 `data-mask` (money/cep/phone). Foque o 1º campo uma única vez (guardar num flag para não
 re-focar em rebuilds parciais).
+
+> ⚠️ **`select` não é só FK.** O parse `/^\d+$/ ? parseInt : string` é obrigatório: um
+> select de enum (`PRICE`/`SAC`, `PIX`, ...) viraria `NaN` com `parseInt`. Use o tipo
+> `decimal` (não `number`) para % / taxas / campos `NUMERIC(x,y)` — `parseInt` trunca `9,5`→`9`.
 
 ### 4. Cascatas / relacionamentos (o que faz o dado "vir do cadastro")
 Selects dependentes são atualizações LOCALIZADAS (troca só o `innerHTML` do select-alvo),
@@ -131,6 +142,18 @@ viram select no funil ou preview.
 ## Pegadinhas (todas já resolvidas nos exemplos)
 - **Re-render mata o foco.** Buffer em `obj`, nunca `render()` a cada tecla. Cascatas
   atualizam só o `innerHTML` do select dependente.
+- **MESMA coluna em vários cards → inputs dessincronizados.** Se um campo aparece em +de
+  um card (ex.: `valor_entrada` nos cards 3/6/7 da oportunidade), no modo novo cada `fld()`
+  vira um `.n-input` independente com o MESMO `data-fieldkey`. Sem sincronia, o último
+  tocado sobrescreve `obj[key]` e os demais ficam visualmente vazios (last-write-wins
+  silencioso). Correção: no buffer, propague `el.value` para todos os irmãos de mesma key
+  (`querySelectorAll('[data-fieldkey="'+key+'"]')`); e no auto-fill (snapshot) preencha
+  TODOS os inputs da key, não só o `querySelector` (primeiro). É intencional mostrar o
+  campo em vários cards — a correção é sincronizar, não remover.
+- **`fldStatusComissao` e afins: todo helper de campo tem que respeitar `isNew`.** Um campo
+  montado por um helper próprio (não via `fld`/`fldBool`) precisa do mesmo desvio
+  `if (isNew) return fldInput(...)`; senão vira um lápis morto no modo novo (o inline-edit
+  não é ligado na criação) e a coluna nunca entra no `POST`.
 - **Colisão de rota.** `/<recurso>/novo` tem que ser detectada por `endsWith('/novo')`
   ANTES de tentar extrair id numérico da URL.
 - **`fld()` passa valor formatado** (fmtMoney/fmtDate). No modo novo o `fldInput` ignora e
