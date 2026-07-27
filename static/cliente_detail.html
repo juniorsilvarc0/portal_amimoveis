@@ -740,6 +740,10 @@
         // ============================================
         function fmtDate(v) {
             if (!v) return null;
+            // Data pura (YYYY-MM-DD): formata direto, sem new Date, senão o navegador
+            // interpreta como meia-noite UTC e, em UTC-3, exibe o dia anterior.
+            const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v));
+            if (m && String(v).length <= 10) return m[3] + '/' + m[2] + '/' + m[1];
             const d = new Date(v);
             if (isNaN(d)) return v;
             return d.toLocaleDateString('pt-BR');

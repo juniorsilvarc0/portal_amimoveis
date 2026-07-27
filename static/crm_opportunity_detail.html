@@ -1361,7 +1361,7 @@
         }
 
         // ============================================================ HELPERS
-        function fmtDate(v) { if (!v) return null; const d = new Date(v); return isNaN(d) ? v : d.toLocaleDateString('pt-BR'); }
+        function fmtDate(v) { if (!v) return null; const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v)); if (m && String(v).length <= 10) return m[3] + '/' + m[2] + '/' + m[1]; const d = new Date(v); return isNaN(d) ? v : d.toLocaleDateString('pt-BR'); }
         function fmtDateTime(v) { if (!v) return null; const d = new Date(v); return isNaN(d) ? v : d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); }
         function fmtMoney(v) { if (v == null || v === '') return null; return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
         function daysBetween(a, b) { if (!a || !b) return null; return Math.floor((new Date(b) - new Date(a)) / 86400000); }
