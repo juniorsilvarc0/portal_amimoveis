@@ -14,11 +14,13 @@
 
     function setToken(t) {
         localStorage.setItem('token', t);
+        localStorage.setItem('token_issued_at', String(Date.now()));
     }
 
     function clearToken() {
         localStorage.removeItem('token');
         localStorage.removeItem('usuario');
+        localStorage.removeItem('token_issued_at');
     }
 
     async function apiCall(path, options) {
@@ -72,6 +74,83 @@
         }
 
         return body;
+    }
+
+    // ============================================================
+    // Sessão deslizante (keep-alive)
+    // O JWT tem validade ABSOLUTA (24h desde o login) e não é estendido por
+    // atividade — sem isto a pessoa é deslogada NO MEIO do uso quando o prazo
+    // vence (e perde o que estava digitando). Aqui, enquanto houver atividade,
+    // renovamos o token ANTES de expirar via /auth/refresh (que já existe).
+    // Usuário realmente inativo (sem interação por >IDLE) deixa expirar — correto.
+    // Só frontend: nada de banco, schema ou backend.
+    // ============================================================
+    const KEEPALIVE_CHECK_MS = 60 * 1000;        // verifica a cada 1 min
+    const KEEPALIVE_EVERY_MS = 20 * 60 * 1000;   // renova no máx. a cada 20 min de uso
+    const KEEPALIVE_NEAR_MS  = 5 * 60 * 1000;    // ...ou se faltar < 5 min p/ expirar (rede de segurança)
+    const KEEPALIVE_IDLE_MS  = 30 * 60 * 1000;   // só renova se houve atividade nos últimos 30 min
+
+    let _lastActivity = Date.now();
+    let _refreshing = false;
+    let _keepAliveStarted = false;
+
+    function _markActivity() { _lastActivity = Date.now(); }
+
+    function _tokenExpMs(token) {
+        // exp do JWT (payload base64url) em ms; null se não der pra ler.
+        try {
+            let b64 = (token.split('.')[1] || '').replace(/-/g, '+').replace(/_/g, '/');
+            while (b64.length % 4) b64 += '=';
+            const payload = JSON.parse(decodeURIComponent(escape(atob(b64))));
+            return payload && payload.exp ? payload.exp * 1000 : null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    async function _refreshToken() {
+        const token = getToken();
+        if (!token || _refreshing) return;
+        _refreshing = true;
+        try {
+            const resp = await fetch(API_BASE + '/auth/refresh', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token },
+            });
+            if (resp.ok) {
+                const data = await resp.json();
+                if (data && data.access_token) setToken(data.access_token);
+            }
+            // 401/erro: não faz nada — a próxima chamada real trata (token realmente expirado).
+        } catch (_) {
+            // rede: ignora; tenta de novo no próximo ciclo.
+        } finally {
+            _refreshing = false;
+        }
+    }
+
+    function _keepAliveTick() {
+        const token = getToken();
+        if (!token) return;
+        const exp = _tokenExpMs(token);
+        if (!exp) return;
+        const agora = Date.now();
+        const restante = exp - agora;
+        if (restante <= 0) return;                                  // já expirou; nada a renovar
+        if ((agora - _lastActivity) >= KEEPALIVE_IDLE_MS) return;   // inativo: deixa expirar
+        const issued = parseInt(localStorage.getItem('token_issued_at') || '0', 10);
+        if ((agora - issued) > KEEPALIVE_EVERY_MS || restante < KEEPALIVE_NEAR_MS) {
+            _refreshToken();
+        }
+    }
+
+    function startKeepAlive() {
+        if (_keepAliveStarted) return;
+        _keepAliveStarted = true;
+        ['click', 'keydown', 'mousemove', 'scroll', 'touchstart'].forEach(function (ev) {
+            window.addEventListener(ev, _markActivity, { passive: true });
+        });
+        setInterval(_keepAliveTick, KEEPALIVE_CHECK_MS);
     }
 
     const api = {
@@ -263,4 +342,7 @@
 
     window.api = api;
     window.apiCall = apiCall; // exposto para uso interno dos demais scripts
+
+    // Liga a renovação deslizante em toda página (no-op sem token).
+    startKeepAlive();
 })();
