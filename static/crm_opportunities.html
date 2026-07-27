@@ -72,7 +72,7 @@
                 { key: 'status', label: 'Status', width: '90px', align: 'center', html: true,
                   format: v => '<span class="badge-st st-'+esc(v||'aberta')+'">'+esc(v||'aberta')+'</span>' },
                 { key: 'data_previsao', label: 'Previsão', width: '110px', align: 'center',
-                  format: v => v ? new Date(v).toLocaleDateString('pt-BR') : '—' },
+                  format: v => { if (!v) return '—'; const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v)); return (m && String(v).length <= 10) ? m[3]+'/'+m[2]+'/'+m[1] : new Date(v).toLocaleDateString('pt-BR'); } },
             ],
             rowActions: function (r) {
                 const actions = [

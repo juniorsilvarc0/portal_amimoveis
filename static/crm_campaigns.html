@@ -46,7 +46,7 @@
                 { key: 'tipo', label: 'Tipo', width: '140px', format: v => v || '—' },
                 { key: 'status', label: 'Status', width: '100px', format: v => v || '—' },
                 { key: 'data_inicio', label: 'Início', width: '110px',
-                  format: v => v ? new Date(v).toLocaleDateString('pt-BR') : '—' },
+                  format: v => { if (!v) return '—'; const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v)); return (m && String(v).length <= 10) ? m[3]+'/'+m[2]+'/'+m[1] : new Date(v).toLocaleDateString('pt-BR'); } },
                 { key: 'orcamento', label: 'Orçamento', width: '140px', align: 'right',
                   format: v => v ? 'R$ ' + Number(v).toLocaleString('pt-BR', {minimumFractionDigits: 2}) : '—' },
             ],

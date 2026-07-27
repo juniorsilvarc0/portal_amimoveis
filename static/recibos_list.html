@@ -126,7 +126,7 @@
                         label: 'Data',
                         width: '110px',
                         align: 'center',
-                        format: function (v) { return v || '—'; },
+                        format: function (v) { if (!v) return '—'; var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v)); return (m && String(v).length <= 10) ? m[3] + '/' + m[2] + '/' + m[1] : new Date(v).toLocaleDateString('pt-BR'); },
                     },
                     {
                         key: 'created_at',
