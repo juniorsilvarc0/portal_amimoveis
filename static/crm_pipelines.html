@@ -120,6 +120,7 @@
                     '<div class="pipeline-actions">' +
                         (canCreate ? '<button class="btn btn-ghost btn-sm" data-act="add-stage" data-pid="'+p.id+'">+ Etapa</button>' : '') +
                         (canEdit ? '<button class="btn btn-ghost btn-sm" data-act="edit" data-pid="'+p.id+'">Editar</button>' : '') +
+                        (canCreate ? '<button class="btn btn-ghost btn-sm" data-act="dup" data-pid="'+p.id+'">Duplicar</button>' : '') +
                         (canDelete && !p.is_default ? '<button class="btn btn-danger btn-sm" data-act="del" data-pid="'+p.id+'">Excluir</button>' : '') +
                     '</div>' +
                 '</div>';
@@ -179,6 +180,8 @@
                 criarStage(parseInt(btn.dataset.pid, 10));
             } else if (act === 'edit') {
                 editarPipeline(parseInt(btn.dataset.pid, 10));
+            } else if (act === 'dup') {
+                duplicarPipeline(parseInt(btn.dataset.pid, 10));
             } else if (act === 'edit-stage') {
                 editarStage(parseInt(btn.dataset.sid, 10));
             }
@@ -291,6 +294,22 @@
                 try { await api.put('/crm/pipelines/' + id, data); showToast('Pipeline atualizado'); await render(); }
                 catch (e) { showToast(e.message, 'error'); return false; }
             });
+        }
+
+        function duplicarPipeline(id) {
+            const p = allPipelines.find(x => x.id === id) || {};
+            const sugerido = (p.nome || 'Pipeline') + ' (cópia)';
+            Modal.prompt('Duplicar Pipeline',
+                '<div class="modal-grid">' +
+                    '<label>Nome do novo pipeline <input id="dup_nome" value="' + _attr(sugerido) + '"></label>' +
+                    '<p style="font-size:12px;color:#8896a6;margin:2px 0 0;">Cria um novo funil com <strong>todas as etapas e automações</strong> de "' + _esc(p.nome || '') + '". As oportunidades não são copiadas.</p>' +
+                '</div>',
+                async () => {
+                    const nome = (document.getElementById('dup_nome').value || '').trim();
+                    if (!nome) { showToast('Informe o nome do novo pipeline', 'error'); return false; }
+                    try { await api.post('/crm/pipelines/' + id + '/duplicar', { nome }); showToast('Pipeline duplicado'); await render(); }
+                    catch (e) { showToast(e.message, 'error'); return false; }
+                });
         }
 
         // ----- modais de Etapa -----
