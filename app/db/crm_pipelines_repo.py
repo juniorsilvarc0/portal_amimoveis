@@ -76,6 +76,41 @@ def atualizar(id: int, dados: dict) -> bool:
         return cur.rowcount > 0
 
 
+def duplicar(id: int, novo_nome: str = None) -> int | None:
+    """Duplica um pipeline e TODAS as suas etapas (config + automação), numa transação.
+
+    NÃO copia oportunidades. O clone nunca é ``is_default`` (evita 2 defaults).
+    Preserva ``ordem``, ``pipeline_pos_venda_id`` e o ``tipo`` da origem.
+    Retorna o id do novo pipeline, ou ``None`` se a origem não existir.
+    """
+    with cursor() as cur:
+        cur.execute("SELECT * FROM crm_pipelines WHERE id = %s", (id,))
+        origem = cur.fetchone()
+        if not origem:
+            return None
+        nome = (novo_nome or "").strip() or f"{origem['nome']} (cópia)"
+        cur.execute(
+            """INSERT INTO crm_pipelines (nome, descricao, is_default, ativo, tipo, pipeline_pos_venda_id)
+               VALUES (%s, %s, FALSE, %s, %s, %s) RETURNING id""",
+            (nome, origem["descricao"], origem["ativo"], origem["tipo"], origem["pipeline_pos_venda_id"]),
+        )
+        novo_id = cur.fetchone()["id"]
+        # Copia as etapas preservando ordem e toda a automação (sem tocar em oportunidades).
+        cur.execute(
+            """INSERT INTO crm_stages
+                   (pipeline_id, nome, ordem, probabilidade, cor, tipo, sla_dias,
+                    auto_tarefa_assunto, auto_tarefa_descricao, auto_tarefa_tipo,
+                    auto_tarefa_prazo_dias, auto_notificar)
+               SELECT %s, nome, ordem, probabilidade, cor, tipo, sla_dias,
+                      auto_tarefa_assunto, auto_tarefa_descricao, auto_tarefa_tipo,
+                      auto_tarefa_prazo_dias, auto_notificar
+                 FROM crm_stages WHERE pipeline_id = %s
+                 ORDER BY ordem, id""",
+            (novo_id, id),
+        )
+        return novo_id
+
+
 def deletar(id: int) -> bool:
     with cursor() as cur:
         cur.execute("DELETE FROM crm_pipelines WHERE id = %s", (id,))
