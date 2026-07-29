@@ -119,6 +119,12 @@ def atualizar(id: int, dados: dict) -> bool:
     Importante: NÃO nulifica campos ausentes. Valores explicitamente None
     são aceitos (o caller pode zerar um campo passando None). Campos que
     não aparecem em `dados` ficam intocados.
+
+    Cascata de nome: quando o UPDATE inclui um novo `nome` (diferente do
+    antigo), as oportunidades do CRM cujo título foi auto-gerado como
+    "Negociação {nome antigo}" são renomeadas para "Negociação {nome novo}".
+    O match é EXATO com o padrão auto-gerado — títulos customizados pelo
+    usuário permanecem intactos. Tudo na mesma transação do update do cliente.
     """
     dados = dict(dados)
     if "cpf" in dados and dados.get("cpf"):
@@ -133,12 +139,36 @@ def atualizar(id: int, dados: dict) -> bool:
     params = {c: dados.get(c) for c in campos_presentes}
     params["id"] = id
 
+    # O nome só cascateia se a chave 'nome' veio no dict (update parcial real).
+    nome_muda = "nome" in dados
+    nome_novo = dados.get("nome")
+
     with cursor(dict_cursor=False) as cur:
+        # Lê o nome atual ANTES do update — mesma transação/cursor garante
+        # consistência entre o valor lido e o que será sobrescrito.
+        nome_antigo = None
+        if nome_muda:
+            cur.execute("SELECT nome FROM clientes WHERE id = %s", (id,))
+            row = cur.fetchone()
+            nome_antigo = row[0] if row else None
+
         cur.execute(
             f"UPDATE clientes SET {sets}, updated_at = NOW() WHERE id = %(id)s",
             params,
         )
-        return cur.rowcount > 0
+        alterou = cur.rowcount > 0  # captura ANTES da cascata (preserva o retorno)
+
+        # Cascata: renomeia SÓ os títulos que batem exatamente com o padrão
+        # auto-gerado "Negociação {nome antigo}". Títulos editados à mão ficam.
+        if nome_muda and nome_antigo and nome_novo and nome_novo != nome_antigo:
+            cur.execute(
+                "UPDATE crm_opportunities "
+                "SET nome = 'Negociação ' || %s, updated_at = NOW() "
+                "WHERE cliente_id = %s AND nome = 'Negociação ' || %s",
+                (nome_novo, id, nome_antigo),
+            )
+
+        return alterou
 
 
 def deletar(id: int) -> bool:
