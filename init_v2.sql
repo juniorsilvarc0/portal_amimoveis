@@ -945,3 +945,18 @@ DO $$ BEGIN
     ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS terreno_valor_avaliacao NUMERIC(15,2);
     ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS terreno_valor_financiamento NUMERIC(15,2);
 EXCEPTION WHEN others THEN NULL; END $$;
+
+-- Comissão = porcentagem do valor do imóvel (padrão 5%, editável no card "Dados da Venda").
+DO $$ BEGIN
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS comissao_percent NUMERIC(5,2) DEFAULT 5;
+EXCEPTION WHEN others THEN NULL; END $$;
+
+-- Valores Aprovados/Caixa (card 8): mesma lógica de cálculo do card 6, com inputs próprios.
+-- entrada_aprovada e financiamento_aprovado passam a ser CALCULADOS na UI (imóvel aprovado × %).
+DO $$ BEGIN
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS valor_imovel_aprovado NUMERIC(15,2);
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS porcentagem_financiada_aprovada NUMERIC(5,2);
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS valor_fgts_aprovado NUMERIC(15,2);
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS modalidade_aprovada TEXT;
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS renda_aprovada NUMERIC(15,2);
+EXCEPTION WHEN others THEN NULL; END $$;
