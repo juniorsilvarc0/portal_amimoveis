@@ -121,7 +121,7 @@ _CAMPOS = [
     "correspondente_id", "situacao_analise_credito", "porcentagem_financiada",
     # Card 7: Entrada Facilitada (complemento)
     "ef_construtora", "ef_qtd_parcelas", "ef_valor_parcela", "ef_valor_total", "ef_observacao",
-    "ef_tipo_pagamento", "condicao_entrada",
+    "ef_tipo_pagamento", "condicao_entrada", "ef_valor_sinal", "ef_juros_percent",
     # Card 9: Equipe
     "construtora_nome",
     # Card 12/13: Resumo Financeiro + Contábil

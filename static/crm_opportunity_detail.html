@@ -259,6 +259,8 @@
         const SIT_LABEL = { PENDENTE: 'Pendente', APROVADO: 'Aprovado', CONFORMIDADE: 'Conformidade', REPROVADO: 'Reprovado' };
         const TIPO_PAG_OPTS = [['BOLETO', 'Boleto'], ['PIX', 'Pix'], ['DEBITO', 'Débito'], ['CREDITO', 'Crédito'], ['DINHEIRO', 'Dinheiro']];
         const TIPO_PAG_LABEL = { BOLETO: 'Boleto', PIX: 'Pix', DEBITO: 'Débito', CREDITO: 'Crédito', DINHEIRO: 'Dinheiro' };
+        const FORMA_ENTRADA_OPTS = [['avista', 'À vista'], ['parcelado', 'Parcelado']];
+        const FORMA_ENTRADA_LABEL = { avista: 'À vista', parcelado: 'Parcelado' };
         function correspondenteOpts() { return (LK.correspondentes || []).map(c => [c.id, c.nome]); }
 
         // Constantes de Documentos — declaradas ANTES de render() (evita TDZ:
@@ -502,6 +504,15 @@
                     if (key === 'nome') { const h = document.getElementById('novoTitulo'); if (h) h.textContent = el.value.trim() || 'Nova Oportunidade'; }
                     // Mesma coluna aparece em +de 1 card (ex.: valor_entrada em 3/6/7): sincroniza os irmãos.
                     page.querySelectorAll('.n-input[data-fieldkey="' + key + '"]').forEach(sib => { if (sib !== el && sib.value !== el.value) sib.value = el.value; });
+                    // Entrada facilitada: ao voltar p/ "à vista", limpa os dados de parcelamento
+                    // (senão iriam no POST numa venda à vista); depois recalcula ao vivo.
+                    if (key === 'venda_forma_entrada' && !isParcelado(val)) {
+                        ['ef_valor_sinal', 'ef_juros_percent', 'ef_qtd_parcelas', 'venda_data_primeira_parcela'].forEach(k => {
+                            opp[k] = null;
+                            page.querySelectorAll('.n-input[data-fieldkey="' + k + '"]').forEach(inp => { inp.value = ''; });
+                        });
+                    }
+                    if (['valor_entrada', 'ef_valor_sinal', 'ef_juros_percent', 'ef_qtd_parcelas', 'venda_forma_entrada'].indexOf(key) !== -1) recalcEF();
                 };
                 el.addEventListener('input', buffer);
                 el.addEventListener('change', buffer);
@@ -534,6 +545,7 @@
             page.querySelector('[data-act="criar-opp"]').addEventListener('click', criarOpp);
             // wire da própria unidade (buffer + autofill) — feito via re-render abaixo
             wireUnidadeChange();
+            recalcEF();  // estado inicial da seção "parcelado" + campos calculados
         }
 
         function wireUnidadeChange() {
@@ -786,7 +798,7 @@
                     fld('valor_simulacao', 'Valor da simulação', fmtMoney(opp.valor_simulacao), 'money') +
                     fld('renda_mensal', 'Renda', fmtMoney(opp.renda_mensal), 'money') +
                     fld('valor_entrada', 'Valor de entrada', fmtMoney(opp.valor_entrada), 'money') +
-                    fld('valor_sinal', 'Valor do sinal', fmtMoney(opp.valor_sinal), 'money') +
+                    fld('valor_sinal', 'Valor do sinal (financiamento)', fmtMoney(opp.valor_sinal), 'money') +
                     fld('valor_subsidio', 'Valor do subsídio', fmtMoney(opp.valor_subsidio), 'money') +
                     fld('valor_total_financiamento', 'Valor do financiamento', fmtMoney(opp.valor_total_financiamento), 'money') +
                     fld('modalidade_amortizacao', 'Modalidade', opp.modalidade_amortizacao, 'select', { options: MODALIDADE_OPTS }) +
@@ -798,18 +810,60 @@
         }
 
         // ---- Card 7: Entrada Facilitada ----
+        // Forma de pagamento da entrada 'parcelado' (tolerante a valor legado: caixa/espaços).
+        function isParcelado(v) { return String(v == null ? '' : v).trim().toLowerCase() === 'parcelado'; }
+
+        // Campo calculado (read-only) com id no valor, atualizado por recalcEF().
+        function roCalc(label, id, labelId) {
+            return '<div class="field"><span class="field-label"' + (labelId ? ' id="' + labelId + '"' : '') + '>' + _esc(label) + '</span>' +
+                '<span class="field-value" id="' + id + '">—</span></div>';
+        }
+        // Recalcula (ao vivo) restante / valor a dever / valor da parcela e mostra-esconde
+        // a seção "parcelado". Fonte da verdade = opp (buffer no modo novo; PATCH no detalhe).
+        function recalcEF() {
+            const box = document.getElementById('efParcelBox');
+            if (!box) return;
+            const parcelado = isParcelado(opp.venda_forma_entrada);
+            box.style.display = parcelado ? '' : 'none';
+            if (!parcelado) return;
+            const _n = v => { if (v === '' || v == null) return null; const x = Number(v); return isNaN(x) ? null : x; };
+            const entrada = _n(opp.valor_entrada), sinal = _n(opp.ef_valor_sinal), juros = _n(opp.ef_juros_percent);
+            const nparc = parseInt(opp.ef_qtd_parcelas, 10) || 0;
+            let restante = null, aDever = null, vparc = null;
+            // Só calcula com a entrada informada; trava em 0 (sinal não pode passar da entrada).
+            if (entrada != null) restante = Math.max(0, entrada - (sinal || 0));
+            if (restante != null) aDever = restante * (1 + (juros || 0) / 100);
+            if (aDever != null && nparc > 0) vparc = aDever / nparc;
+            const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = (v != null ? fmtMoney(v) : '—'); };
+            set('efRestante', restante);
+            set('efADever', aDever);
+            set('efVParc', vparc);
+            const lbl = document.getElementById('efVParcLabel');
+            if (lbl) lbl.textContent = nparc > 0 ? ('Valor da parcela (' + nparc + 'x)') : 'Valor da parcela';
+        }
+
         function card7EntradaFacilitada() {
             const badge = opp.entrada_facilitada ? '<span class="hbadge doc-assinado">SIM</span>' : '<span class="hbadge doc-pendente">NÃO</span>';
+            const parcelado = isParcelado(opp.venda_forma_entrada);
             return cardHead(7, '📋', 'Entrada Facilitada', badge) +
                 '<div class="vgcard-body two">' +
                     fldBool('entrada_facilitada', 'Entrada facilitada', opp.entrada_facilitada) +
-                    fld('valor_entrada', 'Valor entrada', fmtMoney(opp.valor_entrada), 'money') +
-                    fld('ef_tipo_pagamento', 'Tipo de pagamento', TIPO_PAG_LABEL[opp.ef_tipo_pagamento] || opp.ef_tipo_pagamento, 'select', { options: TIPO_PAG_OPTS }) +
-                    fld('venda_forma_entrada', 'Forma de pagamento da entrada', opp.venda_forma_entrada, 'text') +
-                    fld('venda_valor_parcela_entrada', 'Valor da parcela (entrada)', fmtMoney(opp.venda_valor_parcela_entrada), 'money') +
-                    fld('venda_data_primeira_parcela', 'Data 1ª parcela (entrada)', fmtDate(opp.venda_data_primeira_parcela), 'date') +
-                    fld('condicao_entrada', 'Condição de entrada', opp.condicao_entrada, 'textarea') +
-                '</div></div>';
+                    fld('valor_entrada', 'Valor da entrada', fmtMoney(opp.valor_entrada), 'money') +
+                    fld('venda_forma_entrada', 'Forma de pagamento da entrada', FORMA_ENTRADA_LABEL[String(opp.venda_forma_entrada || '').toLowerCase()] || opp.venda_forma_entrada, 'select', { options: FORMA_ENTRADA_OPTS, placeholder: '— Selecione —' }) +
+                '</div>' +
+                '<div class="vgcard-body two" id="efParcelBox"' + (parcelado ? '' : ' style="display:none;"') + '>' +
+                    fld('ef_valor_sinal', 'Valor do sinal (entrada)', fmtMoney(opp.ef_valor_sinal), 'money') +
+                    roCalc('Restante a parcelar', 'efRestante') +
+                    fld('ef_juros_percent', 'Juros do parcelamento (%)', opp.ef_juros_percent != null ? opp.ef_juros_percent + '%' : null, 'decimal') +
+                    roCalc('Valor a dever (com juros)', 'efADever') +
+                    fld('ef_qtd_parcelas', 'Nº de parcelas', opp.ef_qtd_parcelas, 'number') +
+                    roCalc('Valor da parcela', 'efVParc', 'efVParcLabel') +
+                    fld('venda_data_primeira_parcela', 'Data da 1ª parcela', fmtDate(opp.venda_data_primeira_parcela), 'date') +
+                '</div>' +
+                '<div class="vgcard-body">' +
+                    fld('condicao_entrada', 'Observação / condição', opp.condicao_entrada, 'textarea') +
+                '</div>' +
+            '</div>';
         }
 
         // ---- Card 8: Simulação Banco (Caixa) ----
@@ -1271,6 +1325,7 @@
                 catch (e) { showToast(e.message, 'error'); }
             }));
             attachDocHandlers();
+            recalcEF();  // card 7: estado da seção parcelado + valores calculados
         }
 
         function attachDocHandlers() {
@@ -1406,7 +1461,13 @@
                 else if (type === 'select') newVal = newVal === '' ? null : (/^\d+$/.test(newVal) ? parseInt(newVal, 10) : newVal);
                 else if (!newVal) newVal = null;
                 if (newVal === currentVal) { rebuildBody(); return; }
-                try { await patch({ [key]: newVal }); } catch (e) { showToast(e.message, 'error'); rebuildBody(); }
+                const patchObj = { [key]: newVal };
+                // Mudou a forma da entrada para "à vista": zera os dados de parcelamento no banco.
+                if (key === 'venda_forma_entrada' && !isParcelado(newVal)) {
+                    patchObj.ef_valor_sinal = null; patchObj.ef_juros_percent = null;
+                    patchObj.ef_qtd_parcelas = null; patchObj.venda_data_primeira_parcela = null;
+                }
+                try { await patch(patchObj); } catch (e) { showToast(e.message, 'error'); rebuildBody(); }
             };
             const onKey = e => {
                 if (e.key === 'Enter') { e.preventDefault(); save(); }
