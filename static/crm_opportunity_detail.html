@@ -534,9 +534,9 @@
                             page.querySelectorAll('.n-input[data-fieldkey="' + k + '"]').forEach(inp => { inp.value = ''; });
                         });
                     }
-                    // Fórmula dos previstos (entrada/financiamento). recalcPrevistos chama recalcEF dentro.
-                    if (['valor_imovel', 'porcentagem_financiada', 'valor_subsidio', 'valor_fgts', 'comissao_percent'].indexOf(key) !== -1) recalcPrevistos();
-                    if (['valor_imovel_aprovado', 'porcentagem_financiada_aprovada', 'subsidio_aprovado', 'valor_fgts_aprovado'].indexOf(key) !== -1) recalcAprovados();
+                    // Fórmula dos previstos (financiamento <-> % bidirecional; entrada derivada). Passa o campo que mudou.
+                    if (['valor_imovel', 'porcentagem_financiada', 'valor_total_financiamento', 'valor_subsidio', 'valor_fgts', 'comissao_percent'].indexOf(key) !== -1) recalcPrevistos(key);
+                    if (['valor_imovel_aprovado', 'porcentagem_financiada_aprovada', 'financiamento_aprovado', 'subsidio_aprovado', 'valor_fgts_aprovado'].indexOf(key) !== -1) recalcAprovados(key);
                     if (['valor_entrada', 'ef_valor_sinal', 'ef_juros_percent', 'ef_qtd_parcelas', 'venda_forma_entrada'].indexOf(key) !== -1) recalcEF();
                 };
                 el.addEventListener('input', buffer);
@@ -831,7 +831,7 @@
                     fld('valor_imovel', 'Valor do imóvel previsto', fmtMoney(opp.valor_imovel), 'money') +
                     calcField('Entrada prevista', 'entrada') +
                     fld('valor_subsidio', 'Subsídio previsto', fmtMoney(opp.valor_subsidio), 'money') +
-                    calcField('Financiamento previsto', 'financiamento') +
+                    fld('valor_total_financiamento', 'Financiamento previsto', fmtMoney(opp.valor_total_financiamento), 'money') +
                     fld('porcentagem_financiada', 'Porcentagem financiada (%)', opp.porcentagem_financiada != null ? opp.porcentagem_financiada + '%' : null, 'decimal') +
                     fld('modalidade_amortizacao', 'Modalidade', opp.modalidade_amortizacao, 'select', { options: MODALIDADE_OPTS }) +
                     fld('renda_mensal', 'Renda', fmtMoney(opp.renda_mensal), 'money') +
@@ -887,36 +887,71 @@
         // porcentagem financiada, subsídio e FGTS. valor_total_financiamento / valor_entrada
         // são DERIVADOS (não editáveis à mão) — grava em opp e espelha nos spans [data-calc]
         // dos cards 6 e 7. Fonte da verdade = opp (buffer no modo novo; PATCH no detalhe).
-        function recalcPrevistos() {
+        // Financiamento <-> % é BIDIRECIONAL (precisa do imóvel):
+        //  - trigger '%' (ou mudança do imóvel) -> % é o driver:            financiamento = imóvel × %
+        //  - trigger 'valor_total_financiamento' -> financiamento é o driver: % = financiamento / imóvel × 100
+        //  - load / subsídio / FGTS              -> não redireciona; só deriva o que faltar (evita drift no valor digitado)
+        // Entrada = (imóvel − financiamento) − subsídio − FGTS (sempre derivada). Fonte da verdade = opp.
+        function recalcPrevistos(trigger) {
             const _n = v => { if (v === '' || v == null) return null; const x = Number(v); return isNaN(x) ? null : x; };
-            const imovel = _n(opp.valor_imovel), pct = _n(opp.porcentagem_financiada), sub = _n(opp.valor_subsidio), fgts = _n(opp.valor_fgts);
-            // Financiamento/entrada só quando há imóvel E %; senão PRESERVA opp (legado com valores manuais NÃO é zerado).
-            if (imovel != null && pct != null) {
-                opp.valor_total_financiamento = imovel * (pct / 100);
-                opp.valor_entrada = Math.max(0, (imovel - opp.valor_total_financiamento) - (sub || 0) - (fgts || 0));
-            }
-            // Comissão = valor do imóvel × comissão% (padrão 5% quando em branco). Só depende do imóvel.
-            if (imovel != null) {
+            const r2 = x => Math.round(x * 100) / 100;
+            const imovel = _n(opp.valor_imovel), sub = _n(opp.valor_subsidio), fgts = _n(opp.valor_fgts);
+            let pct = _n(opp.porcentagem_financiada), fin = _n(opp.valor_total_financiamento);
+            if (imovel != null && imovel !== 0) {
+                if (trigger === 'valor_total_financiamento') {
+                    if (fin != null) { pct = r2((fin / imovel) * 100); opp.porcentagem_financiada = pct; }
+                } else if (trigger === 'porcentagem_financiada' || trigger === 'valor_imovel') {
+                    if (pct != null) { fin = r2(imovel * (pct / 100)); opp.valor_total_financiamento = fin; }
+                    else if (fin != null) { pct = r2((fin / imovel) * 100); opp.porcentagem_financiada = pct; }
+                } else {
+                    if (fin == null && pct != null) { fin = r2(imovel * (pct / 100)); opp.valor_total_financiamento = fin; }
+                    else if (pct == null && fin != null) { pct = r2((fin / imovel) * 100); opp.porcentagem_financiada = pct; }
+                }
+                if (fin != null) opp.valor_entrada = Math.max(0, (imovel - fin) - (sub || 0) - (fgts || 0));
+                // Comissão = valor do imóvel × comissão% (padrão 5% quando em branco).
                 const cpct = (opp.comissao_percent == null || opp.comissao_percent === '') ? 5 : Number(opp.comissao_percent);
                 opp.comissao_total = imovel * ((isNaN(cpct) ? 5 : cpct) / 100);
             }
-            document.querySelectorAll('[data-calc="financiamento"]').forEach(el => el.textContent = opp.valor_total_financiamento != null ? fmtMoney(opp.valor_total_financiamento) : '—');
             document.querySelectorAll('[data-calc="entrada"]').forEach(el => el.textContent = opp.valor_entrada != null ? fmtMoney(opp.valor_entrada) : '—');
             document.querySelectorAll('[data-calc="comissao"]').forEach(el => el.textContent = opp.comissao_total != null ? fmtMoney(opp.comissao_total) : '—');
+            document.querySelectorAll('[data-calc="financiamento"]').forEach(el => el.textContent = opp.valor_total_financiamento != null ? fmtMoney(opp.valor_total_financiamento) : '—');
+            syncCalcInput('valor_total_financiamento', opp.valor_total_financiamento, 'money', trigger);
+            syncCalcInput('porcentagem_financiada', opp.porcentagem_financiada, 'decimal', trigger);
             if (typeof recalcEF === 'function') recalcEF();   // card 7 usa valor_entrada
         }
 
-        // Card 8 (Valores Aprovados/Caixa): MESMA lógica do card 6, com inputs "aprovado" próprios.
-        function recalcAprovados() {
+        // Modo NOVO: escreve o valor calculado de volta no input correspondente, exceto o que está
+        // sendo digitado (trigger) ou focado — para não atrapalhar a digitação/caret do usuário.
+        function syncCalcInput(key, value, type, trigger) {
+            if (key === trigger) return;
+            document.querySelectorAll('.n-input[data-fieldkey="' + key + '"]').forEach(el => {
+                if (el === document.activeElement) return;
+                el.value = (value == null) ? '' : (type === 'money' ? numToBr(value) : value);
+            });
+        }
+
+        // Card 5 (Valores Aprovados/Caixa): MESMA lógica bidirecional do card 4, com campos "aprovado".
+        function recalcAprovados(trigger) {
             const _n = v => { if (v === '' || v == null) return null; const x = Number(v); return isNaN(x) ? null : x; };
-            const imovel = _n(opp.valor_imovel_aprovado), pct = _n(opp.porcentagem_financiada_aprovada), sub = _n(opp.subsidio_aprovado), fgts = _n(opp.valor_fgts_aprovado);
-            // Só recalcula com imóvel aprovado E %; senão PRESERVA opp (legado não é zerado).
-            if (imovel != null && pct != null) {
-                opp.financiamento_aprovado = imovel * (pct / 100);
-                opp.entrada_aprovada = Math.max(0, (imovel - opp.financiamento_aprovado) - (sub || 0) - (fgts || 0));
+            const r2 = x => Math.round(x * 100) / 100;
+            const imovel = _n(opp.valor_imovel_aprovado), sub = _n(opp.subsidio_aprovado), fgts = _n(opp.valor_fgts_aprovado);
+            let pct = _n(opp.porcentagem_financiada_aprovada), fin = _n(opp.financiamento_aprovado);
+            if (imovel != null && imovel !== 0) {
+                if (trigger === 'financiamento_aprovado') {
+                    if (fin != null) { pct = r2((fin / imovel) * 100); opp.porcentagem_financiada_aprovada = pct; }
+                } else if (trigger === 'porcentagem_financiada_aprovada' || trigger === 'valor_imovel_aprovado') {
+                    if (pct != null) { fin = r2(imovel * (pct / 100)); opp.financiamento_aprovado = fin; }
+                    else if (fin != null) { pct = r2((fin / imovel) * 100); opp.porcentagem_financiada_aprovada = pct; }
+                } else {
+                    if (fin == null && pct != null) { fin = r2(imovel * (pct / 100)); opp.financiamento_aprovado = fin; }
+                    else if (pct == null && fin != null) { pct = r2((fin / imovel) * 100); opp.porcentagem_financiada_aprovada = pct; }
+                }
+                if (fin != null) opp.entrada_aprovada = Math.max(0, (imovel - fin) - (sub || 0) - (fgts || 0));
             }
-            document.querySelectorAll('[data-calc="financiamento_aprovado"]').forEach(el => el.textContent = opp.financiamento_aprovado != null ? fmtMoney(opp.financiamento_aprovado) : '—');
             document.querySelectorAll('[data-calc="entrada_aprovada"]').forEach(el => el.textContent = opp.entrada_aprovada != null ? fmtMoney(opp.entrada_aprovada) : '—');
+            document.querySelectorAll('[data-calc="financiamento_aprovado"]').forEach(el => el.textContent = opp.financiamento_aprovado != null ? fmtMoney(opp.financiamento_aprovado) : '—');
+            syncCalcInput('financiamento_aprovado', opp.financiamento_aprovado, 'money', trigger);
+            syncCalcInput('porcentagem_financiada_aprovada', opp.porcentagem_financiada_aprovada, 'decimal', trigger);
         }
 
         // Classe do badge de status da entrada (pendente = laranja, parcial = azul, quitado = verde).
@@ -967,7 +1002,7 @@
                     fld('valor_imovel_aprovado', 'Valor do imóvel aprovado', fmtMoney(opp.valor_imovel_aprovado), 'money') +
                     calcField('Entrada aprovada', 'entrada_aprovada') +
                     fld('subsidio_aprovado', 'Subsídio aprovado', fmtMoney(opp.subsidio_aprovado), 'money') +
-                    calcField('Financiamento aprovado', 'financiamento_aprovado') +
+                    fld('financiamento_aprovado', 'Financiamento aprovado', fmtMoney(opp.financiamento_aprovado), 'money') +
                     fld('porcentagem_financiada_aprovada', 'Porcentagem financiada (%)', opp.porcentagem_financiada_aprovada != null ? opp.porcentagem_financiada_aprovada + '%' : null, 'decimal') +
                     fld('modalidade_aprovada', 'Modalidade', opp.modalidade_aprovada, 'select', { options: MODALIDADE_OPTS }) +
                     fld('renda_aprovada', 'Renda aprovada', fmtMoney(opp.renda_aprovada), 'money') +
@@ -1613,38 +1648,47 @@
                     patchObj.ef_valor_sinal = null; patchObj.ef_juros_percent = null;
                     patchObj.ef_qtd_parcelas = null; patchObj.venda_data_primeira_parcela = null;
                 }
-                // valor_entrada / valor_total_financiamento são DERIVADOS: ao editar uma parcela
-                // da fórmula, recalcula (novo valor + opp atual) e persiste os dois no mesmo PATCH.
-                if (['valor_imovel', 'porcentagem_financiada', 'valor_subsidio', 'valor_fgts', 'comissao_percent'].indexOf(key) !== -1) {
+                // Financiamento <-> % é BIDIRECIONAL (ver recalcPrevistos): editar a % calcula o
+                // financiamento; editar o financiamento calcula a %. Grava só em patchObj (opp aplicado
+                // no sucesso). Sem valor do imóvel NÃO toca em fin/%/entrada (preserva dado legado).
+                if (['valor_imovel', 'porcentagem_financiada', 'valor_total_financiamento', 'valor_subsidio', 'valor_fgts', 'comissao_percent'].indexOf(key) !== -1) {
                     const _pn = v => { if (v === '' || v == null) return null; const x = Number(v); return isNaN(x) ? null : x; };
-                    const _imovel = _pn(key === 'valor_imovel' ? newVal : opp.valor_imovel);
-                    const _pct = _pn(key === 'porcentagem_financiada' ? newVal : opp.porcentagem_financiada);
+                    const _r2 = x => Math.round(x * 100) / 100;
+                    const _im = _pn(key === 'valor_imovel' ? newVal : opp.valor_imovel);
+                    let _pct = _pn(key === 'porcentagem_financiada' ? newVal : opp.porcentagem_financiada);
+                    let _fin = _pn(key === 'valor_total_financiamento' ? newVal : opp.valor_total_financiamento);
                     const _sub = _pn(key === 'valor_subsidio' ? newVal : opp.valor_subsidio);
                     const _fgts = _pn(key === 'valor_fgts' ? newVal : opp.valor_fgts);
-                    // Financiamento/entrada só quando há imóvel E %; senão PRESERVA o legado (não manda null no PATCH).
-                    if (_imovel != null && _pct != null) {
-                        const _fin = _imovel * (_pct / 100);
-                        patchObj.valor_total_financiamento = _fin;
-                        patchObj.valor_entrada = Math.max(0, (_imovel - _fin) - (_sub || 0) - (_fgts || 0));
-                    }
-                    // Comissão só quando há imóvel (% padrão 5).
-                    if (_imovel != null) {
+                    if (_im != null && _im !== 0) {
+                        if (key === 'valor_total_financiamento') {
+                            if (_fin != null) { _pct = _r2((_fin / _im) * 100); patchObj.porcentagem_financiada = _pct; }
+                        } else if (key === 'porcentagem_financiada' || key === 'valor_imovel') {
+                            if (_pct != null) { _fin = _r2(_im * (_pct / 100)); patchObj.valor_total_financiamento = _fin; }
+                            else if (_fin != null) { _pct = _r2((_fin / _im) * 100); patchObj.porcentagem_financiada = _pct; }
+                        }
+                        if (_fin != null) patchObj.valor_entrada = Math.max(0, (_im - _fin) - (_sub || 0) - (_fgts || 0));
                         const _cpctRaw = (key === 'comissao_percent' ? newVal : opp.comissao_percent);
                         const _cpct = (_cpctRaw == null || _cpctRaw === '') ? 5 : Number(_cpctRaw);
-                        patchObj.comissao_total = _imovel * ((isNaN(_cpct) ? 5 : _cpct) / 100);
+                        patchObj.comissao_total = _im * ((isNaN(_cpct) ? 5 : _cpct) / 100);
                     }
                 }
-                // Card 8: entrada_aprovada / financiamento_aprovado também são DERIVADOS (mesma lógica; preserva legado).
-                if (['valor_imovel_aprovado', 'porcentagem_financiada_aprovada', 'subsidio_aprovado', 'valor_fgts_aprovado'].indexOf(key) !== -1) {
+                // Card 5: financiamento_aprovado <-> % também bidirecional (mesma lógica; preserva legado sem imóvel).
+                if (['valor_imovel_aprovado', 'porcentagem_financiada_aprovada', 'financiamento_aprovado', 'subsidio_aprovado', 'valor_fgts_aprovado'].indexOf(key) !== -1) {
                     const _pn = v => { if (v === '' || v == null) return null; const x = Number(v); return isNaN(x) ? null : x; };
+                    const _r2 = x => Math.round(x * 100) / 100;
                     const _im = _pn(key === 'valor_imovel_aprovado' ? newVal : opp.valor_imovel_aprovado);
-                    const _pc = _pn(key === 'porcentagem_financiada_aprovada' ? newVal : opp.porcentagem_financiada_aprovada);
+                    let _pc = _pn(key === 'porcentagem_financiada_aprovada' ? newVal : opp.porcentagem_financiada_aprovada);
+                    let _finA = _pn(key === 'financiamento_aprovado' ? newVal : opp.financiamento_aprovado);
                     const _sb = _pn(key === 'subsidio_aprovado' ? newVal : opp.subsidio_aprovado);
                     const _fg = _pn(key === 'valor_fgts_aprovado' ? newVal : opp.valor_fgts_aprovado);
-                    if (_im != null && _pc != null) {
-                        const _finA = _im * (_pc / 100);
-                        patchObj.financiamento_aprovado = _finA;
-                        patchObj.entrada_aprovada = Math.max(0, (_im - _finA) - (_sb || 0) - (_fg || 0));
+                    if (_im != null && _im !== 0) {
+                        if (key === 'financiamento_aprovado') {
+                            if (_finA != null) { _pc = _r2((_finA / _im) * 100); patchObj.porcentagem_financiada_aprovada = _pc; }
+                        } else if (key === 'porcentagem_financiada_aprovada' || key === 'valor_imovel_aprovado') {
+                            if (_pc != null) { _finA = _r2(_im * (_pc / 100)); patchObj.financiamento_aprovado = _finA; }
+                            else if (_finA != null) { _pc = _r2((_finA / _im) * 100); patchObj.porcentagem_financiada_aprovada = _pc; }
+                        }
+                        if (_finA != null) patchObj.entrada_aprovada = Math.max(0, (_im - _finA) - (_sb || 0) - (_fg || 0));
                     }
                 }
                 try { await patch(patchObj); } catch (e) { showToast(e.message, 'error'); rebuildBody(); }
