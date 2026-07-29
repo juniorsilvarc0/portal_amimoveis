@@ -14,12 +14,19 @@
             margin-bottom: 16px;
             flex-wrap: wrap;
         }
-        .kanban-toolbar select {
+        .kanban-toolbar select,
+        .kanban-toolbar input[type="text"] {
             padding: 8px 12px;
             border: 1px solid #d1d5db;
             border-radius: 6px;
             font-size: 14px;
             font-family: inherit;
+        }
+        .kanban-toolbar .toolbar-sep {
+            width: 1px;
+            align-self: stretch;
+            background: #e5e7eb;
+            margin: 0 4px;
         }
         .kanban-board {
             display: flex;
@@ -147,6 +154,13 @@
                 <div class="kanban-toolbar">
                     <label for="pipelineSelect" style="font-size:13px;font-weight:600;">Pipeline:</label>
                     <select id="pipelineSelect"></select>
+                    <span class="toolbar-sep" aria-hidden="true"></span>
+                    <label for="filtroCliente" style="font-size:13px;font-weight:600;">Cliente:</label>
+                    <input type="text" id="filtroCliente" placeholder="Buscar cliente…" autocomplete="off">
+                    <label for="filtroCCA" style="font-size:13px;font-weight:600;">CCA:</label>
+                    <select id="filtroCCA"></select>
+                    <label for="filtroEmp" style="font-size:13px;font-weight:600;">Empreendimento:</label>
+                    <select id="filtroEmp"></select>
                 </div>
                 <div class="kanban-board" id="kanbanBoard"></div>
             </main>
@@ -168,6 +182,11 @@
         const fmt = v => 'R$ ' + (Number(v) || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         const select = document.getElementById('pipelineSelect');
         const board = document.getElementById('kanbanBoard');
+        const filtroCliente = document.getElementById('filtroCliente');
+        const filtroCCA = document.getElementById('filtroCCA');
+        const filtroEmp = document.getElementById('filtroEmp');
+        // Valor de "empreendimento" da opp (fallback p/ imóvel), usado no card e no filtro
+        const oppEmp = opp => opp.empreendimento_nome || opp.imovel_nome || '';
 
         // Carregar pipelines
         try {
@@ -181,6 +200,9 @@
         }
 
         select.addEventListener('change', renderKanban);
+        filtroCliente.addEventListener('input', applyFilters);
+        filtroCCA.addEventListener('change', applyFilters);
+        filtroEmp.addEventListener('change', applyFilters);
         attachPanScroll(board);
         await renderKanban();
 
@@ -250,6 +272,7 @@
             board.innerHTML = '<p style="color:#8896a6;padding:20px;">Carregando…</p>';
             try {
                 const data = await api.get('/crm/opportunities/kanban?pipeline_id=' + pid);
+                populateFiltros(data);   // repopula selects de CCA/Empreendimento + reseta filtros
                 board.innerHTML = '';
                 (data.columns || []).forEach(col => {
                     const st = col.stage;
@@ -275,11 +298,18 @@
                             card.draggable = true;
                             card.dataset.oppId = opp.id;
                             card.dataset.valor = opp.valor || 0;
+                            // Chaves usadas pelos filtros client-side
+                            card.dataset.cliente = opp.cliente_nome || '';
+                            card.dataset.cca = opp.correspondente_nome || '';
+                            card.dataset.emp = oppEmp(opp);
+                            card.dataset.nome = opp.nome || '';
+                            const empNome = oppEmp(opp);
                             card.innerHTML =
                                 '<div class="kanban-card-name">' + _esc(opp.nome) + '</div>' +
                                 '<div class="kanban-card-meta">' +
                                     (opp.cliente_nome ? '<span>👤 ' + _esc(opp.cliente_nome) + '</span>' : '') +
-                                    (opp.imovel_nome ? '<span>🏠 ' + _esc(opp.imovel_nome) + '</span>' : '') +
+                                    (empNome ? '<span>🏠 ' + _esc(empNome) + '</span>' : '') +
+                                    (opp.correspondente_nome ? '<span>🏦 ' + _esc(opp.correspondente_nome) + '</span>' : '') +
                                     (opp.data_previsao ? '<span>📅 ' + _esc(opp.data_previsao) + '</span>' : '') +
                                 '</div>' +
                                 (opp.valor ? '<div class="kanban-card-valor">' + fmt(opp.valor) + '</div>' : '');
@@ -294,6 +324,7 @@
                 if (board.children.length === 0) {
                     board.innerHTML = '<p style="color:#8896a6;padding:20px;">Pipeline sem stages.</p>';
                 }
+                applyFilters();   // aplica filtros ativos (ou mostra tudo, se resetados)
             } catch (e) {
                 board.innerHTML = '<p style="color:#ef4444;padding:20px;">Erro ao carregar oportunidades: ' + e.message + '</p>';
             }
@@ -345,24 +376,86 @@
             });
         }
 
-        // Recalcula contador + total (R$ · %) de uma coluna a partir dos cards nela,
-        // e alterna o placeholder "Vazio". Evita refetch do board inteiro.
+        // Recalcula contador + total (R$ · %) de uma coluna a partir dos cards VISÍVEIS
+        // (respeita os filtros ativos) e alterna o placeholder "Vazio". Evita refetch.
         function refreshColumnStats(colEl) {
             const cardsEl = colEl.querySelector('.kanban-cards');
-            const cards = cardsEl.querySelectorAll('.kanban-card');
+            const visible = Array.prototype.filter.call(
+                cardsEl.querySelectorAll('.kanban-card'),
+                c => c.style.display !== 'none'
+            );
             let total = 0;
-            cards.forEach(c => { total += Number(c.dataset.valor) || 0; });
+            visible.forEach(c => { total += Number(c.dataset.valor) || 0; });
             const countEl = colEl.querySelector('.kanban-col-count');
-            if (countEl) countEl.textContent = cards.length;
+            if (countEl) countEl.textContent = visible.length;
             const totalEl = colEl.querySelector('.kanban-col-total');
             if (totalEl) totalEl.textContent = fmt(total) + ' · ' + (colEl.dataset.prob || 0) + '%';
             const empty = cardsEl.querySelector('.empty-col');
-            if (cards.length === 0 && !empty) {
+            if (visible.length === 0 && !empty) {
                 cardsEl.appendChild(Object.assign(document.createElement('div'),
                     { className: 'empty-col', textContent: 'Vazio' }));
-            } else if (cards.length > 0 && empty) {
+            } else if (visible.length > 0 && empty) {
                 empty.remove();
             }
+        }
+
+        // ---- Filtros client-side (Cliente / CCA / Empreendimento) ----
+        // Junta todas as opps carregadas, extrai valores distintos e repopula os
+        // selects de CCA e Empreendimento; reseta o campo de busca de cliente.
+        function populateFiltros(data) {
+            const allOpps = (data.columns || []).reduce(
+                (acc, c) => acc.concat(c.opportunities || []), []);
+            populateFilterSelect(filtroCCA, distinct(allOpps.map(o => o.correspondente_nome)));
+            populateFilterSelect(filtroEmp, distinct(allOpps.map(o => oppEmp(o))));
+            filtroCliente.value = '';
+        }
+
+        function distinct(arr) {
+            const seen = {};
+            const out = [];
+            arr.forEach(v => {
+                const s = (v == null ? '' : String(v)).trim();
+                if (s && !seen[s]) { seen[s] = true; out.push(s); }
+            });
+            return out.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+        }
+
+        // Cria as <option> via DOM (value = textContent) — sem risco de aspas quebrarem attr
+        function populateFilterSelect(sel, values) {
+            sel.innerHTML = '';
+            const optAll = document.createElement('option');
+            optAll.value = '';
+            optAll.textContent = 'Todos';
+            sel.appendChild(optAll);
+            values.forEach(v => {
+                const o = document.createElement('option');
+                o.value = v;
+                o.textContent = v;
+                sel.appendChild(o);
+            });
+        }
+
+        // Mostra/esconde cards conforme os 3 filtros (E lógico); vazios/"Todos" não restringem.
+        // Depois recalcula contador/total de cada coluna para refletir o visível.
+        function applyFilters() {
+            const cli = filtroCliente.value.trim().toLowerCase();
+            const cca = filtroCCA.value;   // '' = Todos (match exato)
+            const emp = filtroEmp.value;   // '' = Todos (match exato)
+            const cols = board.querySelectorAll('.kanban-column');
+            Array.prototype.forEach.call(cols, colEl => {
+                const cards = colEl.querySelectorAll('.kanban-card');
+                Array.prototype.forEach.call(cards, card => {
+                    let ok = true;
+                    if (cli) {
+                        const hay = ((card.dataset.cliente || '') + ' ' + (card.dataset.nome || '')).toLowerCase();
+                        if (hay.indexOf(cli) === -1) ok = false;
+                    }
+                    if (ok && cca && (card.dataset.cca || '') !== cca) ok = false;
+                    if (ok && emp && (card.dataset.emp || '') !== emp) ok = false;
+                    card.style.display = ok ? '' : 'none';
+                });
+                refreshColumnStats(colEl);
+            });
         }
 
         function _esc(s) {
