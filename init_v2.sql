@@ -917,3 +917,31 @@ DO $$ BEGIN
     ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS ef_valor_sinal NUMERIC(15,2);   -- parte da entrada paga à vista
     ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS ef_juros_percent NUMERIC(5,2);   -- % de juros sobre o restante parcelado
 EXCEPTION WHEN others THEN NULL; END $$;
+
+-- ============================================================================
+-- Oportunidade organizada: PREVISTO → APROVADO → REALIZADO + Base p/ contrato
+-- ============================================================================
+-- Bloco 6 (Valores Previstos) e 7 (Controle de Entrada) reusam colunas já
+-- existentes. Abaixo, os dados NOVOS: o que a Caixa APROVOU, o que já foi
+-- REALIZADO/pago, o status da entrada, e o bloco Terreno/Base para contrato.
+-- Diferença/Falta/Total pago são CALCULADOS na etapa seguinte (não persistidos).
+DO $$ BEGIN
+    -- Aprovado pela Caixa
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS entrada_aprovada NUMERIC(15,2);
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS subsidio_aprovado NUMERIC(15,2);
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS financiamento_aprovado NUMERIC(15,2);
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS status_bancario TEXT;              -- Aprovado|Pendente|Em análise|Reprovado
+    -- Realizado / pago (liberado/recebido)
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS entrada_paga NUMERIC(15,2);         -- total pago da entrada
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS financiamento_liberado NUMERIC(15,2);
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS comissao_recebida NUMERIC(15,2);
+    -- Controle de entrada
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS entrada_status TEXT;                -- pendente|parcial|quitado
+    -- Base para gerar contrato (proposta do correspondente) + Terreno
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS valor_financiamento_negociado NUMERIC(15,2);
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS subsidio_complemento NUMERIC(15,2);
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS valor_operacao NUMERIC(15,2);
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS terreno_valor_compra_venda NUMERIC(15,2);
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS terreno_valor_avaliacao NUMERIC(15,2);
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS terreno_valor_financiamento NUMERIC(15,2);
+EXCEPTION WHEN others THEN NULL; END $$;
