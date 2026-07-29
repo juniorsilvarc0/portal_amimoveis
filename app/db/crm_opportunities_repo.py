@@ -122,6 +122,16 @@ _CAMPOS = [
     # Card 7: Entrada Facilitada (complemento)
     "ef_construtora", "ef_qtd_parcelas", "ef_valor_parcela", "ef_valor_total", "ef_observacao",
     "ef_tipo_pagamento", "condicao_entrada", "ef_valor_sinal", "ef_juros_percent",
+    "entrada_paga", "entrada_status",
+    # Valores APROVADOS pela Caixa (card 8) + status bancário
+    "entrada_aprovada", "subsidio_aprovado", "financiamento_aprovado", "status_bancario",
+    "valor_imovel_aprovado", "porcentagem_financiada_aprovada", "valor_fgts_aprovado", "modalidade_aprovada", "renda_aprovada",
+    # REALIZADO / liberado / recebido
+    "financiamento_liberado", "comissao_recebida",
+    # Base p/ gerar contrato (proposta do correspondente) + Terreno
+    "valor_financiamento_negociado", "subsidio_complemento", "valor_operacao",
+    "terreno_valor_compra_venda", "terreno_valor_avaliacao", "terreno_valor_financiamento",
+    "comissao_percent",
     # Card 9: Equipe
     "construtora_nome",
     # Card 12/13: Resumo Financeiro + Contábil
