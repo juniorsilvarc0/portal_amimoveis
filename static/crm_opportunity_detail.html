@@ -117,6 +117,21 @@
         .check-true { color: #16a34a; font-weight: 600; }
         .check-false { color: #cbd5e1; }
 
+        /* Resumo Financeiro (card 12) — tabela comparativa */
+        .rf-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+        .rf-table th { text-align: right; font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px; color: #8896a6; font-weight: 700; padding: 6px 8px; border-bottom: 1px solid #eef2f6; white-space: nowrap; }
+        .rf-table th:first-child { text-align: left; }
+        .rf-table td { padding: 8px; border-bottom: 1px solid #f6f8fa; text-align: right; color: #1a1a2e; font-weight: 500; white-space: nowrap; }
+        .rf-table td.rf-item { text-align: left; font-weight: 600; color: #475569; }
+        .rf-table td.rf-dif { color: #94a3b8; }
+        .rf-table tr:last-child td { border-bottom: none; }
+        .rf-legenda { display: flex; gap: 16px; padding: 10px 2px 2px; font-size: 11px; color: #64748b; flex-wrap: wrap; }
+        .rf-legenda span { display: flex; align-items: center; gap: 5px; }
+        .rf-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+        /* Valor do sinal em VERDE (parte da entrada já dada) */
+        .field[data-key="ef_valor_sinal"] .field-value { color: #16a34a; font-weight: 600; }
+        .field-new .n-input[data-fieldkey="ef_valor_sinal"] { color: #16a34a; font-weight: 600; }
+
         /* Sidebar (4, 5) */
         .opp-sidebar { display: flex; flex-direction: column; gap: 12px; position: sticky; top: 12px; }
         .tl { padding: 6px 14px 12px; }
@@ -261,6 +276,9 @@
         const TIPO_PAG_LABEL = { BOLETO: 'Boleto', PIX: 'Pix', DEBITO: 'Débito', CREDITO: 'Crédito', DINHEIRO: 'Dinheiro' };
         const FORMA_ENTRADA_OPTS = [['avista', 'À vista'], ['parcelado', 'Parcelado']];
         const FORMA_ENTRADA_LABEL = { avista: 'À vista', parcelado: 'Parcelado' };
+        const STATUS_BANCARIO_OPTS = [['Aprovado', 'Aprovado'], ['Em análise', 'Em análise'], ['Pendente', 'Pendente'], ['Reprovado', 'Reprovado']];
+        const STATUS_ENTRADA_OPTS = [['pendente', 'Pendente'], ['parcial', 'Parcial'], ['quitado', 'Quitado']];
+        const STATUS_ENTRADA_LABEL = { pendente: 'Pendente', parcial: 'Parcial', quitado: 'Quitado' };
         function correspondenteOpts() { return (LK.correspondentes || []).map(c => [c.id, c.nome]); }
 
         // Constantes de Documentos — declaradas ANTES de render() (evita TDZ:
@@ -287,6 +305,7 @@
             if (LK.correspondentes === null) {
                 try { LK.correspondentes = await api.get('/lookup/correspondentes'); } catch (e) { LK.correspondentes = []; }
             }
+            recalcPrevistos(); recalcAprovados();  // calcula previstos e aprovados em opp ANTES do corpo (tabela Resumo usa)
             document.getElementById('page').innerHTML = renderHead() + renderBody();
             attachHeadHandlers();
             attachBodyHandlers();
@@ -313,6 +332,7 @@
 
             const qcli = new URLSearchParams(location.search).get('cliente_id');
             if (qcli && !opp.cliente_id) opp.cliente_id = parseInt(qcli, 10);
+            if (opp.comissao_percent == null) opp.comissao_percent = 5;   // comissão padrão 5%
             if (!opp.pipeline_id) { const def = LK.pipelines.find(p => p.is_default) || LK.pipelines[0]; if (def) opp.pipeline_id = def.id; }
             await carregarStagesNovo();
             if (opp.cliente_id) { const c = LK.clientes.find(x => x.id === opp.cliente_id); if (c && !opp.nome) opp.nome = 'Negociação ' + c.nome; }
@@ -350,10 +370,10 @@
             return '<div style="padding:4px 0 24px;">' +
                 secaoNovo('Dados da oportunidade', funil) +
                 '<div class="vg-grid vg-3">' + novoCard1Cliente() + novoCard2Imovel() + card3Venda() + '</div>' +
-                '<div class="vg-grid">' + card6Simulacao() + '</div>' +
-                '<div class="vg-grid vg-2">' + card7EntradaFacilitada() + card8SimulacaoBanco() + '</div>' +
-                '<div class="vg-grid vg-2">' + novoCard9Equipe() + card12ResumoFinanceiro() + '</div>' +
-                '<div class="vg-grid">' + novoCard13Contabil() + '</div>' +
+                '<div class="vg-grid vg-2">' + card6Simulacao() + card8SimulacaoBanco() + '</div>' +
+                '<div class="vg-grid">' + card7EntradaFacilitada() + '</div>' +
+                '<div class="vg-grid">' + cardBaseContrato() + '</div>' +
+                '<div class="vg-grid vg-2">' + novoCard9Equipe() + novoCard13Contabil() + '</div>' +
                 novoBar() +
             '</div>';
         }
@@ -414,12 +434,12 @@
 
         // Card 13 (novo): só os campos de dados (anexos/relatório exigem opp salva).
         function novoCard13Contabil() {
-            return cardHead(13, '🧾', 'Documentação Contábil / Fechamento') +
+            return cardHead(11, '🧾', 'Documentação Contábil / Fechamento') +
                 '<div class="vgcard-body two">' +
                     fld('contabil_mes_fechamento', 'Mês de fechamento', null, 'text') +
                     fld('contabil_data_fechamento', 'Data de fechamento', null, 'date') +
                     fld('comissao_forma_recebimento', 'Forma de recebimento', null, 'text') +
-                    fld('comissao_total', 'Valor da comissão – Total', null, 'money') +
+                    calcField('Valor da comissão – Total', 'comissao') +
                 '</div></div>';
         }
 
@@ -478,6 +498,8 @@
                         opp.valor_imovel = u.valor;
                         document.querySelectorAll('[data-fieldkey="valor_imovel"]').forEach(el => { el.value = numToBr(u.valor); });
                         const vg = document.querySelector('[data-fieldkey="valor"]'); if (vg && !vg.value) { opp.valor = u.valor; vg.value = numToBr(u.valor); }
+                        // Derivados (financiamento/entrada/comissão) precisam recalcular p/ irem no POST do modo novo.
+                        if (typeof recalcPrevistos === 'function') recalcPrevistos();
                     }
                 }
             })();
@@ -512,6 +534,9 @@
                             page.querySelectorAll('.n-input[data-fieldkey="' + k + '"]').forEach(inp => { inp.value = ''; });
                         });
                     }
+                    // Fórmula dos previstos (entrada/financiamento). recalcPrevistos chama recalcEF dentro.
+                    if (['valor_imovel', 'porcentagem_financiada', 'valor_subsidio', 'valor_fgts', 'comissao_percent'].indexOf(key) !== -1) recalcPrevistos();
+                    if (['valor_imovel_aprovado', 'porcentagem_financiada_aprovada', 'subsidio_aprovado', 'valor_fgts_aprovado'].indexOf(key) !== -1) recalcAprovados();
                     if (['valor_entrada', 'ef_valor_sinal', 'ef_juros_percent', 'ef_qtd_parcelas', 'venda_forma_entrada'].indexOf(key) !== -1) recalcEF();
                 };
                 el.addEventListener('input', buffer);
@@ -546,6 +571,7 @@
             // wire da própria unidade (buffer + autofill) — feito via re-render abaixo
             wireUnidadeChange();
             recalcEF();  // estado inicial da seção "parcelado" + campos calculados
+            recalcPrevistos(); recalcAprovados();  // preenche previstos e aprovados a partir do rascunho (opp)
         }
 
         function wireUnidadeChange() {
@@ -713,16 +739,17 @@
         function renderBody() {
             const hasRail = activeTab === 'visao';
             return '<div class="opp-body ' + (hasRail ? 'has-rail' : 'no-rail') + '">' +
-                (hasRail ? '<aside class="opp-rail">' + card4Timeline() + card5Alertas() + '</aside>' : '') +
+                (hasRail ? '<aside class="opp-rail">' + card5Alertas() + card11ProximaAcao() + card4Timeline() + '</aside>' : '') +
                 renderTabs() +
                 '<div class="opp-main">' + mainFor(activeTab) + '</div>' +
                 '<div class="opp-full">' + fullFor(activeTab) + '</div>' +
             '</div>';
         }
         function mainFor(tab) {
+            // Fluxo lógico: identificação (1/2/3) → Previsto (6) vs Aprovado/Caixa (8) → Controle de Entrada (7)
             if (tab === 'visao') return '<div class="vg-grid vg-3">' + card1Cliente() + card2Imovel() + card3Venda() + '</div>' +
-                '<div class="vg-grid">' + card6Simulacao() + '</div>' +
-                '<div class="vg-grid vg-2">' + card7EntradaFacilitada() + card8SimulacaoBanco() + '</div>';
+                '<div class="vg-grid vg-2">' + card6Simulacao() + card8SimulacaoBanco() + '</div>' +
+                '<div class="vg-grid">' + card7EntradaFacilitada() + '</div>';
             if (tab === 'atividades') return renderAtividades();
             if (tab === 'documentos') return renderDocumentos();
             if (tab === 'contabil') return renderContabilTab();
@@ -731,7 +758,10 @@
             return '';
         }
         function fullFor(tab) {
-            if (tab === 'visao') return '<div class="vg-grid vg-4">' + card9Equipe() + card10Documentos() + card11ProximaAcao() + card12ResumoFinanceiro() + '</div>' +
+            // Resumo comparativo → Base p/ contrato → equipe/docs/ação → fechamento
+            if (tab === 'visao') return '<div class="vg-grid">' + card12ResumoFinanceiro() + '</div>' +
+                '<div class="vg-grid">' + cardBaseContrato() + '</div>' +
+                '<div class="vg-grid vg-2">' + card9Equipe() + card10Documentos() + '</div>' +
                 '<div class="vg-grid">' + card13Contabil() + '</div>' +
                 renderAutomacoes() + renderLegenda();
             return '';
@@ -779,9 +809,12 @@
         // ---- Card 3: Dados da Venda ----
         // (Forma de pagamento / parcela / 1ª parcela da entrada foram para o card 7.)
         function card3Venda() {
+            const cpct = opp.comissao_percent != null ? opp.comissao_percent : 5;
             return cardOpen(3, '🤝', 'Dados da Venda') +
                 fld('valor_imovel', 'Valor do imóvel', fmtMoney(opp.valor_imovel), 'money') +
-                fld('valor_entrada', 'Valor da entrada', fmtMoney(opp.valor_entrada), 'money') +
+                calcField('Valor da entrada', 'entrada') +
+                fld('comissao_percent', 'Comissão (%)', cpct + '%', 'decimal') +
+                calcField('Comissão (R$)', 'comissao') +
                 fld('data_contrato', 'Data do contrato', fmtDate(opp.data_contrato), 'date') +
                 fld('numero_contrato', 'Número do contrato', opp.numero_contrato, 'text') +
                 cardClose();
@@ -793,19 +826,18 @@
             const badge = sit
                 ? '<span class="hbadge ' + (/aprov|conform/i.test(sit) ? 'doc-assinado' : (/repro/i.test(sit) ? 'doc-pendente' : 'doc-enviado')) + '">' + _esc(SIT_LABEL[sit] || sit) + '</span>'
                 : '';
-            return cardHead(6, '💳', 'Simulação e Financiamento', badge) +
+            return cardHead(4, '📊', 'Valores Previstos', badge) +
                 '<div class="vgcard-body two">' +
-                    fld('valor_simulacao', 'Valor da simulação', fmtMoney(opp.valor_simulacao), 'money') +
-                    fld('renda_mensal', 'Renda', fmtMoney(opp.renda_mensal), 'money') +
-                    fld('valor_entrada', 'Valor de entrada', fmtMoney(opp.valor_entrada), 'money') +
-                    fld('valor_sinal', 'Valor do sinal (financiamento)', fmtMoney(opp.valor_sinal), 'money') +
-                    fld('valor_subsidio', 'Valor do subsídio', fmtMoney(opp.valor_subsidio), 'money') +
-                    fld('valor_total_financiamento', 'Valor do financiamento', fmtMoney(opp.valor_total_financiamento), 'money') +
-                    fld('modalidade_amortizacao', 'Modalidade', opp.modalidade_amortizacao, 'select', { options: MODALIDADE_OPTS }) +
-                    fld('correspondente_id', 'CCA (Correspondente Caixa)', opp.correspondente_nome, 'select', { options: correspondenteOpts(), placeholder: '— Selecione —' }) +
-                    fld('situacao_analise_credito', 'Situação da análise de crédito', SIT_LABEL[sit] || sit, 'select', { options: SITUACAO_OPTS }) +
+                    fld('valor_imovel', 'Valor do imóvel previsto', fmtMoney(opp.valor_imovel), 'money') +
+                    calcField('Entrada prevista', 'entrada') +
+                    fld('valor_subsidio', 'Subsídio previsto', fmtMoney(opp.valor_subsidio), 'money') +
+                    calcField('Financiamento previsto', 'financiamento') +
                     fld('porcentagem_financiada', 'Porcentagem financiada (%)', opp.porcentagem_financiada != null ? opp.porcentagem_financiada + '%' : null, 'decimal') +
+                    fld('modalidade_amortizacao', 'Modalidade', opp.modalidade_amortizacao, 'select', { options: MODALIDADE_OPTS }) +
+                    fld('renda_mensal', 'Renda', fmtMoney(opp.renda_mensal), 'money') +
+                    fld('situacao_analise_credito', 'Situação da análise de crédito', SIT_LABEL[sit] || sit, 'select', { options: SITUACAO_OPTS }) +
                     fld('valor_fgts', 'FGTS', fmtMoney(opp.valor_fgts), 'money') +
+                    fld('correspondente_id', 'CCA (Correspondente Caixa)', opp.correspondente_nome, 'select', { options: correspondenteOpts(), placeholder: '— Selecione —' }) +
                 '</div></div>';
         }
 
@@ -818,38 +850,98 @@
             return '<div class="field"><span class="field-label"' + (labelId ? ' id="' + labelId + '"' : '') + '>' + _esc(label) + '</span>' +
                 '<span class="field-value" id="' + id + '">—</span></div>';
         }
+        // Campo read-only CALCULADO ao vivo: recalcPrevistos() preenche via [data-calc].
+        // (Pode aparecer em +de 1 card com o mesmo `calc` — todos são atualizados juntos.)
+        function calcField(label, calc) { return '<div class="field"><span class="field-label">' + _esc(label) + '</span><span class="field-value" data-calc="' + calc + '">—</span></div>'; }
         // Recalcula (ao vivo) restante / valor a dever / valor da parcela e mostra-esconde
         // a seção "parcelado". Fonte da verdade = opp (buffer no modo novo; PATCH no detalhe).
         function recalcEF() {
+            const _n = v => { if (v === '' || v == null) return null; const x = Number(v); return isNaN(x) ? null : x; };
+            // setM: preenche o span; red=true pinta de VERMELHO quando o valor > 0.
+            const setM = (id, v, red) => { const el = document.getElementById(id); if (!el) return; el.textContent = (v != null ? fmtMoney(v) : '—'); if (red) el.style.color = (v != null && v > 0) ? '#dc2626' : ''; };
+            const entrada = _n(opp.valor_entrada), sinal = _n(opp.ef_valor_sinal), juros = _n(opp.ef_juros_percent);
+            const nparc = parseInt(opp.ef_qtd_parcelas, 10) || 0;
+            // Saldo em aberto (SEMPRE): entrada prevista - sinal já dado. Em VERMELHO quando > 0.
+            let saldo = null;
+            if (entrada != null) saldo = Math.max(0, entrada - (sinal || 0));
+            setM('efSaldoAberto', saldo, true);
+            // Seção "parcelado" (só quando forma = parcelado)
             const box = document.getElementById('efParcelBox');
             if (!box) return;
             const parcelado = isParcelado(opp.venda_forma_entrada);
             box.style.display = parcelado ? '' : 'none';
             if (!parcelado) return;
-            const _n = v => { if (v === '' || v == null) return null; const x = Number(v); return isNaN(x) ? null : x; };
-            const entrada = _n(opp.valor_entrada), sinal = _n(opp.ef_valor_sinal), juros = _n(opp.ef_juros_percent);
-            const nparc = parseInt(opp.ef_qtd_parcelas, 10) || 0;
             let restante = null, aDever = null, vparc = null;
             // Só calcula com a entrada informada; trava em 0 (sinal não pode passar da entrada).
             if (entrada != null) restante = Math.max(0, entrada - (sinal || 0));
             if (restante != null) aDever = restante * (1 + (juros || 0) / 100);
             if (aDever != null && nparc > 0) vparc = aDever / nparc;
-            const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = (v != null ? fmtMoney(v) : '—'); };
-            set('efRestante', restante);
-            set('efADever', aDever);
-            set('efVParc', vparc);
+            setM('efRestante', restante, true);   // vermelho
+            setM('efADever', aDever, true);        // vermelho
+            setM('efVParc', vparc);
             const lbl = document.getElementById('efVParcLabel');
             if (lbl) lbl.textContent = nparc > 0 ? ('Valor da parcela (' + nparc + 'x)') : 'Valor da parcela';
         }
 
+        // Recalcula (ao vivo) financiamento e entrada PREVISTOS a partir de valor do imóvel,
+        // porcentagem financiada, subsídio e FGTS. valor_total_financiamento / valor_entrada
+        // são DERIVADOS (não editáveis à mão) — grava em opp e espelha nos spans [data-calc]
+        // dos cards 6 e 7. Fonte da verdade = opp (buffer no modo novo; PATCH no detalhe).
+        function recalcPrevistos() {
+            const _n = v => { if (v === '' || v == null) return null; const x = Number(v); return isNaN(x) ? null : x; };
+            const imovel = _n(opp.valor_imovel), pct = _n(opp.porcentagem_financiada), sub = _n(opp.valor_subsidio), fgts = _n(opp.valor_fgts);
+            // Financiamento/entrada só quando há imóvel E %; senão PRESERVA opp (legado com valores manuais NÃO é zerado).
+            if (imovel != null && pct != null) {
+                opp.valor_total_financiamento = imovel * (pct / 100);
+                opp.valor_entrada = Math.max(0, (imovel - opp.valor_total_financiamento) - (sub || 0) - (fgts || 0));
+            }
+            // Comissão = valor do imóvel × comissão% (padrão 5% quando em branco). Só depende do imóvel.
+            if (imovel != null) {
+                const cpct = (opp.comissao_percent == null || opp.comissao_percent === '') ? 5 : Number(opp.comissao_percent);
+                opp.comissao_total = imovel * ((isNaN(cpct) ? 5 : cpct) / 100);
+            }
+            document.querySelectorAll('[data-calc="financiamento"]').forEach(el => el.textContent = opp.valor_total_financiamento != null ? fmtMoney(opp.valor_total_financiamento) : '—');
+            document.querySelectorAll('[data-calc="entrada"]').forEach(el => el.textContent = opp.valor_entrada != null ? fmtMoney(opp.valor_entrada) : '—');
+            document.querySelectorAll('[data-calc="comissao"]').forEach(el => el.textContent = opp.comissao_total != null ? fmtMoney(opp.comissao_total) : '—');
+            if (typeof recalcEF === 'function') recalcEF();   // card 7 usa valor_entrada
+        }
+
+        // Card 8 (Valores Aprovados/Caixa): MESMA lógica do card 6, com inputs "aprovado" próprios.
+        function recalcAprovados() {
+            const _n = v => { if (v === '' || v == null) return null; const x = Number(v); return isNaN(x) ? null : x; };
+            const imovel = _n(opp.valor_imovel_aprovado), pct = _n(opp.porcentagem_financiada_aprovada), sub = _n(opp.subsidio_aprovado), fgts = _n(opp.valor_fgts_aprovado);
+            // Só recalcula com imóvel aprovado E %; senão PRESERVA opp (legado não é zerado).
+            if (imovel != null && pct != null) {
+                opp.financiamento_aprovado = imovel * (pct / 100);
+                opp.entrada_aprovada = Math.max(0, (imovel - opp.financiamento_aprovado) - (sub || 0) - (fgts || 0));
+            }
+            document.querySelectorAll('[data-calc="financiamento_aprovado"]').forEach(el => el.textContent = opp.financiamento_aprovado != null ? fmtMoney(opp.financiamento_aprovado) : '—');
+            document.querySelectorAll('[data-calc="entrada_aprovada"]').forEach(el => el.textContent = opp.entrada_aprovada != null ? fmtMoney(opp.entrada_aprovada) : '—');
+        }
+
+        // Classe do badge de status da entrada (pendente = laranja, parcial = azul, quitado = verde).
+        function statusEntradaCls(est) { return est === 'quitado' ? 'doc-assinado' : (est === 'parcial' ? 'doc-concluido' : 'doc-enviado'); }
+        // Status da entrada como BADGE colorido (editável no detalhe; input no modo novo).
+        function fldEntradaStatus() {
+            if (isNew) return fldInput('entrada_status', 'Status da entrada', 'select', { options: STATUS_ENTRADA_OPTS });
+            const est = String(opp.entrada_status || 'pendente').toLowerCase();
+            const badge = '<span class="doc-st ' + statusEntradaCls(est) + '">' + _esc(STATUS_ENTRADA_LABEL[est] || est) + '</span>';
+            return '<div class="field" data-key="entrada_status" data-type="select" data-options="' + _attr(JSON.stringify(STATUS_ENTRADA_OPTS)) + '">' +
+                '<span class="field-label">Status da entrada</span>' +
+                '<span class="field-value">' + badge + '</span>' + editBtn() + '</div>';
+        }
+
         function card7EntradaFacilitada() {
-            const badge = opp.entrada_facilitada ? '<span class="hbadge doc-assinado">SIM</span>' : '<span class="hbadge doc-pendente">NÃO</span>';
+            const est = String(opp.entrada_status || 'pendente').toLowerCase();
+            const badge = '<span class="hbadge ' + statusEntradaCls(est) + '">' + _esc(STATUS_ENTRADA_LABEL[est] || est) + '</span>';
             const parcelado = isParcelado(opp.venda_forma_entrada);
-            return cardHead(7, '📋', 'Entrada Facilitada', badge) +
+            return cardHead(6, '💰', 'Controle de Entrada', badge) +
                 '<div class="vgcard-body two">' +
                     fldBool('entrada_facilitada', 'Entrada facilitada', opp.entrada_facilitada) +
-                    fld('valor_entrada', 'Valor da entrada', fmtMoney(opp.valor_entrada), 'money') +
+                    calcField('Entrada prevista', 'entrada') +
                     fld('venda_forma_entrada', 'Forma de pagamento da entrada', FORMA_ENTRADA_LABEL[String(opp.venda_forma_entrada || '').toLowerCase()] || opp.venda_forma_entrada, 'select', { options: FORMA_ENTRADA_OPTS, placeholder: '— Selecione —' }) +
+                    roCalc('Saldo em aberto', 'efSaldoAberto') +
+                    fldEntradaStatus() +
                 '</div>' +
                 '<div class="vgcard-body two" id="efParcelBox"' + (parcelado ? '' : ' style="display:none;"') + '>' +
                     fld('ef_valor_sinal', 'Valor do sinal (entrada)', fmtMoney(opp.ef_valor_sinal), 'money') +
@@ -866,17 +958,40 @@
             '</div>';
         }
 
-        // ---- Card 8: Simulação Banco (Caixa) ----
+        // ---- Card 8: Valores Aprovados / Caixa ----
         function card8SimulacaoBanco() {
-            return cardHead(8, '🏦', 'Simulação Banco (Caixa)') +
+            const sb = opp.status_bancario;
+            const badge = sb ? '<span class="hbadge ' + (/aprov/i.test(sb) ? 'doc-assinado' : (/repro/i.test(sb) ? 'doc-pendente' : 'doc-enviado')) + '">' + _esc(sb) + '</span>' : '';
+            return cardHead(5, '🏦', 'Valores Aprovados / Caixa', badge) +
                 '<div class="vgcard-body two">' +
-                    fld('banco_financiador', 'Banco financiado', opp.banco_financiador, 'text') +
-                    fld('taxa_juros_anual', 'Taxa de juros (a.a.)', opp.taxa_juros_anual != null ? opp.taxa_juros_anual + '%' : null, 'decimal') +
+                    fld('valor_imovel_aprovado', 'Valor do imóvel aprovado', fmtMoney(opp.valor_imovel_aprovado), 'money') +
+                    calcField('Entrada aprovada', 'entrada_aprovada') +
+                    fld('subsidio_aprovado', 'Subsídio aprovado', fmtMoney(opp.subsidio_aprovado), 'money') +
+                    calcField('Financiamento aprovado', 'financiamento_aprovado') +
+                    fld('porcentagem_financiada_aprovada', 'Porcentagem financiada (%)', opp.porcentagem_financiada_aprovada != null ? opp.porcentagem_financiada_aprovada + '%' : null, 'decimal') +
+                    fld('modalidade_aprovada', 'Modalidade', opp.modalidade_aprovada, 'select', { options: MODALIDADE_OPTS }) +
+                    fld('renda_aprovada', 'Renda aprovada', fmtMoney(opp.renda_aprovada), 'money') +
+                    fld('valor_fgts_aprovado', 'FGTS aprovado', fmtMoney(opp.valor_fgts_aprovado), 'money') +
+                    fld('banco_financiador', 'Banco financiador', opp.banco_financiador, 'text') +
                     fld('tipo_financiamento', 'Tipo de financiamento', opp.tipo_financiamento, 'text') +
-                    fld('valor_total_financiamento', 'Valor do financiamento', fmtMoney(opp.valor_total_financiamento), 'money') +
                     fld('prazo_simulacao_meses', 'Prazo (meses)', opp.prazo_simulacao_meses, 'number') +
                     fld('valor_parcela_banco', 'Valor da parcela', fmtMoney(opp.valor_parcela_banco), 'money') +
+                    fld('taxa_juros_anual', 'Taxa de juros (a.a.)', opp.taxa_juros_anual != null ? opp.taxa_juros_anual + '%' : null, 'decimal') +
+                    fld('status_bancario', 'Status bancário', opp.status_bancario, 'select', { options: STATUS_BANCARIO_OPTS, placeholder: '—' }) +
+                    ro('CCA (Correspondente Caixa)', opp.correspondente_nome) +
                 '</div></div>';
+        }
+
+        // ---- Base para Gerar Contrato (proposta do correspondente + terreno) ----
+        function cardBaseContrato() {
+            return cardHead(8, '', 'Valores do Terreno') +
+                '<div class="vgcard-body two">' +
+                    fld('terreno_valor_compra_venda', 'Valor de compra e venda', fmtMoney(opp.terreno_valor_compra_venda), 'money') +
+                    fld('terreno_valor_avaliacao', 'Valor de avaliação', fmtMoney(opp.terreno_valor_avaliacao), 'money') +
+                    fld('terreno_valor_financiamento', 'Financiamento do terreno', fmtMoney(opp.terreno_valor_financiamento), 'money') +
+                '</div>' +
+                '<div style="padding:8px 14px;font-size:11px;color:#8896a6;border-top:1px solid #f1f5f9;">Esses dados são usados para conferência da proposta e para dar o OK antes de gerar o contrato.</div>' +
+            '</div>';
         }
 
         // ---- Card 9: Equipe e Responsáveis ----
@@ -931,21 +1046,48 @@
                 body = '<div class="next-action"><div class="na-meta">Nenhuma ação pendente. Configure a tarefa automática da etapa em <strong>Pipelines</strong> (ela é criada ao entrar na etapa).</div>' +
                     '<a href="/crm/activities/nova" class="btn btn-ghost btn-sm">+ Nova atividade</a></div>';
             }
-            return cardOpen(11, '⚡', 'Próxima Ação') + body + cardClose();
+            return cardOpen(14, '⚡', 'Próxima Ação') + body + cardClose();
         }
 
-        // ---- Card 12: Resumo Financeiro ----
+        // ---- Card 12: Resumo Financeiro (comparativo Previsto × Aprovado × Realizado) ----
+        // Só leitura: consolida o que já foi digitado nos cards 6/7/8/13. Diferença fica p/ os cálculos.
         function card12ResumoFinanceiro() {
-            return cardOpen(12, '💰', 'Resumo Financeiro') +
-                fld('valor_imovel', 'Valor do imóvel', fmtMoney(opp.valor_imovel), 'money') +
-                fld('valor_entrada', 'Valor da entrada', fmtMoney(opp.valor_entrada), 'money') +
-                fld('valor_total_financiamento', 'Valor do financiamento', fmtMoney(opp.valor_total_financiamento), 'money') +
-                fld('comissao_total', 'Comissão – Total', fmtMoney(opp.comissao_total), 'money') +
-                fld('comissao_recebimento_1', '1º Recebimento (entrada)', fmtMoney(opp.comissao_recebimento_1), 'money') +
-                fld('comissao_restante', 'Restante (a receber)', fmtMoney(opp.comissao_restante), 'money') +
-                fld('comissao_previsao_recebimento', 'Previsão de recebimento', fmtDate(opp.comissao_previsao_recebimento), 'date') +
-                fldStatusComissao() +
-                cardClose();
+            const cell = v => (v == null || v === '') ? '<span class="empty">—</span>' : fmtMoney(v);
+            const _n = v => (v == null || v === '') ? null : Number(v);
+            const money = v => 'R$ ' + Math.abs(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            // Diferença por tipo (se der 0 → "—"):
+            //  'entrada' = Previsto − Aprovado − Realizado (vermelho se > 0)
+            //  'saldo'   = Aprovado − Previsto (verde/+ se > 0 = saldo a favor; vermelho/− se < 0 = devendo) → subsídio e financiamento
+            const difCell = (prev, aprov, real, mode) => {
+                const p = _n(prev), a = _n(aprov), r = _n(real);
+                let val = null, color = '', sign = '';
+                if (mode === 'entrada' && (p != null || a != null || r != null)) {
+                    val = (p || 0) - (a || 0) - (r || 0); if (val > 0) color = '#dc2626';
+                } else if (mode === 'saldo' && (p != null || a != null)) {
+                    val = (a || 0) - (p || 0);
+                    if (val > 0) { color = '#16a34a'; sign = '+'; } else if (val < 0) color = '#dc2626';
+                }
+                if (val != null) val = Math.round(val * 100) / 100;   // arredonda p/ matar resíduo de float (evita "+R$ 0,00" colorido)
+                if (val == null || val === 0) return '<td class="rf-dif">—</td>';
+                const style = color ? ' style="color:' + color + ';font-weight:600;"' : '';
+                return '<td class="rf-dif"' + style + '>' + (val < 0 ? '-' : sign) + money(val) + '</td>';
+            };
+            const dash = '<td class="rf-dif">—</td>';
+            const row = (item, prev, aprov, real, difTd) =>
+                '<tr><td class="rf-item">' + item + '</td><td>' + cell(prev) + '</td><td>' + cell(aprov) + '</td><td>' + cell(real) + '</td>' + difTd + '</tr>';
+            return cardHead(7, '📈', 'Resumo Financeiro') +
+                '<div class="vgcard-body" style="padding:6px 14px 10px;overflow-x:auto;">' +
+                    '<table class="rf-table"><thead><tr><th>Item</th><th>Previsto</th><th>Aprovado</th><th>Realizado</th><th>Diferença</th></tr></thead><tbody>' +
+                        row('Imóvel', opp.valor_imovel, opp.valor_imovel, null, dash) +
+                        row('Entrada', opp.valor_entrada, opp.entrada_aprovada, opp.entrada_paga, difCell(opp.valor_entrada, opp.entrada_aprovada, opp.entrada_paga, 'entrada')) +
+                        row('Subsídio', opp.valor_subsidio, opp.subsidio_aprovado, null, difCell(opp.valor_subsidio, opp.subsidio_aprovado, null, 'saldo')) +
+                        row('Financiamento', opp.valor_total_financiamento, opp.financiamento_aprovado, opp.financiamento_liberado, difCell(opp.valor_total_financiamento, opp.financiamento_aprovado, null, 'saldo')) +
+                        row('Comissão', opp.comissao_total, null, opp.comissao_recebida, dash) +
+                    '</tbody></table>' +
+                    '<div class="rf-legenda"><span><span class="rf-dot" style="background:#22c55e;"></span>Quitado</span>' +
+                        '<span><span class="rf-dot" style="background:#f59e0b;"></span>Pendente</span>' +
+                        '<span><span class="rf-dot" style="background:#ef4444;"></span>Em aberto</span></div>' +
+                '</div></div>';
         }
         function fldStatusComissao() {
             if (isNew) return fldInput('comissao_status', 'Status da comissão', 'text');
@@ -959,14 +1101,17 @@
 
         // ---- Card 13: Documentação Contábil / Fechamento ----
         function card13Contabil() {
-            return cardHead(13, '🧾', 'Documentação Contábil / Fechamento Contábil') +
+            return cardHead(11, '🧾', 'Documentação Contábil / Fechamento Contábil') +
                 '<div class="vgcard-body two">' +
                     fld('contabil_mes_fechamento', 'Mês de fechamento', opp.contabil_mes_fechamento, 'text') +
-                    fld('comissao_total', 'Valor da comissão – Total', fmtMoney(opp.comissao_total), 'money') +
+                    calcField('Comissão – Total', 'comissao') +
                     fld('contabil_data_fechamento', 'Data de fechamento', fmtDate(opp.contabil_data_fechamento), 'date') +
+                    fld('comissao_recebida', 'Comissão – Recebida', fmtMoney(opp.comissao_recebida), 'money') +
                     fld('comissao_forma_recebimento', 'Forma de recebimento', opp.comissao_forma_recebimento, 'text') +
-                    fld('numero_contrato', 'Número do contrato', opp.numero_contrato, 'text') +
+                    fld('comissao_restante', 'Comissão – Restante (a receber)', fmtMoney(opp.comissao_restante), 'money') +
                     fld('comissao_previsao_recebimento', 'Previsão de recebimento', fmtDate(opp.comissao_previsao_recebimento), 'date') +
+                    fldStatusComissao() +
+                    fld('numero_contrato', 'Número do contrato', opp.numero_contrato, 'text') +
                     ro('CPF do cliente', opp.cliente_cpf) +
                     ro('Nome do cliente', opp.cliente_nome) +
                     fld('empreendimento_nome', 'Empreendimento', opp.empreendimento_nome || opp.imovel_nome, 'text') +
@@ -1020,7 +1165,7 @@
                     '<div class="tl-row"><div class="tl-dot ' + dotCls + '"></div>' +
                     '<div class="tl-txt">' + (d ? '<div class="d">' + _esc(d) + '</div>' : '') + '<div class="s">' + _esc(s) + '</div></div></div>').join('') + '</div>'
                 : '<div class="opp-card-empty">Sem histórico de etapa.</div>';
-            return '<div class="opp-card"><div class="opp-card-head"><span class="vgcard-num">4</span><h3>Linha do Tempo da Etapa Atual</h3></div>' + body + '</div>';
+            return '<div class="opp-card"><div class="opp-card-head"><span class="vgcard-num">15</span><h3>Linha do Tempo da Etapa Atual</h3></div>' + body + '</div>';
         }
 
         // ---- Card 5: Alertas e Lembretes (sidebar) ----
@@ -1046,7 +1191,7 @@
             const body = alerts.length
                 ? alerts.map(([ico, txt]) => '<div class="alert-row"><span class="alert-ico">' + ico + '</span><span>' + txt + '</span></div>').join('')
                 : '<div class="opp-card-empty">Sem alertas no momento.</div>';
-            return '<div class="opp-card"><div class="opp-card-head"><span class="vgcard-num">5</span><h3>Alertas e Lembretes</h3></div>' + body +
+            return '<div class="opp-card"><div class="opp-card-head"><span class="vgcard-num">13</span><h3>Alertas e Lembretes</h3></div>' + body +
                 '<div style="padding:8px 14px;border-top:1px solid #f1f5f9;"><a href="#" data-act="tab-atividades" style="font-size:11.5px;font-weight:600;">Ver todos os alertas →</a></div></div>';
         }
 
@@ -1326,6 +1471,7 @@
             }));
             attachDocHandlers();
             recalcEF();  // card 7: estado da seção parcelado + valores calculados
+            recalcPrevistos(); recalcAprovados();  // cards 6/7/8: preenche previstos e aprovados (spans data-calc)
         }
 
         function attachDocHandlers() {
@@ -1466,6 +1612,40 @@
                 if (key === 'venda_forma_entrada' && !isParcelado(newVal)) {
                     patchObj.ef_valor_sinal = null; patchObj.ef_juros_percent = null;
                     patchObj.ef_qtd_parcelas = null; patchObj.venda_data_primeira_parcela = null;
+                }
+                // valor_entrada / valor_total_financiamento são DERIVADOS: ao editar uma parcela
+                // da fórmula, recalcula (novo valor + opp atual) e persiste os dois no mesmo PATCH.
+                if (['valor_imovel', 'porcentagem_financiada', 'valor_subsidio', 'valor_fgts', 'comissao_percent'].indexOf(key) !== -1) {
+                    const _pn = v => { if (v === '' || v == null) return null; const x = Number(v); return isNaN(x) ? null : x; };
+                    const _imovel = _pn(key === 'valor_imovel' ? newVal : opp.valor_imovel);
+                    const _pct = _pn(key === 'porcentagem_financiada' ? newVal : opp.porcentagem_financiada);
+                    const _sub = _pn(key === 'valor_subsidio' ? newVal : opp.valor_subsidio);
+                    const _fgts = _pn(key === 'valor_fgts' ? newVal : opp.valor_fgts);
+                    // Financiamento/entrada só quando há imóvel E %; senão PRESERVA o legado (não manda null no PATCH).
+                    if (_imovel != null && _pct != null) {
+                        const _fin = _imovel * (_pct / 100);
+                        patchObj.valor_total_financiamento = _fin;
+                        patchObj.valor_entrada = Math.max(0, (_imovel - _fin) - (_sub || 0) - (_fgts || 0));
+                    }
+                    // Comissão só quando há imóvel (% padrão 5).
+                    if (_imovel != null) {
+                        const _cpctRaw = (key === 'comissao_percent' ? newVal : opp.comissao_percent);
+                        const _cpct = (_cpctRaw == null || _cpctRaw === '') ? 5 : Number(_cpctRaw);
+                        patchObj.comissao_total = _imovel * ((isNaN(_cpct) ? 5 : _cpct) / 100);
+                    }
+                }
+                // Card 8: entrada_aprovada / financiamento_aprovado também são DERIVADOS (mesma lógica; preserva legado).
+                if (['valor_imovel_aprovado', 'porcentagem_financiada_aprovada', 'subsidio_aprovado', 'valor_fgts_aprovado'].indexOf(key) !== -1) {
+                    const _pn = v => { if (v === '' || v == null) return null; const x = Number(v); return isNaN(x) ? null : x; };
+                    const _im = _pn(key === 'valor_imovel_aprovado' ? newVal : opp.valor_imovel_aprovado);
+                    const _pc = _pn(key === 'porcentagem_financiada_aprovada' ? newVal : opp.porcentagem_financiada_aprovada);
+                    const _sb = _pn(key === 'subsidio_aprovado' ? newVal : opp.subsidio_aprovado);
+                    const _fg = _pn(key === 'valor_fgts_aprovado' ? newVal : opp.valor_fgts_aprovado);
+                    if (_im != null && _pc != null) {
+                        const _finA = _im * (_pc / 100);
+                        patchObj.financiamento_aprovado = _finA;
+                        patchObj.entrada_aprovada = Math.max(0, (_im - _finA) - (_sb || 0) - (_fg || 0));
+                    }
                 }
                 try { await patch(patchObj); } catch (e) { showToast(e.message, 'error'); rebuildBody(); }
             };
