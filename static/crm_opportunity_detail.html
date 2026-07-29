@@ -29,6 +29,12 @@
         .st-perdida{ background: #fee2e2; color: #991b1b; }
         .opp-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: flex-start; }
         .opp-actions .btn { font-size: 12px; padding: 6px 12px; }
+        .mais-acoes-wrap { position: relative; display: inline-block; }
+        .mais-acoes-menu { display: none; position: absolute; right: 0; top: 100%; margin-top: 4px; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.12); z-index: 60; min-width: 210px; overflow: hidden; }
+        .mais-acoes-menu.open { display: block; }
+        .mais-acoes-item { display: block; width: 100%; text-align: left; background: none; border: none; padding: 10px 14px; font-size: 13px; color: #1a1a2e; cursor: pointer; font-family: inherit; white-space: nowrap; }
+        .mais-acoes-item:hover { background: #f1f5f9; color: #065676; }
+        .mais-acoes-item:disabled { color: #cbd5e1; cursor: default; background: none; }
         .opp-owner { text-align: right; font-size: 12px; color: #64748b; display: flex; gap: 10px; align-items: center; }
         .opp-owner .who b { color: #1a1a2e; font-weight: 600; }
         .opp-owner .avatar { width: 38px; height: 38px; border-radius: 50%; background: #065676; color:#fff; display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px; }
@@ -620,7 +626,13 @@
                         '</div><div class="avatar">' + _esc(ini) + '</div></div>' +
                         '<div class="opp-actions">' +
                             (canEdit ? '<button class="btn btn-ghost" data-act="alterar-prop">Alterar Proprietário</button>' : '') +
-                            '<button class="btn btn-ghost" data-act="mais-acoes">Mais ações ▾</button>' +
+                            '<div class="mais-acoes-wrap">' +
+                                '<button class="btn btn-ghost" data-act="mais-acoes">Mais ações ▾</button>' +
+                                '<div class="mais-acoes-menu" id="maisAcoesMenu">' +
+                                    (canEdit ? '<button class="mais-acoes-item" data-act="trocar-pipeline">🔀 Trocar de pipeline</button>' : '') +
+                                    '<button class="mais-acoes-item" data-act="mais-em-breve">⋯ Mais opções em breve</button>' +
+                                '</div>' +
+                            '</div>' +
                         '</div>' +
                     '</div>' +
                 '</div>' +
@@ -1170,10 +1182,64 @@
                 try { await api.post('/crm/opportunities/' + oppId + '/stage', { stage_id: sid }); showToast('Etapa atualizada!'); await render(); }
                 catch (err) { showToast(err.message, 'error'); }
             }));
-            ['alterar-prop', 'mais-acoes'].forEach(act => {
-                const b = document.querySelector('[data-act="' + act + '"]');
-                if (b) b.addEventListener('click', () => showToast('Ação "' + act + '" — em breve', 'success'));
-            });
+            const ap = document.querySelector('[data-act="alterar-prop"]');
+            if (ap) ap.addEventListener('click', () => showToast('Ação "Alterar Proprietário" — em breve', 'success'));
+
+            // Menu "Mais ações" (dropdown)
+            const maisBtn = document.querySelector('[data-act="mais-acoes"]');
+            const maisMenu = document.getElementById('maisAcoesMenu');
+            if (maisBtn && maisMenu) {
+                maisBtn.addEventListener('click', (e) => { e.stopPropagation(); maisMenu.classList.toggle('open'); });
+                maisMenu.addEventListener('click', (e) => e.stopPropagation());
+                const tp = maisMenu.querySelector('[data-act="trocar-pipeline"]');
+                if (tp) tp.addEventListener('click', () => { maisMenu.classList.remove('open'); trocarPipeline(); });
+                const eb = maisMenu.querySelector('[data-act="mais-em-breve"]');
+                if (eb) eb.addEventListener('click', () => { maisMenu.classList.remove('open'); showToast('Mais opções em breve', 'success'); });
+            }
+            // fecha o menu ao clicar fora (registrado uma única vez por página)
+            if (!window.__oppMaisAcoesOutside) {
+                window.__oppMaisAcoesOutside = true;
+                document.addEventListener('click', () => { const m = document.getElementById('maisAcoesMenu'); if (m) m.classList.remove('open'); });
+            }
+        }
+
+        // Trocar a oportunidade de pipeline (funil) — move pipeline_id + stage_id juntos.
+        async function trocarPipeline() {
+            let pipelines;
+            try { pipelines = await api.get('/crm/pipelines?ativo=true'); }
+            catch (e) { showToast(e.message, 'error'); return; }
+            const atual = opp.pipeline_id;
+            const inp = 'width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;font-family:inherit;';
+            const opts = pipelines.map(p => '<option value="' + p.id + '"' + (p.id === atual ? ' selected' : '') + '>' + _esc(p.nome) + (p.id === atual ? ' (atual)' : '') + '</option>').join('');
+            const html = '<div style="display:grid;gap:12px;">' +
+                '<label style="font-size:12px;font-weight:600;color:#475569;">Novo pipeline (funil)<select id="mp_pipe" style="' + inp + '">' + opts + '</select></label>' +
+                '<label style="font-size:12px;font-weight:600;color:#475569;">Etapa<select id="mp_stage" style="' + inp + '"><option>Carregando…</option></select></label>' +
+                '<label style="font-size:12px;font-weight:600;color:#475569;">Motivo (opcional)<input id="mp_motivo" placeholder="ex.: aberta no funil errado" style="' + inp + '"></label>' +
+                '<p style="font-size:11px;color:#8896a6;margin:0;">A oportunidade vai para a etapa escolhida do novo funil. As oportunidades não são duplicadas; uma promoção de pós-venda anterior é reiniciada.</p>' +
+            '</div>';
+            Modal.prompt('Trocar de pipeline', html, async () => {
+                const pid = parseInt(document.getElementById('mp_pipe').value, 10);
+                const sid = parseInt(document.getElementById('mp_stage').value, 10) || null;
+                const motivo = (document.getElementById('mp_motivo').value || '').trim() || null;
+                try {
+                    await api.post('/crm/opportunities/' + oppId + '/mover-pipeline', { pipeline_id: pid, stage_id: sid, motivo: motivo });
+                    showToast('Oportunidade movida de pipeline!');
+                    await render();
+                } catch (e) { showToast(e.message, 'error'); return false; }
+            }, { confirmLabel: 'Mover' });
+            // cascata pipeline -> etapas
+            const carregarEtapas = async () => {
+                const sel = document.getElementById('mp_stage');
+                if (!sel) return;
+                sel.innerHTML = '<option>Carregando…</option>';
+                try {
+                    const stages = await api.get('/crm/stages?pipeline_id=' + document.getElementById('mp_pipe').value);
+                    sel.innerHTML = stages.length
+                        ? stages.map(s => '<option value="' + s.id + '">' + _esc(s.nome) + '</option>').join('')
+                        : '<option value="">(funil sem etapas)</option>';
+                } catch (e) { sel.innerHTML = '<option value="">(erro ao carregar)</option>'; }
+            };
+            setTimeout(() => { const pe = document.getElementById('mp_pipe'); if (pe) { pe.addEventListener('change', carregarEtapas); carregarEtapas(); } }, 40);
         }
 
         function attachBodyHandlers() {
