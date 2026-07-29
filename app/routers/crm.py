@@ -97,6 +97,15 @@ async def atualizar_pipeline(id: int, body: dict, user: dict = Depends(require_p
     return crm_pipelines_repo.obter(id)
 
 
+@router.post("/pipelines/{id}/duplicar", status_code=201)
+async def duplicar_pipeline(id: int, body: dict = None, user: dict = Depends(require_permission("crm_pipelines", "criar"))):
+    """Duplica o pipeline (com todas as etapas) num novo funil. Aceita ``nome`` opcional."""
+    novo_id = crm_pipelines_repo.duplicar(id, (body or {}).get("nome"))
+    if not novo_id:
+        raise HTTPException(404, "Pipeline não encontrado.")
+    return crm_pipelines_repo.obter(novo_id)
+
+
 @router.delete("/pipelines/{id}")
 async def deletar_pipeline(id: int, user: dict = Depends(require_permission("crm_pipelines", "excluir"))):
     if not crm_pipelines_repo.deletar(id):
