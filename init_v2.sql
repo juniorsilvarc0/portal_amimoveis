@@ -917,3 +917,46 @@ DO $$ BEGIN
     ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS ef_valor_sinal NUMERIC(15,2);   -- parte da entrada paga à vista
     ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS ef_juros_percent NUMERIC(5,2);   -- % de juros sobre o restante parcelado
 EXCEPTION WHEN others THEN NULL; END $$;
+
+-- ============================================================================
+-- Oportunidade organizada: PREVISTO → APROVADO → REALIZADO + Base p/ contrato
+-- ============================================================================
+-- Bloco 6 (Valores Previstos) e 7 (Controle de Entrada) reusam colunas já
+-- existentes. Abaixo, os dados NOVOS: o que a Caixa APROVOU, o que já foi
+-- REALIZADO/pago, o status da entrada, e o bloco Terreno/Base para contrato.
+-- Diferença/Falta/Total pago são CALCULADOS na etapa seguinte (não persistidos).
+DO $$ BEGIN
+    -- Aprovado pela Caixa
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS entrada_aprovada NUMERIC(15,2);
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS subsidio_aprovado NUMERIC(15,2);
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS financiamento_aprovado NUMERIC(15,2);
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS status_bancario TEXT;              -- Aprovado|Pendente|Em análise|Reprovado
+    -- Realizado / pago (liberado/recebido)
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS entrada_paga NUMERIC(15,2);         -- total pago da entrada
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS financiamento_liberado NUMERIC(15,2);
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS comissao_recebida NUMERIC(15,2);
+    -- Controle de entrada
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS entrada_status TEXT;                -- pendente|parcial|quitado
+    -- Base para gerar contrato (proposta do correspondente) + Terreno
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS valor_financiamento_negociado NUMERIC(15,2);
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS subsidio_complemento NUMERIC(15,2);
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS valor_operacao NUMERIC(15,2);
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS terreno_valor_compra_venda NUMERIC(15,2);
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS terreno_valor_avaliacao NUMERIC(15,2);
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS terreno_valor_financiamento NUMERIC(15,2);
+EXCEPTION WHEN others THEN NULL; END $$;
+
+-- Comissão = porcentagem do valor do imóvel (padrão 5%, editável no card "Dados da Venda").
+DO $$ BEGIN
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS comissao_percent NUMERIC(5,2) DEFAULT 5;
+EXCEPTION WHEN others THEN NULL; END $$;
+
+-- Valores Aprovados/Caixa (card 8): mesma lógica de cálculo do card 6, com inputs próprios.
+-- entrada_aprovada e financiamento_aprovado passam a ser CALCULADOS na UI (imóvel aprovado × %).
+DO $$ BEGIN
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS valor_imovel_aprovado NUMERIC(15,2);
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS porcentagem_financiada_aprovada NUMERIC(5,2);
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS valor_fgts_aprovado NUMERIC(15,2);
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS modalidade_aprovada TEXT;
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS renda_aprovada NUMERIC(15,2);
+EXCEPTION WHEN others THEN NULL; END $$;
