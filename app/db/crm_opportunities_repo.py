@@ -385,6 +385,56 @@ def mudar_stage(id: int, stage_id_to: int, usuario_id: int = None, motivo: str =
         return {"fase": "venda", "promovida": promovida}
 
 
+def mover_pipeline(opp_id: int, pipeline_id: int, stage_id: int = None,
+                   usuario_id: int = None, motivo: str = None):
+    """Move a oportunidade para OUTRO pipeline (troca de funil).
+
+    Atualiza ``pipeline_id`` E ``stage_id`` juntos (a etapa TEM que pertencer ao
+    novo funil, senão a opp some do kanban). Se ``stage_id`` não for informado (ou
+    não pertencer ao destino), usa a 1ª etapa (``ORDER BY ordem, id``). O ``status``
+    deriva do ``tipo`` da etapa destino. Reinicia a jornada de pós-venda (a promoção
+    anterior era do funil antigo), registra no histórico e cria a tarefa automática
+    da nova etapa. Retorna dict com o resultado, ``{"erro": ...}`` para problema de
+    validação, ou ``None`` se a oportunidade não existir.
+    """
+    with cursor() as cur:
+        cur.execute(
+            "SELECT id, stage_id, pipeline_id, cliente_id, proprietario_id FROM crm_opportunities WHERE id = %s",
+            (opp_id,),
+        )
+        opp = cur.fetchone()
+        if not opp:
+            return None
+        cur.execute("SELECT 1 FROM crm_pipelines WHERE id = %s", (pipeline_id,))
+        if not cur.fetchone():
+            return {"erro": "pipeline_inexistente"}
+        cur.execute("SELECT * FROM crm_stages WHERE pipeline_id = %s ORDER BY ordem, id", (pipeline_id,))
+        stages = cur.fetchall()
+        if not stages:
+            return {"erro": "pipeline_sem_etapas"}
+        alvo = next((s for s in stages if s["id"] == stage_id), None) if stage_id else None
+        if not alvo:
+            alvo = stages[0]
+        novo_status = {"ganho": "ganha", "perdido": "perdida"}.get(alvo["tipo"], "aberta")
+        stage_from = opp["stage_id"]
+        cur.execute(
+            """UPDATE crm_opportunities
+                  SET pipeline_id = %s, stage_id = %s, status = %s,
+                      pos_venda_pipeline_id = NULL, pos_venda_stage_id = NULL, pos_venda_iniciada_em = NULL,
+                      data_fechamento = CASE WHEN %s IN ('ganha','perdida') THEN CURRENT_DATE ELSE NULL END,
+                      updated_at = NOW()
+                WHERE id = %s""",
+            (pipeline_id, alvo["id"], novo_status, novo_status, opp_id),
+        )
+        cur.execute(
+            """INSERT INTO crm_stage_history (opportunity_id, stage_id_from, stage_id_to, usuario_id, motivo)
+               VALUES (%s, %s, %s, %s, %s)""",
+            (opp_id, stage_from, alvo["id"], usuario_id, motivo or "Movida para outro pipeline"),
+        )
+        _criar_tarefa_automatica(cur, opp_id, dict(alvo), opp["cliente_id"], opp["proprietario_id"])
+        return {"pipeline_id": pipeline_id, "stage_id": alvo["id"], "status": novo_status}
+
+
 def aplicar_automacao_etapa_atual(opp_id: int):
     """Cria a tarefa automática da etapa ATIVA da oportunidade (usado ao CRIAR a
     oportunidade, para a etapa inicial). Idempotente — não duplica."""

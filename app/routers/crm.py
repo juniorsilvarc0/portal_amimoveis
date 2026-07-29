@@ -540,6 +540,31 @@ async def mudar_stage(id: int, body: dict, user: dict = Depends(require_permissi
     return opp
 
 
+@router.post("/opportunities/{id}/mover-pipeline")
+async def mover_pipeline_opp(id: int, body: dict, user: dict = Depends(require_permission("crm_opportunities", "editar"))):
+    """Move a oportunidade para outro pipeline (troca de funil), indo para a etapa
+    escolhida (ou a 1ª do funil). Atualiza pipeline_id + stage_id juntos."""
+    pipeline_id = body.get("pipeline_id")
+    if not pipeline_id:
+        raise HTTPException(422, "pipeline_id obrigatório")
+    result = crm_opportunities_repo.mover_pipeline(
+        id, pipeline_id, body.get("stage_id"), usuario_id=user.get("id"), motivo=body.get("motivo"),
+    )
+    if result is None:
+        raise HTTPException(404, "Oportunidade não encontrada.")
+    if result.get("erro") == "pipeline_inexistente":
+        raise HTTPException(404, "Pipeline de destino não encontrado.")
+    if result.get("erro") == "pipeline_sem_etapas":
+        raise HTTPException(422, "O pipeline de destino não tem etapas — crie uma etapa antes de mover.")
+    if opp := crm_opportunities_repo.obter(id):
+        # sincroniza a unidade (se houver) com o novo status da opp, como no /stage
+        if opp.get("unidade_id"):
+            novo_status_unidade = {"ganha": "vendida", "perdida": "disponivel"}.get(opp.get("status"), "reservada")
+            imovel_unidades_repo.definir_status(opp["unidade_id"], novo_status_unidade)
+        webhook_dispatcher.disparar("opportunity.updated", opp)
+    return opp
+
+
 @router.delete("/opportunities/{id}")
 async def deletar_opportunity(id: int, user: dict = Depends(require_permission("crm_opportunities", "excluir"))):
     if not crm_opportunities_repo.obter(id):
