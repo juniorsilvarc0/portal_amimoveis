@@ -906,3 +906,14 @@ DO $$ BEGIN
     ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS ef_tipo_pagamento TEXT;           -- BOLETO|PIX|DEBITO|CREDITO|DINHEIRO
     ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS condicao_entrada TEXT;            -- texto livre
 EXCEPTION WHEN others THEN NULL; END $$;
+
+-- ============================================================================
+-- Entrada Facilitada (card 7): sinal + parcelamento com juros
+-- ============================================================================
+-- Forma (à vista/parcelado) reusa venda_forma_entrada (TEXT). Nº de parcelas reusa
+-- ef_qtd_parcelas. Restante, valor a dever e valor da parcela são CALCULADOS na UI
+-- (não persistidos). Colunas NOVAS: sinal e % de juros do parcelamento da entrada.
+DO $$ BEGIN
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS ef_valor_sinal NUMERIC(15,2);   -- parte da entrada paga à vista
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS ef_juros_percent NUMERIC(5,2);   -- % de juros sobre o restante parcelado
+EXCEPTION WHEN others THEN NULL; END $$;
