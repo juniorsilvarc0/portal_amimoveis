@@ -63,9 +63,10 @@
             perPage: 25,
             emptyMessage: 'Nenhuma oportunidade.',
             columns: [
-                { key: 'id', label: '#', width: '60px', align: 'center' },
+                { key: 'id', label: '#', width: '50px', align: 'center', format: (v, r, i) => i },
                 { key: 'nome', label: 'Nome', format: v => v || '—' },
                 { key: 'cliente_nome', label: 'Cliente', format: v => v || '—' },
+                { key: 'pipeline_nome', label: 'Pipeline', width: '150px', format: v => v || '—' },
                 { key: 'stage_nome', label: 'Etapa', width: '140px', html: true,
                   format: (v, r) => '<span style="background:'+esc(r.stage_cor||'#065676')+';color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;">'+esc(v||'—')+'</span>' },
                 { key: 'valor', label: 'Valor', width: '140px', align: 'right', format: fmt },

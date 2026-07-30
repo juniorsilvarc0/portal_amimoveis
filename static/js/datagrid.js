@@ -257,7 +257,9 @@
                     let displayVal;
 
                     if (typeof col.format === 'function') {
-                        displayVal = col.format(rawVal, row);
+                        // 3º arg = nº sequencial da linha (contínuo entre páginas), p/ colunas de enumeração.
+                        const _rowNum = (this.page - 1) * this.perPage + rowIdx + 1;
+                        displayVal = col.format(rawVal, row, _rowNum);
                         if (col.html) {
                             td.innerHTML = displayVal;
                         } else {
@@ -369,7 +371,9 @@
                     this.total = result.length;
                 } else {
                     this.data = result.items || result.data || [];
-                    this.total = result.total != null ? result.total : this.data.length;
+                    // O portal usa envelope {data, meta:{total}}; aceita também {items,total} ou total flat.
+                    this.total = (result.meta && result.meta.total != null) ? result.meta.total
+                               : (result.total != null ? result.total : this.data.length);
                 }
             } catch (e) {
                 this.data = [];
