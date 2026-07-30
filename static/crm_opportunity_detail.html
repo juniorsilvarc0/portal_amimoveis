@@ -227,6 +227,16 @@
         .nota-item { padding: 10px 16px; border-bottom: 1px solid #f1f5f9; }
         .nota-item .nota-corpo { font-size: 12px; color: #1a1a2e; white-space: pre-wrap; }
         .nota-item .nota-meta { font-size: 11px; color: #8896a6; margin-top: 3px; }
+        /* Tabela de Condições de Pagamento (seção 4) */
+        .cpg-wrap { margin: 4px 14px 12px; overflow-x: auto; }
+        .cpg-title { font-size: 11px; font-weight: 700; color: #065676; margin: 2px 0 10px; text-transform: uppercase; letter-spacing: .05em; }
+        .cpg-row { display: grid; grid-template-columns: 160px 68px 1fr 1fr 140px 128px; gap: 8px; align-items: center; margin-bottom: 6px; min-width: 760px; }
+        .cpg-head { font-size: 10px; font-weight: 700; color: #8896a6; text-transform: uppercase; letter-spacing: .04em; }
+        .cpg-head > div { padding: 0 2px; }
+        .cpg-label { font-size: 12px; font-weight: 600; color: #065676; }
+        .cpg-in { padding: 7px 9px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; font-family: inherit; width: 100%; box-sizing: border-box; }
+        .cpg-in:focus { outline: none; border-color: #065676; }
+        .cpg-in[readonly] { background: #f1f5f9; color: #475569; }
     </style>
 </head>
 <body>
@@ -272,6 +282,13 @@
         const MODALIDADE_OPTS = [['PRICE', 'PRICE'], ['SAC', 'SAC']];
         const SITUACAO_OPTS = [['PENDENTE', 'Pendente'], ['APROVADO', 'Aprovado'], ['CONFORMIDADE', 'Conformidade'], ['REPROVADO', 'Reprovado']];
         const SIT_LABEL = { PENDENTE: 'Pendente', APROVADO: 'Aprovado', CONFORMIDADE: 'Conformidade', REPROVADO: 'Reprovado' };
+        // Card 4: linhas e formas da tabela de Condições de Pagamento (iguais à Proposta / proposta_pagamentos).
+        const CPG_ROWS = [
+            ['Sinal', 'sinal'], ['Parcelamento do sinal', 'parcsinal'], ['Parcelas mensais', 'parcelas'],
+            ['1ª Intercalada', 'inter1'], ['2ª Intercalada', 'inter2'], ['3ª Intercalada', 'inter3'],
+            ['FGTS', 'fgts'], ['Subsídio', 'subsidio'], ['Financiamento', 'fin'],
+        ];
+        const CPG_FORMAS = ['À vista', 'Cartão de Crédito', 'Boleto', 'Caixa Econômica'];
         const TIPO_PAG_OPTS = [['BOLETO', 'Boleto'], ['PIX', 'Pix'], ['DEBITO', 'Débito'], ['CREDITO', 'Crédito'], ['DINHEIRO', 'Dinheiro']];
         const TIPO_PAG_LABEL = { BOLETO: 'Boleto', PIX: 'Pix', DEBITO: 'Débito', CREDITO: 'Crédito', DINHEIRO: 'Dinheiro' };
         const FORMA_ENTRADA_OPTS = [['avista', 'À vista'], ['parcelado', 'Parcelado']];
@@ -373,8 +390,8 @@
             return '<div style="padding:4px 0 24px;">' +
                 secaoNovo('Dados da oportunidade', funil) +
                 '<div class="vg-grid vg-3">' + novoCard1Cliente() + novoCard2Imovel() + card3Venda() + '</div>' +
-                '<div class="vg-grid vg-2">' + card6Simulacao() + card8SimulacaoBanco() + '</div>' +
-                '<div class="vg-grid">' + card7EntradaFacilitada() + '</div>' +
+                '<div class="vg-grid">' + card4CondicoesPagamento() + '</div>' +
+                '<div class="vg-grid">' + card8SimulacaoBanco() + '</div>' +
                 '<div class="vg-grid">' + cardBaseContrato() + '</div>' +
                 '<div class="vg-grid vg-2">' + novoCard9Equipe() + novoCard13Contabil() + '</div>' +
                 novoBar() +
@@ -429,7 +446,7 @@
 
         // Card 9 (novo): só os campos editáveis (o responsável está no funil acima).
         function novoCard9Equipe() {
-            return cardOpen(9, '👥', 'Equipe e Responsáveis') +
+            return cardOpen(8, '👥', 'Equipe e Responsáveis') +
                 fld('imobiliaria', 'Imobiliária', null, 'text') +
                 fld('construtora_nome', 'Construtora', null, 'text') +
                 cardClose();
@@ -437,7 +454,7 @@
 
         // Card 13 (novo): só os campos de dados (anexos/relatório exigem opp salva).
         function novoCard13Contabil() {
-            return cardHead(11, '🧾', 'Documentação Contábil / Fechamento') +
+            return cardHead(10, '🧾', 'Documentação Contábil / Fechamento') +
                 '<div class="vgcard-body two">' +
                     fld('contabil_mes_fechamento', 'Mês de fechamento', null, 'text') +
                     fld('contabil_data_fechamento', 'Data de fechamento', null, 'date') +
@@ -510,6 +527,7 @@
 
         function attachNovoHandlers() {
             if (typeof autoMask === 'function') autoMask(document.getElementById('page'));
+            wireCondPag(document.getElementById('page'));   // tabela de Condições de Pagamento (seção 4)
             const page = document.getElementById('page');
 
             // Buffer de cada input persistente -> opp (rascunho), sem re-render (mantém foco).
@@ -749,10 +767,10 @@
             '</div>';
         }
         function mainFor(tab) {
-            // Fluxo lógico: identificação (1/2/3) → Previsto (6) vs Aprovado/Caixa (8) → Controle de Entrada (7)
+            // Fluxo: identificação (1/2/3 lado a lado) → Condições de Pagamento (4, linha cheia) → Aprovados/Caixa (5, linha cheia)
             if (tab === 'visao') return '<div class="vg-grid vg-3">' + card1Cliente() + card2Imovel() + card3Venda() + '</div>' +
-                '<div class="vg-grid vg-2">' + card6Simulacao() + card8SimulacaoBanco() + '</div>' +
-                '<div class="vg-grid">' + card7EntradaFacilitada() + '</div>';
+                '<div class="vg-grid">' + card4CondicoesPagamento() + '</div>' +
+                '<div class="vg-grid">' + card8SimulacaoBanco() + '</div>';
             if (tab === 'atividades') return renderAtividades();
             if (tab === 'documentos') return renderDocumentos();
             if (tab === 'contabil') return renderContabilTab();
@@ -835,12 +853,65 @@
         }
 
         // ---- Card 6: Simulação e Financiamento ----
-        function card6Simulacao() {
+        // ============ Card 4: Condições de Pagamento (une simulação + tabela; absorve a antiga entrada) ============
+        // (CPG_ROWS/CPG_FORMAS ficam no topo com os demais consts — evita TDZ, pois render() roda antes daqui.)
+        function cpgFormaFromEntrada() {
+            const f = String(opp.venda_forma_entrada || '').toLowerCase();
+            if (f.includes('vista')) return 'À vista';
+            if (f.includes('cart')) return 'Cartão de Crédito';
+            if (f.includes('bol')) return 'Boleto';
+            if (f.includes('caix') || f.includes('pix')) return 'Caixa Econômica';
+            return '';
+        }
+        // Semente: pré-preenche a tabela a partir dos valores já digitados na oportunidade.
+        function cpgSeed() {
+            const m = v => (v != null && v !== '' && !isNaN(Number(v))) ? numToBr(Number(v)) : '';
+            const by = {};
+            CPG_ROWS.forEach(([desc, k]) => { by[k] = { descricao: desc, quantidade: '', valor_parcela: '', valor_total: '', forma: '', vencimento: '' }; });
+            const sinalV = m(opp.ef_valor_sinal);
+            if (sinalV) { by.sinal.valor_parcela = by.sinal.valor_total = sinalV; by.sinal.quantidade = '1'; by.sinal.forma = cpgFormaFromEntrada(); }
+            if (opp.ef_qtd_parcelas) by.parcsinal.quantidade = String(opp.ef_qtd_parcelas);
+            if (opp.venda_data_primeira_parcela) by.parcsinal.vencimento = fmtDate(opp.venda_data_primeira_parcela) || '';
+            [['fgts', opp.valor_fgts], ['subsidio', opp.valor_subsidio], ['fin', opp.valor_total_financiamento]].forEach(([k, v]) => {
+                const s = m(v); if (s) { by[k].valor_parcela = by[k].valor_total = s; by[k].quantidade = '1'; }
+            });
+            return CPG_ROWS.map(([, k], i) => Object.assign({ ordem: i + 1 }, by[k]));
+        }
+        // Linhas atuais: o que está salvo (normalizado a 9 linhas por descrição) OU a semente.
+        function cpgRows() {
+            const saved = Array.isArray(opp.condicoes_pagamento_previstas) ? opp.condicoes_pagamento_previstas : null;
+            const temDados = saved && saved.some(r => r && (r.quantidade || r.valor_parcela || r.valor_total || r.forma || r.vencimento));
+            if (temDados) {
+                const byDesc = {}; saved.forEach(r => { if (r && r.descricao) byDesc[r.descricao] = r; });
+                return CPG_ROWS.map(([desc], i) => {
+                    const r = byDesc[desc] || {};
+                    return { ordem: i + 1, descricao: desc, quantidade: r.quantidade || '', valor_parcela: r.valor_parcela || '', valor_total: r.valor_total || '', forma: r.forma || '', vencimento: r.vencimento || '' };
+                });
+            }
+            return cpgSeed();
+        }
+        function cpgTableHTML() {
+            const rows = cpgRows();
+            const formaOpts = f => '<option value="">Selecione</option>' + CPG_FORMAS.map(o => '<option value="' + _attr(o) + '"' + (o === f ? ' selected' : '') + '>' + _esc(o) + '</option>').join('');
+            const head = '<div class="cpg-row cpg-head"><div>Descrição</div><div>Qtd.</div><div>Valor parcela</div><div>Valor total</div><div>Forma</div><div>Vencimento</div></div>';
+            const body = rows.map((r, i) => {
+                const k = CPG_ROWS[i][1];
+                const inp = (f, extra) => '<input class="cpg-in" data-cpg="' + k + '" data-cpg-f="' + f + '" value="' + _attr(r[f]) + '"' + (extra || '') + '>';
+                return '<div class="cpg-row" data-cpg-row="' + k + '">' +
+                    '<div class="cpg-label">' + _esc(r.descricao) + '</div>' +
+                    inp('quantidade', ' inputmode="numeric" placeholder="Qtd."') +
+                    inp('valor_parcela', ' data-mask="money" inputmode="decimal" placeholder="Valor parcela"') +
+                    inp('valor_total', ' data-mask="money" inputmode="decimal" placeholder="Valor total" readonly tabindex="-1"') +
+                    '<select class="cpg-in" data-cpg="' + k + '" data-cpg-f="forma">' + formaOpts(r.forma) + '</select>' +
+                    inp('vencimento', ' placeholder="Vencimento"') +
+                '</div>';
+            }).join('');
+            return '<div class="cpg-wrap"><div class="cpg-title">Tabela de Condições de Pagamento</div>' + head + body + '</div>';
+        }
+        function card4CondicoesPagamento() {
             const sit = opp.situacao_analise_credito;
-            const badge = sit
-                ? '<span class="hbadge ' + (/aprov|conform/i.test(sit) ? 'doc-assinado' : (/repro/i.test(sit) ? 'doc-pendente' : 'doc-enviado')) + '">' + _esc(SIT_LABEL[sit] || sit) + '</span>'
-                : '';
-            return cardHead(4, '📊', 'Valores Previstos', badge) +
+            const badge = sit ? '<span class="hbadge ' + (/aprov|conform/i.test(sit) ? 'doc-assinado' : (/repro/i.test(sit) ? 'doc-pendente' : 'doc-enviado')) + '">' + _esc(SIT_LABEL[sit] || sit) + '</span>' : '';
+            return cardHead(4, '💳', 'Condições de Pagamento', badge) +
                 '<div class="vgcard-body two">' +
                     fld('valor_imovel', 'Valor do imóvel previsto', fmtMoney(opp.valor_imovel), 'money') +
                     calcField('Entrada prevista', 'entrada') +
@@ -852,10 +923,58 @@
                     fld('situacao_analise_credito', 'Situação da análise de crédito', SIT_LABEL[sit] || sit, 'select', { options: SITUACAO_OPTS }) +
                     fld('valor_fgts', 'FGTS', fmtMoney(opp.valor_fgts), 'money') +
                     fld('correspondente_id', 'CCA (Correspondente Caixa)', opp.correspondente_nome, 'select', { options: correspondenteOpts(), placeholder: '— Selecione —' }) +
-                '</div></div>';
+                '</div>' +
+                '<div class="vgcard-body">' + cpgTableHTML() + '</div>' +
+            '</div>';
+        }
+        // Coleta as 9 linhas dos inputs -> array (forma de proposta_pagamentos).
+        function collectCondPag() {
+            return CPG_ROWS.map(([desc, k], i) => {
+                const g = f => { const el = document.querySelector('.cpg-in[data-cpg="' + k + '"][data-cpg-f="' + f + '"]'); return el ? el.value.trim() : ''; };
+                return { ordem: i + 1, descricao: desc, quantidade: g('quantidade'), valor_parcela: g('valor_parcela'), valor_total: g('valor_total'), forma: g('forma'), vencimento: g('vencimento') };
+            });
+        }
+        // Valor total = (qtd||1) × valor parcela (readonly). Não sobrescreve se sem valor de parcela.
+        function cpgRecalcTotal(k) {
+            const q = document.querySelector('.cpg-in[data-cpg="' + k + '"][data-cpg-f="quantidade"]');
+            const v = document.querySelector('.cpg-in[data-cpg="' + k + '"][data-cpg-f="valor_parcela"]');
+            const t = document.querySelector('.cpg-in[data-cpg="' + k + '"][data-cpg-f="valor_total"]');
+            if (!t || !v) return;
+            const vn = brToNum(v.value);
+            if (vn == null) { t.value = ''; return; }
+            const qn = (q && q.value) ? parseFloat(String(q.value).replace(/[^\d]/g, '')) : null;
+            const total = (qn && qn > 0 ? qn : 1) * vn;
+            // "R$ X" (igual à Proposta: maskMoney(número)); mantém o mesmo formato do valor da parcela.
+            t.value = (typeof window.maskMoney === 'function') ? window.maskMoney(total) : numToBr(total);
+        }
+        function wireCondPag(scope) {
+            const root = scope || document;
+            // autoMask das money da tabela é feito pelo caller (evita bind duplo com o autoMask do modo novo).
+            CPG_ROWS.forEach(([, k]) => cpgRecalcTotal(k));
+            root.querySelectorAll('.cpg-in').forEach(el => {
+                const k = el.dataset.cpg, f = el.dataset.cpgF;
+                el.addEventListener('input', () => {
+                    if (f === 'quantidade' || f === 'valor_parcela') cpgRecalcTotal(k);
+                    opp.condicoes_pagamento_previstas = collectCondPag();
+                });
+                el.addEventListener('change', () => {
+                    opp.condicoes_pagamento_previstas = collectCondPag();
+                    if (!isNew) api.patch('/crm/opportunities/' + oppId, { condicoes_pagamento_previstas: opp.condicoes_pagamento_previstas })
+                        .then(() => showToast('Salvo!')).catch(e => showToast(e.message, 'error'));
+                });
+            });
+            // Captura o que está renderizado (semente ou salvo) em opp. Se no detalhe a tabela veio da
+            // SEMENTE (nada salvo ainda) e tem dados, persiste 1x — pra fluir ao Gerar Proposta sem editar.
+            const _tinha = Array.isArray(opp.condicoes_pagamento_previstas) && opp.condicoes_pagamento_previstas.some(r => r && (r.quantidade || r.valor_parcela || r.valor_total || r.forma || r.vencimento));
+            const _rows = collectCondPag();
+            const _temDados = _rows.some(r => r.quantidade || r.valor_parcela || r.valor_total || r.forma || r.vencimento);
+            opp.condicoes_pagamento_previstas = _rows;
+            if (!isNew && !_tinha && _temDados) api.patch('/crm/opportunities/' + oppId, { condicoes_pagamento_previstas: _rows }).catch(() => {});
         }
 
-        // ---- Card 7: Entrada Facilitada ----
+        // card6Simulacao (Valores Previstos) foi UNIDO à seção 4 "Condições de Pagamento" (card4CondicoesPagamento).
+
+        // ---- Helpers da entrada (usados pela semente da tabela de Condições de Pagamento) ----
         // Forma de pagamento da entrada 'parcelado' (tolerante a valor legado: caixa/espaços).
         function isParcelado(v) { return String(v == null ? '' : v).trim().toLowerCase() === 'parcelado'; }
 
@@ -980,34 +1099,9 @@
                 '<span class="field-value">' + badge + '</span>' + editBtn() + '</div>';
         }
 
-        function card7EntradaFacilitada() {
-            const est = String(opp.entrada_status || 'pendente').toLowerCase();
-            const badge = '<span class="hbadge ' + statusEntradaCls(est) + '">' + _esc(STATUS_ENTRADA_LABEL[est] || est) + '</span>';
-            const parcelado = isParcelado(opp.venda_forma_entrada);
-            return cardHead(6, '💰', 'Controle de Entrada', badge) +
-                '<div class="vgcard-body two">' +
-                    fldBool('entrada_facilitada', 'Entrada facilitada', opp.entrada_facilitada) +
-                    calcField('Entrada prevista', 'entrada') +
-                    fld('venda_forma_entrada', 'Forma de pagamento da entrada', FORMA_ENTRADA_LABEL[String(opp.venda_forma_entrada || '').toLowerCase()] || opp.venda_forma_entrada, 'select', { options: FORMA_ENTRADA_OPTS, placeholder: '— Selecione —' }) +
-                    roCalc('Saldo em aberto', 'efSaldoAberto') +
-                    fldEntradaStatus() +
-                '</div>' +
-                '<div class="vgcard-body two" id="efParcelBox"' + (parcelado ? '' : ' style="display:none;"') + '>' +
-                    fld('ef_valor_sinal', 'Valor do sinal (entrada)', fmtMoney(opp.ef_valor_sinal), 'money') +
-                    roCalc('Restante a parcelar', 'efRestante') +
-                    fld('ef_juros_percent', 'Juros do parcelamento (%)', opp.ef_juros_percent != null ? opp.ef_juros_percent + '%' : null, 'decimal') +
-                    roCalc('Valor a dever (com juros)', 'efADever') +
-                    fld('ef_qtd_parcelas', 'Nº de parcelas', opp.ef_qtd_parcelas, 'number') +
-                    roCalc('Valor da parcela', 'efVParc', 'efVParcLabel') +
-                    fld('venda_data_primeira_parcela', 'Data da 1ª parcela', fmtDate(opp.venda_data_primeira_parcela), 'date') +
-                '</div>' +
-                '<div class="vgcard-body">' +
-                    fld('condicao_entrada', 'Observação / condição', opp.condicao_entrada, 'textarea') +
-                '</div>' +
-            '</div>';
-        }
+        // card7EntradaFacilitada (Controle de Entrada) foi ABSORVIDO pela tabela da seção 4 (linhas Sinal/Parcelamento).
 
-        // ---- Card 8: Valores Aprovados / Caixa ----
+        // ---- Card 5: Valores Aprovados / Caixa ----
         function card8SimulacaoBanco() {
             const sb = opp.status_bancario;
             const badge = sb ? '<span class="hbadge ' + (/aprov/i.test(sb) ? 'doc-assinado' : (/repro/i.test(sb) ? 'doc-pendente' : 'doc-enviado')) + '">' + _esc(sb) + '</span>' : '';
@@ -1033,7 +1127,7 @@
 
         // ---- Base para Gerar Contrato (proposta do correspondente + terreno) ----
         function cardBaseContrato() {
-            return cardHead(8, '', 'Valores do Terreno') +
+            return cardHead(7, '', 'Valores do Terreno') +
                 '<div class="vgcard-body two">' +
                     fld('terreno_valor_compra_venda', 'Valor de compra e venda', fmtMoney(opp.terreno_valor_compra_venda), 'money') +
                     fld('terreno_valor_avaliacao', 'Valor de avaliação', fmtMoney(opp.terreno_valor_avaliacao), 'money') +
@@ -1045,7 +1139,7 @@
 
         // ---- Card 9: Equipe e Responsáveis ----
         function card9Equipe() {
-            return cardOpen(9, '👥', 'Equipe e Responsáveis') +
+            return cardOpen(8, '👥', 'Equipe e Responsáveis') +
                 ro('Corretor da imobiliária', opp.corretor_imobiliaria_email) +
                 ro('Proprietário da oportunidade', opp.proprietario_email) +
                 fld('imobiliaria', 'Imobiliária', opp.imobiliaria, 'text') +
@@ -1065,7 +1159,7 @@
                     (d.tem_arquivo ? '<button class="doc-ico" data-act="dl-doc" data-id="' + d.id + '" data-nome="' + _esc(d.nome_arquivo || d.nome) + '" title="Baixar">⬇</button>' : '<span style="width:22px;"></span>') +
                   '</div>').join('')
                 : '<div class="opp-card-empty" style="padding:10px 0;">Nenhum documento ainda.</div>';
-            return cardOpen(10, '📄', 'Documentos Principais') + rows +
+            return cardOpen(9, '📄', 'Documentos Principais') + rows +
                 '<div style="padding:8px 0 2px;"><a href="#" data-act="tab-documentos" style="font-size:11.5px;font-weight:600;">Ver todos os documentos →</a></div>' +
                 cardClose();
         }
@@ -1095,7 +1189,7 @@
                 body = '<div class="next-action"><div class="na-meta">Nenhuma ação pendente. Configure a tarefa automática da etapa em <strong>Pipelines</strong> (ela é criada ao entrar na etapa).</div>' +
                     '<a href="/crm/activities/nova" class="btn btn-ghost btn-sm">+ Nova atividade</a></div>';
             }
-            return cardOpen(14, '⚡', 'Próxima Ação') + body + cardClose();
+            return cardOpen(12, '⚡', 'Próxima Ação') + body + cardClose();
         }
 
         // ---- Card 12: Resumo Financeiro (comparativo Previsto × Aprovado × Realizado) ----
@@ -1124,7 +1218,7 @@
             const dash = '<td class="rf-dif">—</td>';
             const row = (item, prev, aprov, real, difTd) =>
                 '<tr><td class="rf-item">' + item + '</td><td>' + cell(prev) + '</td><td>' + cell(aprov) + '</td><td>' + cell(real) + '</td>' + difTd + '</tr>';
-            return cardHead(7, '📈', 'Resumo Financeiro') +
+            return cardHead(6, '📈', 'Resumo Financeiro') +
                 '<div class="vgcard-body" style="padding:6px 14px 10px;overflow-x:auto;">' +
                     '<table class="rf-table"><thead><tr><th>Item</th><th>Previsto</th><th>Aprovado</th><th>Realizado</th><th>Diferença</th></tr></thead><tbody>' +
                         row('Imóvel', opp.valor_imovel, opp.valor_imovel, null, dash) +
@@ -1150,7 +1244,7 @@
 
         // ---- Card 13: Documentação Contábil / Fechamento ----
         function card13Contabil() {
-            return cardHead(11, '🧾', 'Documentação Contábil / Fechamento Contábil') +
+            return cardHead(10, '🧾', 'Documentação Contábil / Fechamento Contábil') +
                 '<div class="vgcard-body two">' +
                     fld('contabil_mes_fechamento', 'Mês de fechamento', opp.contabil_mes_fechamento, 'text') +
                     calcField('Comissão – Total', 'comissao') +
@@ -1214,7 +1308,7 @@
                     '<div class="tl-row"><div class="tl-dot ' + dotCls + '"></div>' +
                     '<div class="tl-txt">' + (d ? '<div class="d">' + _esc(d) + '</div>' : '') + '<div class="s">' + _esc(s) + '</div></div></div>').join('') + '</div>'
                 : '<div class="opp-card-empty">Sem histórico de etapa.</div>';
-            return '<div class="opp-card"><div class="opp-card-head"><span class="vgcard-num">15</span><h3>Linha do Tempo da Etapa Atual</h3></div>' + body + '</div>';
+            return '<div class="opp-card"><div class="opp-card-head"><span class="vgcard-num">13</span><h3>Linha do Tempo da Etapa Atual</h3></div>' + body + '</div>';
         }
 
         // ---- Card 5: Alertas e Lembretes (sidebar) ----
@@ -1240,7 +1334,7 @@
             const body = alerts.length
                 ? alerts.map(([ico, txt]) => '<div class="alert-row"><span class="alert-ico">' + ico + '</span><span>' + txt + '</span></div>').join('')
                 : '<div class="opp-card-empty">Sem alertas no momento.</div>';
-            return '<div class="opp-card"><div class="opp-card-head"><span class="vgcard-num">13</span><h3>Alertas e Lembretes</h3></div>' + body +
+            return '<div class="opp-card"><div class="opp-card-head"><span class="vgcard-num">11</span><h3>Alertas e Lembretes</h3></div>' + body +
                 '<div style="padding:8px 14px;border-top:1px solid #f1f5f9;"><a href="#" data-act="tab-atividades" style="font-size:11.5px;font-weight:600;">Ver todos os alertas →</a></div></div>';
         }
 
@@ -1491,6 +1585,12 @@
         }
 
         function attachBodyHandlers() {
+            // Condições de Pagamento (seção 4): máscara das money + handlers da tabela (só quando visível).
+            if (document.querySelector('.cpg-in')) {
+                const _pg = document.getElementById('page');
+                if (typeof autoMask === 'function') autoMask(_pg);
+                wireCondPag(_pg);
+            }
             // abas (recriadas a cada rebuild do corpo)
             document.querySelectorAll('.opp-tab').forEach(t => t.addEventListener('click', () => { activeTab = t.dataset.tab; rebuildBody(); }));
             // inline edit
