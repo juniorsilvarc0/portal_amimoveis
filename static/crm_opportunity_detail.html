@@ -289,6 +289,8 @@
             ['FGTS', 'fgts'], ['Subsídio', 'subsidio'], ['Financiamento', 'fin'],
         ];
         const CPG_FORMAS = ['À vista', 'Cartão de Crédito', 'Boleto', 'Caixa Econômica'];
+        // Linhas cujo valor é DERIVADO (read-only): Sinal/Parcelamento (da entrada) e FGTS/Subsídio/Financiamento (da simulação).
+        const CPG_RO = { sinal: 1, parcsinal: 1, fgts: 1, subsidio: 1, fin: 1 };
         const TIPO_PAG_OPTS = [['BOLETO', 'Boleto'], ['PIX', 'Pix'], ['DEBITO', 'Débito'], ['CREDITO', 'Crédito'], ['DINHEIRO', 'Dinheiro']];
         const TIPO_PAG_LABEL = { BOLETO: 'Boleto', PIX: 'Pix', DEBITO: 'Débito', CREDITO: 'Crédito', DINHEIRO: 'Dinheiro' };
         const FORMA_ENTRADA_OPTS = [['avista', 'À vista'], ['parcelado', 'Parcelado']];
@@ -558,7 +560,7 @@
                     // Fórmula dos previstos (financiamento <-> % bidirecional; entrada derivada). Passa o campo que mudou.
                     if (['valor_imovel', 'porcentagem_financiada', 'valor_total_financiamento', 'valor_subsidio', 'valor_fgts', 'comissao_percent'].indexOf(key) !== -1) recalcPrevistos(key);
                     if (['valor_imovel_aprovado', 'porcentagem_financiada_aprovada', 'financiamento_aprovado', 'subsidio_aprovado', 'valor_fgts_aprovado'].indexOf(key) !== -1) recalcAprovados(key);
-                    if (['valor_entrada', 'ef_valor_sinal', 'ef_juros_percent', 'ef_qtd_parcelas', 'venda_forma_entrada'].indexOf(key) !== -1) recalcEF();
+                    if (['valor_entrada', 'ef_valor_sinal', 'ef_juros_percent', 'ef_qtd_parcelas', 'venda_forma_entrada', 'venda_data_primeira_parcela'].indexOf(key) !== -1) recalcEF();
                 };
                 el.addEventListener('input', buffer);
                 el.addEventListener('change', buffer);
@@ -863,32 +865,54 @@
             if (f.includes('caix') || f.includes('pix')) return 'Caixa Econômica';
             return '';
         }
-        // Semente: pré-preenche a tabela a partir dos valores já digitados na oportunidade.
-        function cpgSeed() {
-            const m = v => (v != null && v !== '' && !isNaN(Number(v))) ? numToBr(Number(v)) : '';
-            const by = {};
-            CPG_ROWS.forEach(([desc, k]) => { by[k] = { descricao: desc, quantidade: '', valor_parcela: '', valor_total: '', forma: '', vencimento: '' }; });
-            const sinalV = m(opp.ef_valor_sinal);
-            if (sinalV) { by.sinal.valor_parcela = by.sinal.valor_total = sinalV; by.sinal.quantidade = '1'; by.sinal.forma = cpgFormaFromEntrada(); }
-            if (opp.ef_qtd_parcelas) by.parcsinal.quantidade = String(opp.ef_qtd_parcelas);
-            if (opp.venda_data_primeira_parcela) by.parcsinal.vencimento = fmtDate(opp.venda_data_primeira_parcela) || '';
-            [['fgts', opp.valor_fgts], ['subsidio', opp.valor_subsidio], ['fin', opp.valor_total_financiamento]].forEach(([k, v]) => {
-                const s = m(v); if (s) { by[k].valor_parcela = by[k].valor_total = s; by[k].quantidade = '1'; }
-            });
-            return CPG_ROWS.map(([, k], i) => Object.assign({ ordem: i + 1 }, by[k]));
-        }
-        // Linhas atuais: o que está salvo (normalizado a 9 linhas por descrição) OU a semente.
-        function cpgRows() {
-            const saved = Array.isArray(opp.condicoes_pagamento_previstas) ? opp.condicoes_pagamento_previstas : null;
-            const temDados = saved && saved.some(r => r && (r.quantidade || r.valor_parcela || r.valor_total || r.forma || r.vencimento));
-            if (temDados) {
-                const byDesc = {}; saved.forEach(r => { if (r && r.descricao) byDesc[r.descricao] = r; });
-                return CPG_ROWS.map(([desc], i) => {
-                    const r = byDesc[desc] || {};
-                    return { ordem: i + 1, descricao: desc, quantidade: r.quantidade || '', valor_parcela: r.valor_parcela || '', valor_total: r.valor_total || '', forma: r.forma || '', vencimento: r.vencimento || '' };
-                });
+        // Reflexo da ENTRADA nas linhas Sinal e Parcelamento do sinal — mesma conta do controle de entrada
+        // (recalcEF): restante = entrada − sinal; a dever = restante × (1+juros%); parcela = a dever / nº parcelas.
+        function entradaReflect(o) {
+            const _n = v => { if (v === '' || v == null) return null; const x = Number(v); return isNaN(x) ? null : x; };
+            const M = v => (v != null && typeof window.maskMoney === 'function') ? window.maskMoney(v) : (v != null ? numToBr(v) : '');
+            const entrada = _n(o.valor_entrada), sinal = _n(o.ef_valor_sinal), juros = _n(o.ef_juros_percent);
+            const nparc = parseInt(o.ef_qtd_parcelas, 10) || 0;
+            const rSinal = { quantidade: sinal != null ? '1' : '', valor_parcela: sinal != null ? M(sinal) : '', valor_total: sinal != null ? M(sinal) : '' };
+            let rParc = { quantidade: '', valor_parcela: '', valor_total: '', vencimento: '' };
+            if (isParcelado(o.venda_forma_entrada)) {
+                const restante = entrada != null ? Math.max(0, entrada - (sinal || 0)) : null;
+                const aDever = restante != null ? restante * (1 + (juros || 0) / 100) : null;
+                const vparc = (aDever != null && nparc > 0) ? aDever / nparc : null;
+                rParc = { quantidade: nparc > 0 ? String(nparc) : '', valor_parcela: vparc != null ? M(vparc) : '', valor_total: aDever != null ? M(aDever) : '', vencimento: o.venda_data_primeira_parcela ? (fmtDate(o.venda_data_primeira_parcela) || '') : '' };
             }
-            return cpgSeed();
+            return { sinal: rSinal, parcsinal: rParc };
+        }
+        // Linhas da tabela: Sinal/Parcelamento refletem a ENTRADA; FGTS/Subsídio/Financiamento refletem a
+        // SIMULAÇÃO; Parcelas mensais e Intercaladas são MANUAIS (do que está salvo). Forma/Vencimento manuais.
+        function cpgComputeRows(o) {
+            const saved = Array.isArray(o.condicoes_pagamento_previstas) ? o.condicoes_pagamento_previstas : [];
+            const byDesc = {}; saved.forEach(r => { if (r && r.descricao) byDesc[r.descricao] = r; });
+            const M = v => (v != null && v !== '' && !isNaN(Number(v)) && typeof window.maskMoney === 'function') ? window.maskMoney(Number(v)) : '';
+            const ent = entradaReflect(o);
+            return CPG_ROWS.map(([desc, k], i) => {
+                const s = byDesc[desc] || {};
+                const r = { ordem: i + 1, descricao: desc, quantidade: s.quantidade || '', valor_parcela: s.valor_parcela || '', valor_total: s.valor_total || '', forma: s.forma || '', vencimento: s.vencimento || '' };
+                if (k === 'sinal') { r.quantidade = ent.sinal.quantidade; r.valor_parcela = ent.sinal.valor_parcela; r.valor_total = ent.sinal.valor_total; }
+                else if (k === 'parcsinal') { r.quantidade = ent.parcsinal.quantidade; r.valor_parcela = ent.parcsinal.valor_parcela; r.valor_total = ent.parcsinal.valor_total; if (!r.vencimento) r.vencimento = ent.parcsinal.vencimento; }
+                else if (k === 'fgts') { const m = M(o.valor_fgts); if (m) { r.quantidade = '1'; r.valor_parcela = m; r.valor_total = m; } }
+                else if (k === 'subsidio') { const m = M(o.valor_subsidio); if (m) { r.quantidade = '1'; r.valor_parcela = m; r.valor_total = m; } }
+                else if (k === 'fin') { const m = M(o.valor_total_financiamento); if (m) { r.quantidade = '1'; r.valor_parcela = m; r.valor_total = m; } }
+                return r;
+            });
+        }
+        function cpgRows() { return cpgComputeRows(opp); }
+        // Escreve as células das linhas DERIVADAS (read-only) no DOM a partir de cpgComputeRows(opp) e
+        // atualiza o rascunho. Chamado ao vivo por recalcEF — cobre detalhe e criação.
+        function cpgReflectDerived() {
+            if (!document.querySelector('.cpg-in')) return;
+            const rows = cpgComputeRows(opp);
+            CPG_ROWS.forEach(([, k], i) => {
+                if (!CPG_RO[k]) return;
+                const r = rows[i];
+                ['quantidade', 'valor_parcela', 'valor_total'].forEach(f => { const el = document.querySelector('.cpg-in[data-cpg="' + k + '"][data-cpg-f="' + f + '"]'); if (el) el.value = r[f] || ''; });
+                if (k === 'parcsinal') { const el = document.querySelector('.cpg-in[data-cpg="parcsinal"][data-cpg-f="vencimento"]'); if (el && !el.value && r.vencimento) el.value = r.vencimento; }
+            });
+            if (typeof collectCondPag === 'function') opp.condicoes_pagamento_previstas = collectCondPag();
         }
         function cpgTableHTML() {
             const rows = cpgRows();
@@ -896,11 +920,12 @@
             const head = '<div class="cpg-row cpg-head"><div>Descrição</div><div>Qtd.</div><div>Valor parcela</div><div>Valor total</div><div>Forma</div><div>Vencimento</div></div>';
             const body = rows.map((r, i) => {
                 const k = CPG_ROWS[i][1];
+                const ro = CPG_RO[k] ? ' readonly tabindex="-1"' : '';   // linhas derivadas: qtd/parcela read-only
                 const inp = (f, extra) => '<input class="cpg-in" data-cpg="' + k + '" data-cpg-f="' + f + '" value="' + _attr(r[f]) + '"' + (extra || '') + '>';
                 return '<div class="cpg-row" data-cpg-row="' + k + '">' +
                     '<div class="cpg-label">' + _esc(r.descricao) + '</div>' +
-                    inp('quantidade', ' inputmode="numeric" placeholder="Qtd."') +
-                    inp('valor_parcela', ' data-mask="money" inputmode="decimal" placeholder="Valor parcela"') +
+                    inp('quantidade', ' inputmode="numeric" placeholder="Qtd."' + ro) +
+                    inp('valor_parcela', ' data-mask="money" inputmode="decimal" placeholder="Valor parcela"' + ro) +
                     inp('valor_total', ' data-mask="money" inputmode="decimal" placeholder="Valor total" readonly tabindex="-1"') +
                     '<select class="cpg-in" data-cpg="' + k + '" data-cpg-f="forma">' + formaOpts(r.forma) + '</select>' +
                     inp('vencimento', ' placeholder="Vencimento"') +
@@ -924,6 +949,26 @@
                     fld('valor_fgts', 'FGTS', fmtMoney(opp.valor_fgts), 'money') +
                     fld('correspondente_id', 'CCA (Correspondente Caixa)', opp.correspondente_nome, 'select', { options: correspondenteOpts(), placeholder: '— Selecione —' }) +
                 '</div>' +
+                // Controle da Entrada: sinal + parcelamento com juros. Alimenta as linhas Sinal/Parcelamento da tabela.
+                '<div class="cpg-title" style="margin:8px 14px 0;">Controle da Entrada</div>' +
+                '<div class="vgcard-body two">' +
+                    fldBool('entrada_facilitada', 'Entrada facilitada', opp.entrada_facilitada) +
+                    fld('venda_forma_entrada', 'Forma de pagamento da entrada', FORMA_ENTRADA_LABEL[String(opp.venda_forma_entrada || '').toLowerCase()] || opp.venda_forma_entrada, 'select', { options: FORMA_ENTRADA_OPTS, placeholder: '— Selecione —' }) +
+                    roCalc('Saldo em aberto', 'efSaldoAberto') +
+                    fldEntradaStatus() +
+                '</div>' +
+                '<div class="vgcard-body two" id="efParcelBox"' + (isParcelado(opp.venda_forma_entrada) ? '' : ' style="display:none;"') + '>' +
+                    fld('ef_valor_sinal', 'Valor do sinal (entrada)', fmtMoney(opp.ef_valor_sinal), 'money') +
+                    roCalc('Restante a parcelar', 'efRestante') +
+                    fld('ef_juros_percent', 'Juros do parcelamento (%)', opp.ef_juros_percent != null ? opp.ef_juros_percent + '%' : null, 'decimal') +
+                    roCalc('Valor a dever (com juros)', 'efADever') +
+                    fld('ef_qtd_parcelas', 'Nº de parcelas', opp.ef_qtd_parcelas, 'number') +
+                    roCalc('Valor da parcela', 'efVParc', 'efVParcLabel') +
+                    fld('venda_data_primeira_parcela', 'Data da 1ª parcela', fmtDate(opp.venda_data_primeira_parcela), 'date') +
+                '</div>' +
+                '<div class="vgcard-body">' +
+                    fld('condicao_entrada', 'Observação / condição', opp.condicao_entrada, 'textarea') +
+                '</div>' +
                 '<div class="vgcard-body">' + cpgTableHTML() + '</div>' +
             '</div>';
         }
@@ -936,6 +981,7 @@
         }
         // Valor total = (qtd||1) × valor parcela (readonly). Não sobrescreve se sem valor de parcela.
         function cpgRecalcTotal(k) {
+            if (CPG_RO[k]) return;   // linhas derivadas: o total vem do reflexo (entrada/simulação), não de qtd×parcela
             const q = document.querySelector('.cpg-in[data-cpg="' + k + '"][data-cpg-f="quantidade"]');
             const v = document.querySelector('.cpg-in[data-cpg="' + k + '"][data-cpg-f="valor_parcela"]');
             const t = document.querySelector('.cpg-in[data-cpg="' + k + '"][data-cpg-f="valor_total"]');
@@ -1014,6 +1060,8 @@
             setM('efVParc', vparc);
             const lbl = document.getElementById('efVParcLabel');
             if (lbl) lbl.textContent = nparc > 0 ? ('Valor da parcela (' + nparc + 'x)') : 'Valor da parcela';
+            // Reflete as linhas derivadas (entrada + simulação) na tabela read-only e atualiza o rascunho.
+            if (typeof cpgReflectDerived === 'function') cpgReflectDerived();
         }
 
         // Recalcula (ao vivo) financiamento e entrada PREVISTOS a partir de valor do imóvel,
@@ -1824,6 +1872,11 @@
                         }
                         if (_finA != null) patchObj.entrada_aprovada = Math.max(0, (_im - _finA) - (_sb || 0) - (_fg || 0));
                     }
+                }
+                // Campo que alimenta a tabela (entrada ou simulação) mudou → regrava as linhas derivadas.
+                const CPG_TRIGGER = ['ef_valor_sinal', 'ef_juros_percent', 'ef_qtd_parcelas', 'venda_forma_entrada', 'venda_data_primeira_parcela', 'valor_imovel', 'porcentagem_financiada', 'valor_subsidio', 'valor_fgts', 'valor_total_financiamento'];
+                if (CPG_TRIGGER.indexOf(key) !== -1) {
+                    patchObj.condicoes_pagamento_previstas = cpgComputeRows(Object.assign({}, opp, patchObj));
                 }
                 try { await patch(patchObj); } catch (e) { showToast(e.message, 'error'); rebuildBody(); }
             };
