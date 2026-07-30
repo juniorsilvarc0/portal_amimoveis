@@ -1160,6 +1160,9 @@
             const badge = sb ? '<span class="hbadge ' + (/aprov/i.test(sb) ? 'doc-assinado' : (/repro/i.test(sb) ? 'doc-pendente' : 'doc-enviado')) + '">' + _esc(sb) + '</span>' : '';
             return cardHead(5, '🏦', 'Valores Aprovados / Caixa', badge) +
                 '<div class="vgcard-body two">' +
+                    // Valor do imóvel vendido = imóvel previsto; Valor pago de entrada = entrada prevista (alimentam o Realizado do Resumo).
+                    ro('Valor do imóvel vendido', fmtMoney(opp.valor_imovel)) +
+                    ro('Valor pago de entrada', fmtMoney(opp.valor_entrada)) +
                     fld('valor_imovel_aprovado', 'Valor do imóvel aprovado', fmtMoney(opp.valor_imovel_aprovado), 'money') +
                     calcField('Entrada aprovada', 'entrada_aprovada') +
                     fld('subsidio_aprovado', 'Subsídio aprovado', fmtMoney(opp.subsidio_aprovado), 'money') +
@@ -1274,8 +1277,8 @@
             return cardHead(6, '📈', 'Resumo Financeiro') +
                 '<div class="vgcard-body" style="padding:6px 14px 10px;overflow-x:auto;">' +
                     '<table class="rf-table"><thead><tr><th>Item</th><th>Previsto</th><th>Aprovado</th><th>Realizado</th><th>Diferença</th></tr></thead><tbody>' +
-                        row('Imóvel', opp.valor_imovel, opp.valor_imovel, null, dash) +
-                        row('Entrada', opp.valor_entrada, opp.entrada_aprovada, opp.entrada_paga, difCell(opp.valor_entrada, opp.entrada_aprovada, opp.entrada_paga, 'entrada')) +
+                        row('Imóvel', opp.valor_imovel, opp.valor_imovel, opp.valor_imovel, dash) +
+                        row('Entrada', opp.valor_entrada, opp.entrada_aprovada, opp.valor_entrada, difCell(opp.valor_entrada, opp.entrada_aprovada, opp.valor_entrada, 'entrada')) +
                         row('Subsídio', opp.valor_subsidio, opp.subsidio_aprovado, null, difCell(opp.valor_subsidio, opp.subsidio_aprovado, null, 'saldo')) +
                         row('Financiamento', opp.valor_total_financiamento, opp.financiamento_aprovado, opp.financiamento_liberado, difCell(opp.valor_total_financiamento, opp.financiamento_aprovado, null, 'saldo')) +
                         row('Comissão', opp.comissao_total, null, opp.comissao_recebida, dash) +
