@@ -127,6 +127,16 @@
         .rf-table tr:last-child td { border-bottom: none; }
         .rf-legenda { display: flex; gap: 16px; padding: 10px 2px 2px; font-size: 11px; color: #64748b; flex-wrap: wrap; }
         .rf-legenda span { display: flex; align-items: center; gap: 5px; }
+        /* Resumo Financeiro — conciliação (2 blocos + mensagem) */
+        .rf-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+        @media (max-width: 760px) { .rf-2col { grid-template-columns: 1fr; } }
+        .rf-block-title { font-size: 11px; font-weight: 700; color: #065676; text-transform: uppercase; letter-spacing: .04em; margin: 2px 0 6px; }
+        .rf-t2 { width: 100%; border-collapse: collapse; }
+        .rf-t2 td { padding: 7px 4px; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+        .rf-t2 td.rf-item { color: #475569; }
+        .rf-t2 td:last-child { text-align: right; font-weight: 600; color: #1a1a2e; white-space: nowrap; }
+        .rf-t2 tr:last-child td { border-bottom: none; }
+        .rf-msg { margin-top: 14px; padding: 10px 12px; background: #f8fafc; border-left: 3px solid #065676; border-radius: 4px; font-size: 12.5px; color: #334155; line-height: 1.55; }
         .rf-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
         /* Valor do sinal em VERDE (parte da entrada já dada) */
         .field[data-key="ef_valor_sinal"] .field-value { color: #16a34a; font-weight: 600; }
@@ -296,6 +306,8 @@
         const FORMA_ENTRADA_OPTS = [['avista', 'À vista'], ['parcelado', 'Parcelado']];
         const FORMA_ENTRADA_LABEL = { avista: 'À vista', parcelado: 'Parcelado' };
         const STATUS_BANCARIO_OPTS = [['Aprovado', 'Aprovado'], ['Em análise', 'Em análise'], ['Pendente', 'Pendente'], ['Reprovado', 'Reprovado']];
+        const SITDIF_OPTS = [['em_conciliacao', 'Em conciliação'], ['conciliado', 'Conciliado'], ['credito_confirmado', 'Crédito confirmado'], ['a_pagar', 'A pagar']];
+        const SITDIF_LABEL = { em_conciliacao: 'Em conciliação', conciliado: 'Conciliado', credito_confirmado: 'Crédito confirmado', a_pagar: 'A pagar' };
         const STATUS_ENTRADA_OPTS = [['pendente', 'Pendente'], ['parcial', 'Parcial'], ['quitado', 'Quitado']];
         const STATUS_ENTRADA_LABEL = { pendente: 'Pendente', parcial: 'Parcial', quitado: 'Quitado' };
         function correspondenteOpts() { return (LK.correspondentes || []).map(c => [c.id, c.nome]); }
@@ -1160,9 +1172,9 @@
             const badge = sb ? '<span class="hbadge ' + (/aprov/i.test(sb) ? 'doc-assinado' : (/repro/i.test(sb) ? 'doc-pendente' : 'doc-enviado')) + '">' + _esc(sb) + '</span>' : '';
             return cardHead(5, '🏦', 'Valores Aprovados / Caixa', badge) +
                 '<div class="vgcard-body two">' +
-                    // Valor do imóvel vendido = imóvel previsto; Valor pago de entrada = entrada prevista (alimentam o Realizado do Resumo).
+                    // Valor do imóvel vendido = imóvel previsto (venda); Valor pago de entrada = total pago (editável, padrão = entrada prevista).
                     ro('Valor do imóvel vendido', fmtMoney(opp.valor_imovel)) +
-                    ro('Valor pago de entrada', fmtMoney(opp.valor_entrada)) +
+                    fld('entrada_paga', 'Valor pago de entrada', fmtMoney(opp.entrada_paga != null ? opp.entrada_paga : opp.valor_entrada), 'money') +
                     fld('valor_imovel_aprovado', 'Valor do imóvel aprovado', fmtMoney(opp.valor_imovel_aprovado), 'money') +
                     calcField('Entrada aprovada', 'entrada_aprovada') +
                     fld('subsidio_aprovado', 'Subsídio aprovado', fmtMoney(opp.subsidio_aprovado), 'money') +
@@ -1178,6 +1190,15 @@
                     fld('taxa_juros_anual', 'Taxa de juros (a.a.)', opp.taxa_juros_anual != null ? opp.taxa_juros_anual + '%' : null, 'decimal') +
                     fld('status_bancario', 'Status bancário', opp.status_bancario, 'select', { options: STATUS_BANCARIO_OPTS, placeholder: '—' }) +
                     ro('CCA (Correspondente Caixa)', opp.correspondente_nome) +
+                '</div>' +
+                // Repasse real da Caixa (Etapa 2): confirma o quanto foi efetivamente repassado e o estado da diferença.
+                '<div class="cpg-title" style="margin:8px 14px 0;">Repasse / Conciliação</div>' +
+                '<div class="vgcard-body two">' +
+                    fld('valor_repassado', 'Valor efetivamente repassado', fmtMoney(opp.valor_repassado), 'money') +
+                    fld('data_repasse', 'Data do repasse', fmtDate(opp.data_repasse), 'date') +
+                    fld('situacao_diferenca', 'Situação da diferença', SITDIF_LABEL[opp.situacao_diferenca] || opp.situacao_diferenca, 'select', { options: SITDIF_OPTS, placeholder: '— Selecione —' }) +
+                    fld('responsavel_diferenca', 'Responsável pela diferença', opp.responsavel_diferenca, 'text') +
+                    fldBool('possui_aditivo_contratual', 'Possui aditivo contratual', opp.possui_aditivo_contratual) +
                 '</div></div>';
         }
 
@@ -1250,42 +1271,72 @@
 
         // ---- Card 12: Resumo Financeiro (comparativo Previsto × Aprovado × Realizado) ----
         // Só leitura: consolida o que já foi digitado nos cards 6/7/8/13. Diferença fica p/ os cálculos.
+        // Resumo Financeiro (quadro explicativo): separa a POSIÇÃO COMERCIAL (venda/contrato, fixa) da
+        // COMPOSIÇÃO DA CAIXA. A entrada é quitada com base no valor da venda; a diferença entre o aprovado
+        // e o necessário fica "em conciliação" até o repasse ser confirmado (não vira "a receber" sozinha).
         function card12ResumoFinanceiro() {
-            const cell = v => (v == null || v === '') ? '<span class="empty">—</span>' : fmtMoney(v);
-            const _n = v => (v == null || v === '') ? null : Number(v);
-            const money = v => 'R$ ' + Math.abs(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            // Diferença por tipo (se der 0 → "—"):
-            //  'entrada' = Previsto − Aprovado − Realizado (vermelho se > 0)
-            //  'saldo'   = Aprovado − Previsto (verde/+ se > 0 = saldo a favor; vermelho/− se < 0 = devendo) → subsídio e financiamento
-            const difCell = (prev, aprov, real, mode) => {
-                const p = _n(prev), a = _n(aprov), r = _n(real);
-                let val = null, color = '', sign = '';
-                if (mode === 'entrada' && (p != null || a != null || r != null)) {
-                    val = (p || 0) - (a || 0) - (r || 0); if (val > 0) color = '#dc2626';
-                } else if (mode === 'saldo' && (p != null || a != null)) {
-                    val = (a || 0) - (p || 0);
-                    if (val > 0) { color = '#16a34a'; sign = '+'; } else if (val < 0) color = '#dc2626';
-                }
-                if (val != null) val = Math.round(val * 100) / 100;   // arredonda p/ matar resíduo de float (evita "+R$ 0,00" colorido)
-                if (val == null || val === 0) return '<td class="rf-dif">—</td>';
-                const style = color ? ' style="color:' + color + ';font-weight:600;"' : '';
-                return '<td class="rf-dif"' + style + '>' + (val < 0 ? '-' : sign) + money(val) + '</td>';
-            };
-            const dash = '<td class="rf-dif">—</td>';
-            const row = (item, prev, aprov, real, difTd) =>
-                '<tr><td class="rf-item">' + item + '</td><td>' + cell(prev) + '</td><td>' + cell(aprov) + '</td><td>' + cell(real) + '</td>' + difTd + '</tr>';
-            return cardHead(6, '📈', 'Resumo Financeiro') +
-                '<div class="vgcard-body" style="padding:6px 14px 10px;overflow-x:auto;">' +
-                    '<table class="rf-table"><thead><tr><th>Item</th><th>Previsto</th><th>Aprovado</th><th>Realizado</th><th>Diferença</th></tr></thead><tbody>' +
-                        row('Imóvel', opp.valor_imovel, opp.valor_imovel, opp.valor_imovel, dash) +
-                        row('Entrada', opp.valor_entrada, opp.entrada_aprovada, opp.valor_entrada, difCell(opp.valor_entrada, opp.entrada_aprovada, opp.valor_entrada, 'entrada')) +
-                        row('Subsídio', opp.valor_subsidio, opp.subsidio_aprovado, null, difCell(opp.valor_subsidio, opp.subsidio_aprovado, null, 'saldo')) +
-                        row('Financiamento', opp.valor_total_financiamento, opp.financiamento_aprovado, opp.financiamento_liberado, difCell(opp.valor_total_financiamento, opp.financiamento_aprovado, null, 'saldo')) +
-                        row('Comissão', opp.comissao_total, null, opp.comissao_recebida, dash) +
-                    '</tbody></table>' +
-                    '<div class="rf-legenda"><span><span class="rf-dot" style="background:#22c55e;"></span>Quitado</span>' +
-                        '<span><span class="rf-dot" style="background:#f59e0b;"></span>Pendente</span>' +
-                        '<span><span class="rf-dot" style="background:#ef4444;"></span>Em aberto</span></div>' +
+            const _n = v => { if (v == null || v === '') return null; const x = Number(v); return isNaN(x) ? null : x; };
+            const nz = v => _n(v) || 0;
+            const r2 = v => Math.round(v * 100) / 100;
+            const money = v => 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            // Comercial (fixo)
+            const valorImovel = nz(opp.valor_imovel), entradaAcordada = nz(opp.valor_entrada);
+            const totalPago = opp.entrada_paga != null ? nz(opp.entrada_paga) : entradaAcordada;
+            const saldoEntrada = r2(Math.max(0, entradaAcordada - totalPago));
+            // Caixa
+            const subAprov = _n(opp.subsidio_aprovado), finAprov = _n(opp.financiamento_aprovado), opCaixa = _n(opp.valor_imovel_aprovado);
+            const temAprov = subAprov != null || finAprov != null;
+            const totalAprovado = nz(subAprov) + nz(finAprov);
+            const necessarioCaixa = r2(Math.max(0, valorImovel - entradaAcordada));
+            const contrapartida = opCaixa != null ? r2(opCaixa - totalAprovado) : null;
+            const difBancaria = temAprov ? r2(totalAprovado - necessarioCaixa) : null;
+            const repassado = _n(opp.valor_repassado);
+            const difFinal = repassado != null ? r2(repassado - necessarioCaixa) : null;
+            const creditoConfirmado = (difFinal != null && difFinal > 0) ? difFinal : 0;
+            const temDif = difBancaria != null && Math.abs(difBancaria) >= 0.005;
+            // Estado geral + mensagem automática
+            let estado, cls, msg;
+            if (saldoEntrada > 0) {
+                estado = 'Entrada em aberto'; cls = 'doc-pendente';
+                msg = 'Falta o cliente pagar ' + money(saldoEntrada) + ' de entrada (acordada ' + money(entradaAcordada) + ', com base no valor da venda).';
+            } else if (repassado != null) {
+                if (difFinal > 0.005) { estado = 'Crédito confirmado'; cls = 'doc-assinado'; msg = 'Entrada quitada e repasse confirmado. O cliente tem ' + money(difFinal) + ' a receber.'; }
+                else if (difFinal < -0.005) { estado = 'Cliente a pagar'; cls = 'doc-pendente'; msg = 'Repasse confirmado, mas ainda faltam ' + money(Math.abs(difFinal)) + ' a cobrir.'; }
+                else { estado = 'Quitado'; cls = 'doc-assinado'; msg = 'Entrada quitada e repasse confirmado, sem diferença.'; }
+            } else if (temDif) {
+                estado = 'Diferença em conciliação'; cls = 'doc-enviado';
+                msg = 'A entrada do cliente está integralmente quitada. Os valores finais aprovados pela Caixa não geram cobrança adicional, pois a entrada foi definida com base no valor original da venda. Existe uma diferença bancária de ' + money(difBancaria) + ' aguardando conferência do contrato e do repasse.';
+            } else {
+                estado = 'Comercialmente quitado'; cls = 'doc-assinado';
+                msg = 'Entrada quitada. Sem diferença entre a venda e a operação da Caixa.';
+            }
+            const val = v => (v == null) ? '<span class="empty">—</span>' : money(v);
+            const rowT = (label, v, style) => '<tr><td class="rf-item">' + label + '</td><td' + (style ? ' style="' + style + '"' : '') + '>' + (typeof v === 'string' ? v : val(v)) + '</td></tr>';
+            const sitEnt = saldoEntrada > 0 ? '<span class="doc-st doc-pendente">Em aberto</span>' : '<span class="doc-st doc-assinado">Quitada</span>';
+            const SITDIF = { em_conciliacao: 'Em conciliação', conciliado: 'Conciliado', credito_confirmado: 'Crédito confirmado', a_pagar: 'A pagar' };
+            const sd = opp.situacao_diferenca;
+            const sitDif = !temDif ? '<span class="empty">—</span>' : '<span class="doc-st ' + (sd === 'conciliado' || sd === 'credito_confirmado' ? 'doc-assinado' : (sd === 'a_pagar' ? 'doc-pendente' : 'doc-enviado')) + '">' + (SITDIF[sd] || 'Em conciliação') + '</span>';
+            return cardHead(6, '📈', 'Resumo Financeiro', '<span class="hbadge ' + cls + '">' + _esc(estado) + '</span>') +
+                '<div class="vgcard-body" style="padding:8px 14px 12px;">' +
+                    '<div class="rf-2col">' +
+                        '<div><div class="rf-block-title">Posição comercial (contrato)</div><table class="rf-t2"><tbody>' +
+                            rowT('Valor contratado do imóvel', valorImovel) +
+                            rowT('Entrada acordada', entradaAcordada) +
+                            rowT('Total pago pelo cliente', totalPago) +
+                            rowT('Valor ainda a pagar', saldoEntrada, saldoEntrada > 0 ? 'color:#dc2626;' : '') +
+                            rowT('Crédito confirmado a receber', creditoConfirmado, creditoConfirmado > 0 ? 'color:#16a34a;' : '') +
+                            rowT('Situação da entrada', sitEnt) +
+                        '</tbody></table></div>' +
+                        '<div><div class="rf-block-title">Informações da Caixa</div><table class="rf-t2"><tbody>' +
+                            rowT('Valor da operação Caixa', opCaixa) +
+                            rowT('Subsídio aprovado', subAprov) +
+                            rowT('Financiamento aprovado', finAprov) +
+                            rowT('Contrapartida teórica Caixa', contrapartida) +
+                            rowT('Diferença em relação à venda', difBancaria, temDif ? 'color:#b45309;' : '') +
+                            rowT('Situação da diferença', sitDif) +
+                        '</tbody></table></div>' +
+                    '</div>' +
+                    '<div class="rf-msg">' + _esc(msg) + '</div>' +
                 '</div></div>';
         }
         function fldStatusComissao() {
