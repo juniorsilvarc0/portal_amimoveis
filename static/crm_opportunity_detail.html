@@ -305,6 +305,9 @@
             if (LK.correspondentes === null) {
                 try { LK.correspondentes = await api.get('/lookup/correspondentes'); } catch (e) { LK.correspondentes = []; }
             }
+            // Imóveis + unidades p/ os selects em cascata do card 2 (edição inline — igual ao modo novo).
+            if (!LK.imoveis.length) { try { LK.imoveis = await api.get('/lookup/imoveis'); } catch (e) { LK.imoveis = []; } }
+            if (opp.imovel_id) { try { LK.unidades = await api.get('/lookup/unidades', { imovel_id: opp.imovel_id }); } catch (e) { LK.unidades = []; } }
             recalcPrevistos(); recalcAprovados();  // calcula previstos e aprovados em opp ANTES do corpo (tabela Resumo usa)
             document.getElementById('page').innerHTML = renderHead() + renderBody();
             attachHeadHandlers();
@@ -796,14 +799,25 @@
             // inline (o input abre vazio, mas o usuário vê de onde o valor exibido veio).
             const ph = (snap, cad) => (!snap && cad ? { placeholder: String(cad) } : undefined);
             return cardOpen(2, '🏠', 'Dados do Imóvel') +
+                // Empreendimento e unidade são SELECTS relacionados (igual ao modo novo) — a edição inline
+                // troca o imóvel/unidade e repreenche o snapshot. O texto legado aparece no display.
+                fld('imovel_id', 'Imóvel (empreendimento)', opp.imovel_nome, 'select', { options: LK.imoveis.map(i => [i.id, i.nome]), placeholder: '— Selecione —' }) +
+                fld('unidade_id', 'Unidade / Casa', opp.unidade, 'select', { options: unidadeOptsDetalhe(), placeholder: (opp.imovel_id ? '— Sem unidade —' : 'Selecione o imóvel primeiro') }) +
                 fld('empreendimento_nome', 'Empreendimento', opp.empreendimento_nome || opp.imovel_nome, 'text') +
-                fld('unidade', 'Unidade / Casa', opp.unidade, 'text') +
                 fld('imovel_endereco', 'Endereço do imóvel', opp.imovel_endereco || opp.imovel_cad_endereco, 'text', ph(opp.imovel_endereco, opp.imovel_cad_endereco)) +
                 fld('imovel_bairro', 'Bairro', opp.imovel_bairro || opp.imovel_cad_bairro, 'text', ph(opp.imovel_bairro, opp.imovel_cad_bairro)) +
                 fld('imovel_cidade_uf', 'Cidade / Estado', opp.imovel_cidade_uf || opp.imovel_cad_cidade_uf, 'text', ph(opp.imovel_cidade_uf, opp.imovel_cad_cidade_uf)) +
                 fld('imovel_cep', 'CEP', opp.imovel_cep || opp.imovel_cad_cep, 'text', ph(opp.imovel_cep, opp.imovel_cad_cep)) +
                 fld('imovel_tipo', 'Tipo de imóvel', opp.imovel_tipo || opp.imovel_cad_tipo, 'text', ph(opp.imovel_tipo, opp.imovel_cad_tipo)) +
                 cardClose();
+        }
+        // Opções da unidade no detalhe (marca ocupadas como "em negociação"; a unidade atual nunca é bloqueada).
+        function unidadeOptsDetalhe() {
+            return LK.unidades.map(u => {
+                const val = u.valor != null ? ' · R$ ' + numToBr(u.valor) : '';
+                const ocup = (u.ocupada && String(u.id) !== String(opp.unidade_id)) ? ' (em negociação)' : '';
+                return [u.id, u.identificador + val + ocup];
+            });
         }
 
         // ---- Card 3: Dados da Venda ----
@@ -1647,6 +1661,26 @@
                 if (key === 'venda_forma_entrada' && !isParcelado(newVal)) {
                     patchObj.ef_valor_sinal = null; patchObj.ef_juros_percent = null;
                     patchObj.ef_qtd_parcelas = null; patchObj.venda_data_primeira_parcela = null;
+                }
+                // Card 2: trocar o empreendimento (imovel_id) recarrega as unidades e repreenche o
+                // snapshot do imóvel; trocar a unidade grava o identificador. Igual ao fluxo do modo novo.
+                if (key === 'imovel_id') {
+                    patchObj.unidade_id = null; patchObj.unidade = null;
+                    let imv = null;
+                    if (newVal != null) { try { imv = await api.get('/imoveis/' + newVal); } catch (e) {} }
+                    if (imv) {
+                        patchObj.empreendimento_nome = imv.nome || null;
+                        if (imv.endereco != null) patchObj.imovel_endereco = imv.endereco;
+                        if (imv.bairro != null) patchObj.imovel_bairro = imv.bairro;
+                        if (imv.cep != null) patchObj.imovel_cep = imv.cep;
+                        if (imv.tipo != null) patchObj.imovel_tipo = imv.tipo;
+                        if (imv.cidade_nome) patchObj.imovel_cidade_uf = imv.cidade_nome + (imv.cidade_uf ? '/' + imv.cidade_uf : '');
+                    }
+                    try { LK.unidades = newVal != null ? await api.get('/lookup/unidades', { imovel_id: newVal }) : []; } catch (e) { LK.unidades = []; }
+                }
+                if (key === 'unidade_id') {
+                    const u = LK.unidades.find(x => String(x.id) === String(newVal));
+                    patchObj.unidade = u ? u.identificador : null;
                 }
                 // Financiamento <-> % é BIDIRECIONAL (ver recalcPrevistos): editar a % calcula o
                 // financiamento; editar o financiamento calcula a %. Grava só em patchObj (opp aplicado
