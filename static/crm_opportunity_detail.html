@@ -872,13 +872,17 @@
             const M = v => (v != null && typeof window.maskMoney === 'function') ? window.maskMoney(v) : (v != null ? numToBr(v) : '');
             const entrada = _n(o.valor_entrada), sinal = _n(o.ef_valor_sinal), juros = _n(o.ef_juros_percent);
             const nparc = parseInt(o.ef_qtd_parcelas, 10) || 0;
-            const rSinal = { quantidade: sinal != null ? '1' : '', valor_parcela: sinal != null ? M(sinal) : '', valor_total: sinal != null ? M(sinal) : '' };
-            let rParc = { quantidade: '', valor_parcela: '', valor_total: '', vencimento: '' };
+            let rSinal, rParc = { quantidade: '', valor_parcela: '', valor_total: '', vencimento: '' };
             if (isParcelado(o.venda_forma_entrada)) {
+                // Parcelado: sinal (entrada de sinal) + o restante em parcelas com juros.
+                rSinal = { quantidade: sinal != null ? '1' : '', valor_parcela: sinal != null ? M(sinal) : '', valor_total: sinal != null ? M(sinal) : '', forma: '' };
                 const restante = entrada != null ? Math.max(0, entrada - (sinal || 0)) : null;
                 const aDever = restante != null ? restante * (1 + (juros || 0) / 100) : null;
                 const vparc = (aDever != null && nparc > 0) ? aDever / nparc : null;
                 rParc = { quantidade: nparc > 0 ? String(nparc) : '', valor_parcela: vparc != null ? M(vparc) : '', valor_total: aDever != null ? M(aDever) : '', vencimento: o.venda_data_primeira_parcela ? (fmtDate(o.venda_data_primeira_parcela) || '') : '' };
+            } else {
+                // À vista: a ENTRADA inteira é o sinal (paga de uma vez) — sem parcelamento.
+                rSinal = { quantidade: entrada != null ? '1' : '', valor_parcela: entrada != null ? M(entrada) : '', valor_total: entrada != null ? M(entrada) : '', forma: entrada != null ? 'À vista' : '' };
             }
             return { sinal: rSinal, parcsinal: rParc };
         }
@@ -892,7 +896,7 @@
             return CPG_ROWS.map(([desc, k], i) => {
                 const s = byDesc[desc] || {};
                 const r = { ordem: i + 1, descricao: desc, quantidade: s.quantidade || '', valor_parcela: s.valor_parcela || '', valor_total: s.valor_total || '', forma: s.forma || '', vencimento: s.vencimento || '' };
-                if (k === 'sinal') { r.quantidade = ent.sinal.quantidade; r.valor_parcela = ent.sinal.valor_parcela; r.valor_total = ent.sinal.valor_total; }
+                if (k === 'sinal') { r.quantidade = ent.sinal.quantidade; r.valor_parcela = ent.sinal.valor_parcela; r.valor_total = ent.sinal.valor_total; if (ent.sinal.forma) r.forma = ent.sinal.forma; }
                 else if (k === 'parcsinal') { r.quantidade = ent.parcsinal.quantidade; r.valor_parcela = ent.parcsinal.valor_parcela; r.valor_total = ent.parcsinal.valor_total; if (!r.vencimento) r.vencimento = ent.parcsinal.vencimento; }
                 else if (k === 'fgts') { const m = M(o.valor_fgts); if (m) { r.quantidade = '1'; r.valor_parcela = m; r.valor_total = m; } }
                 else if (k === 'subsidio') { const m = M(o.valor_subsidio); if (m) { r.quantidade = '1'; r.valor_parcela = m; r.valor_total = m; } }
@@ -911,6 +915,7 @@
                 const r = rows[i];
                 ['quantidade', 'valor_parcela', 'valor_total'].forEach(f => { const el = document.querySelector('.cpg-in[data-cpg="' + k + '"][data-cpg-f="' + f + '"]'); if (el) el.value = r[f] || ''; });
                 if (k === 'parcsinal') { const el = document.querySelector('.cpg-in[data-cpg="parcsinal"][data-cpg-f="vencimento"]'); if (el && !el.value && r.vencimento) el.value = r.vencimento; }
+                if (k === 'sinal' && r.forma) { const el = document.querySelector('.cpg-in[data-cpg="sinal"][data-cpg-f="forma"]'); if (el) el.value = r.forma; }
             });
             if (typeof collectCondPag === 'function') opp.condicoes_pagamento_previstas = collectCondPag();
         }
@@ -1040,14 +1045,14 @@
             const setM = (id, v, red) => { const el = document.getElementById(id); if (!el) return; el.textContent = (v != null ? fmtMoney(v) : '—'); if (red) el.style.color = (v != null && v > 0) ? '#dc2626' : ''; };
             const entrada = _n(opp.valor_entrada), sinal = _n(opp.ef_valor_sinal), juros = _n(opp.ef_juros_percent);
             const nparc = parseInt(opp.ef_qtd_parcelas, 10) || 0;
-            // Saldo em aberto (SEMPRE): entrada prevista - sinal já dado. Em VERMELHO quando > 0.
+            const parcelado = isParcelado(opp.venda_forma_entrada);
+            // Saldo em aberto = o que falta parcelar. À VISTA a entrada inteira é paga → 0. Parcelado: entrada − sinal.
             let saldo = null;
-            if (entrada != null) saldo = Math.max(0, entrada - (sinal || 0));
+            if (entrada != null) saldo = Math.max(0, entrada - (parcelado ? (sinal || 0) : entrada));
             setM('efSaldoAberto', saldo, true);
             // Seção "parcelado" (só quando forma = parcelado)
             const box = document.getElementById('efParcelBox');
             if (!box) return;
-            const parcelado = isParcelado(opp.venda_forma_entrada);
             box.style.display = parcelado ? '' : 'none';
             if (!parcelado) return;
             let restante = null, aDever = null, vparc = null;
