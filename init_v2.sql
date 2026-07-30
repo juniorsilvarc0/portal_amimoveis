@@ -960,3 +960,11 @@ DO $$ BEGIN
     ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS modalidade_aprovada TEXT;
     ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS renda_aprovada NUMERIC(15,2);
 EXCEPTION WHEN others THEN NULL; END $$;
+
+-- Condições de Pagamento Previstas (seção 4): tabela de 9 linhas (Sinal, Parcelamento do sinal,
+-- Parcelas mensais, 1ª/2ª/3ª Intercalada, FGTS, Subsídio, Financiamento) × Qtd/Valor/Total/Forma/
+-- Vencimento — mesma estrutura de proposta_pagamentos. Guardada como JSONB (array de objetos).
+-- Ao "Gerar Proposta", estas linhas são copiadas para proposta_pagamentos.
+DO $$ BEGIN
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS condicoes_pagamento_previstas JSONB;
+EXCEPTION WHEN others THEN NULL; END $$;
