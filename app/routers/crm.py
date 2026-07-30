@@ -814,13 +814,32 @@ async def gerar_proposta(id: int, user: dict = Depends(require_permission("crm_o
     if not opp.get("cliente_id"):
         raise HTTPException(422, "Oportunidade precisa estar vinculada a um cliente.")
 
-    proposta_id = propostas_repo.criar({
+    # Condições de Pagamento Previstas (seção 4) → linhas de proposta_pagamentos (só as preenchidas).
+    pagamentos = []
+    for i, pag in enumerate(opp.get("condicoes_pagamento_previstas") or []):
+        if not isinstance(pag, dict):
+            continue
+        if not any(pag.get(k) for k in ("quantidade", "valor_parcela", "valor_total", "forma", "vencimento")):
+            continue
+        pagamentos.append({
+            "ordem": pag.get("ordem", i + 1),
+            "descricao": pag.get("descricao") or "",
+            "quantidade": pag.get("quantidade"),
+            "valor_parcela": pag.get("valor_parcela"),
+            "valor_total": pag.get("valor_total"),
+            "forma": pag.get("forma"),
+            "vencimento": pag.get("vencimento"),
+        })
+
+    proposta_dados = {
         "cliente_id": opp["cliente_id"],
         "imovel_id": opp.get("imovel_id"),
         "valor_total": str(opp["valor"]) if opp.get("valor") else None,
-        "empreendimento": opp.get("imovel_nome") or "",
+        "empreendimento": opp.get("empreendimento_nome") or opp.get("imovel_nome") or "",
+        "unidade": opp.get("unidade"),
         "observacoes": opp.get("descricao"),
-    })
+    }
+    proposta_id = propostas_repo.criar_com_pagamentos(proposta_dados, pagamentos)
     crm_opportunities_repo.vincular_proposta(id, proposta_id)
     return {
         "proposta_id": proposta_id,

@@ -1,5 +1,6 @@
 """Repositório de oportunidades (negociações) do CRM."""
 from .connection import cursor
+from psycopg2.extras import Json
 
 _SELECT_FULL = """
 SELECT o.*,
@@ -138,6 +139,8 @@ _CAMPOS = [
     "comissao_total", "comissao_recebimento_1", "comissao_restante",
     "comissao_previsao_recebimento", "comissao_status", "comissao_forma_recebimento",
     "contabil_mes_fechamento", "contabil_data_fechamento",
+    # Seção 4: tabela de Condições de Pagamento Previstas (JSONB) → proposta_pagamentos
+    "condicoes_pagamento_previstas",
     # Sistema
     "criado_por_id", "modificado_por_id",
 ]
@@ -230,10 +233,21 @@ def oportunidade_ativa_da_unidade(unidade_id: int, excluir_id: int | None = None
         return dict(row) if row else None
 
 
+_JSONB_CAMPOS = ("condicoes_pagamento_previstas",)
+
+
+def _adaptar_jsonb(params: dict) -> None:
+    """Envolve colunas JSONB com psycopg2 Json (só quando presentes e não-nulas)."""
+    for c in _JSONB_CAMPOS:
+        if params.get(c) is not None:
+            params[c] = Json(params[c])
+
+
 def criar(dados: dict) -> int:
     cols = ", ".join(_CAMPOS)
     placeholders = ", ".join(f"%({c})s" for c in _CAMPOS)
     params = {c: dados.get(c) for c in _CAMPOS}
+    _adaptar_jsonb(params)
     if not params.get("status"):
         params["status"] = "aberta"
     with cursor() as cur:
@@ -256,6 +270,7 @@ def atualizar(id: int, dados: dict) -> bool:
         return False
     sets = ", ".join(f"{c} = %({c})s" for c in campos)
     params = {c: dados.get(c) for c in campos}
+    _adaptar_jsonb(params)
     params["id"] = id
     with cursor(dict_cursor=False) as cur:
         cur.execute(
