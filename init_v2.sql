@@ -968,3 +968,14 @@ EXCEPTION WHEN others THEN NULL; END $$;
 DO $$ BEGIN
     ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS condicoes_pagamento_previstas JSONB;
 EXCEPTION WHEN others THEN NULL; END $$;
+
+-- Resumo Financeiro / conciliação (Etapa 2): separa a condição COMERCIAL (fixa, só muda por aditivo)
+-- do REPASSE real da Caixa. A diferença entre o aprovado e o necessário fica "em conciliação" até o
+-- repasse ser confirmado — não vira "a receber" automaticamente.
+DO $$ BEGIN
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS possui_aditivo_contratual BOOLEAN DEFAULT false;
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS valor_repassado NUMERIC(15,2);       -- valor efetivamente repassado pela Caixa
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS data_repasse DATE;
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS situacao_diferenca TEXT;             -- em_conciliacao | conciliado | credito_confirmado | a_pagar
+    ALTER TABLE crm_opportunities ADD COLUMN IF NOT EXISTS responsavel_diferenca TEXT;
+EXCEPTION WHEN others THEN NULL; END $$;
