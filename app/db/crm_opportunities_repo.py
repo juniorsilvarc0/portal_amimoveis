@@ -141,6 +141,9 @@ _CAMPOS = [
     "contabil_mes_fechamento", "contabil_data_fechamento",
     # Seção 4: tabela de Condições de Pagamento Previstas (JSONB) → proposta_pagamentos
     "condicoes_pagamento_previstas",
+    # Resumo Financeiro / conciliação do repasse (comercial fixo × repasse real da Caixa)
+    "possui_aditivo_contratual", "valor_repassado", "data_repasse",
+    "situacao_diferenca", "responsavel_diferenca",
     # Sistema
     "criado_por_id", "modificado_por_id",
 ]
