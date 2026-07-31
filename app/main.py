@@ -18,6 +18,7 @@ from app.routers import (
     correspondentes,
     corretores,
     crm,
+    dashboard,
     settings as settings_router,
     financiamentos,
     gerentes,
@@ -144,6 +145,7 @@ app.include_router(corretores.router)
 app.include_router(logos.router)
 app.include_router(recibos.router)
 app.include_router(crm.router)
+app.include_router(dashboard.router)
 app.include_router(chat.router)
 app.include_router(settings_router.router)
 app.include_router(usuarios.router)
